@@ -247,6 +247,53 @@
             border-color: var(--border-strong);
         }
 
+        .tour-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background-color: var(--surface);
+        }
+
+        .tour-item .tour-info p {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .tour-item .tour-info small {
+            color: var(--text-muted);
+            font-size: 11.5px;
+        }
+
+        .tour-delete-button {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: var(--surface);
+            color: var(--danger);
+            border: 1.5px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 0;
+            transition: all 0.15s ease;
+        }
+
+        .tour-delete-button:hover {
+            background-color: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
         .dropzone {
             border: 1.5px dashed var(--border-strong);
             border-radius: var(--radius);
@@ -563,6 +610,11 @@
 
             <div class="status" id="status">Map is loading...</div>
 
+            <div class="divider maker-only"></div>
+
+            <h3 class="maker-only">Manage Tours</h3>
+            <div id="tour-list" class="maker-only"></div>
+
             <div class="divider"></div>
 
             <h3>Uploaded Photos</h3>
@@ -613,7 +665,8 @@
             enlargedMarker: null,
             walkName: '',
             walkSlug: '',
-            walkSlugManuallySet: false
+            walkSlugManuallySet: false,
+            tourManifest: []
         };
 
         // DOM Elements
@@ -684,12 +737,17 @@
 
             // Show the floating title
             updateTitleDisplay();
+
+            if (CONFIG.IS_MAKER_MODE) {
+                initTourManagement();
+            }
         }
 
         function cacheElements() {
             const ids = ['photo-list', 'file-input', 'load-input', 'dropzone', 'error-message',
                         'success-message', 'fit-all', 'clear-all', 'save-state', 'load-state',
-                        'status', 'app-title', 'app-description', 'walk-name-input', 'walk-slug-input', 'title-walk-name'];
+                        'status', 'app-title', 'app-description', 'walk-name-input', 'walk-slug-input',
+                        'title-walk-name', 'tour-list'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -1553,14 +1611,99 @@
             updateTitleDisplay();
         }
 
+        // Tour management: lets a writer remove a walk's entry from
+        // walks.json without leaving the app. The browser can't write back
+        // to the project's walks.json directly, so this downloads an
+        // updated copy for the writer to drop in (same "local download"
+        // pattern as exporting a walk) — deleting the walk's own
+        // walks/<slug>/ folder, if wanted, is still a manual step.
+        function downloadJsonFile(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function initTourManagement() {
+            try {
+                const res = await fetch('walks.json', { cache: 'no-store' });
+                state.tourManifest = res.ok ? await res.json() : [];
+            } catch (error) {
+                console.error('Failed to load walks.json', error);
+                state.tourManifest = [];
+            }
+            renderTourList();
+        }
+
+        function renderTourList() {
+            const container = elements['tour-list'];
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (state.tourManifest.length === 0) {
+                container.textContent = 'No tours in walks.json.';
+                return;
+            }
+
+            state.tourManifest.forEach(entry => {
+                const row = document.createElement('div');
+                row.className = 'tour-item';
+
+                const info = document.createElement('div');
+                info.className = 'tour-info';
+                const title = document.createElement('p');
+                title.textContent = entry.title || entry.slug;
+                const slug = document.createElement('small');
+                slug.textContent = entry.slug;
+                info.appendChild(title);
+                info.appendChild(slug);
+
+                const deleteButton = document.createElement('div');
+                deleteButton.className = 'tour-delete-button';
+                deleteButton.innerHTML = '×';
+                deleteButton.title = `Remove "${entry.slug}" from walks.json`;
+                deleteButton.addEventListener('click', () => deleteTour(entry.slug));
+
+                row.appendChild(info);
+                row.appendChild(deleteButton);
+                container.appendChild(row);
+            });
+        }
+
+        function deleteTour(slug) {
+            const entry = state.tourManifest.find(w => w.slug === slug);
+            if (!entry) return;
+
+            const confirmed = confirm(
+                `Remove "${entry.title || slug}" from walks.json?\n\n` +
+                `This downloads an updated walks.json for you to drop into the project ` +
+                `(replacing the current one). It won't delete walks/${slug}/ itself — ` +
+                `remove that folder yourself if you want its files gone too.`
+            );
+            if (!confirmed) return;
+
+            state.tourManifest = state.tourManifest.filter(w => w.slug !== slug);
+            downloadJsonFile(state.tourManifest, 'walks.json');
+            elements.status.textContent =
+                `Downloaded walks.json without "${slug}". Replace the project's walks.json ` +
+                `to finish removing it (and delete walks/${slug}/ if you want its files gone too).`;
+            renderTourList();
+        }
+
         // Save/Load functions.
         //
         // Exports a zip containing a lean walk.json (photo metadata + relative
         // paths, no embedded image data) plus a photos/ folder of real image
-        // files. Unzip the result into walks/<slug>/ and add an entry to
-        // walks.json. Photos that were loaded from an existing lean walk.json
-        // (carrying a `photo` relative path instead of inline `src` data)
-        // are passed through without being re-encoded.
+        // files — every photo's bytes are (re-)embedded regardless of
+        // whether they were just uploaded or loaded from an existing walk,
+        // so the zip is always self-contained. Unzip the result into
+        // walks/<slug>/ and replace walks.json with the one included.
         function slugify(text) {
             return (text || '')
                 .toLowerCase()
@@ -1586,14 +1729,12 @@
             const photosFolder = zip.folder('photos');
             const usedNames = new Set();
 
-            const leanPhotos = state.photoData.map((photo, index) => {
+            const leanPhotos = await Promise.all(state.photoData.map(async (photo, index) => {
                 const marker = state.markers[index];
                 const dataUrlMatch = /^data:([^;]+);base64,(.*)$/.exec(photo.src || '');
                 let relPath = photo.photo || null;
 
-                if (dataUrlMatch) {
-                    const mime = dataUrlMatch[1];
-                    const ext = mime === 'image/png' ? 'png' : 'jpg';
+                const reserveName = (ext) => {
                     const base = (photo.filename || photo.id).replace(/\.[^.]+$/, '');
                     let name = `${base}.${ext}`;
                     let n = 1;
@@ -1601,8 +1742,31 @@
                         name = `${base}_${n++}.${ext}`;
                     }
                     usedNames.add(name);
+                    return name;
+                };
+
+                if (dataUrlMatch) {
+                    // Freshly uploaded this session — already in memory.
+                    const mime = dataUrlMatch[1];
+                    const ext = mime === 'image/png' ? 'png' : 'jpg';
+                    const name = reserveName(ext);
                     photosFolder.file(name, dataUrlMatch[2], { base64: true });
                     relPath = `photos/${name}`;
+                } else if (photo.src) {
+                    // Loaded from an existing lean walk.json (or elsewhere)
+                    // by URL, not embedded — fetch the actual bytes so a
+                    // re-export stays self-contained instead of pointing at
+                    // photos that aren't in this zip.
+                    try {
+                        const res = await fetch(photo.src);
+                        const blob = await res.blob();
+                        const ext = (photo.photo || photo.src).split('.').pop().split(/[?#]/)[0] || 'jpg';
+                        const name = reserveName(ext);
+                        photosFolder.file(name, blob);
+                        relPath = `photos/${name}`;
+                    } catch (error) {
+                        console.error(`Failed to fetch photo for export: ${photo.filename}`, error);
+                    }
                 }
 
                 return {
@@ -1614,7 +1778,7 @@
                     originalWidth: marker?.originalWidth,
                     originalHeight: marker?.originalHeight
                 };
-            });
+            }));
 
             const walkData = {
                 slug: slug,
@@ -1648,6 +1812,8 @@
             }
 
             zip.file('walks.json', JSON.stringify(manifest, null, 2));
+            state.tourManifest = manifest;
+            renderTourList();
 
             const blob = await zip.generateAsync({ type: 'blob' });
             const url = URL.createObjectURL(blob);
