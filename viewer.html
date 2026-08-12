@@ -7,6 +7,31 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <style>
+        /* EB Garamond, self-hosted (open-source alternative to Adobe
+           Garamond Pro) so the title renders correctly offline. */
+        @font-face {
+            font-family: 'EB Garamond';
+            font-style: normal;
+            font-weight: 500;
+            font-display: swap;
+            src: url('fonts/EBGaramond-500.woff2') format('woff2');
+        }
+        @font-face {
+            font-family: 'EB Garamond';
+            font-style: normal;
+            font-weight: 600;
+            font-display: swap;
+            src: url('fonts/EBGaramond-600.woff2') format('woff2');
+        }
+        @font-face {
+            font-family: 'EB Garamond';
+            font-style: italic;
+            font-weight: 500;
+            font-display: swap;
+            src: url('fonts/EBGaramond-500-Italic.woff2') format('woff2');
+        }
+    </style>
+    <style>
         :root {
             --bg: #f7f7f8;
             --surface: #ffffff;
@@ -47,18 +72,44 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            width: 25vw;
-            height: auto;
+            max-width: 40vw;
             z-index: 1000;
             opacity: 0.92;
             pointer-events: none;
             transition: opacity 0.3s ease;
             display: none;
-            filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.18));
+            text-align: right;
+            font-family: 'EB Garamond', 'Garamond', 'Georgia', serif;
+            color: #4a1030;
+            /* Layered soft white glow (a "shadow" the opposite color of the
+               text) so the title reads over any map tile underneath it,
+               rather than a conventional dark drop shadow. */
+            text-shadow:
+                0 0 2px #fff,
+                0 0 6px #fff,
+                0 0 14px rgba(255, 255, 255, 0.9),
+                0 2px 18px rgba(255, 255, 255, 0.8);
         }
 
         #title-image:hover {
             opacity: 1;
+        }
+
+        #title-image .title-main {
+            display: block;
+            font-weight: 600;
+            font-size: clamp(28px, 4vw, 56px);
+            line-height: 1.05;
+            letter-spacing: 0.01em;
+        }
+
+        #title-image .title-walk {
+            display: block;
+            font-style: italic;
+            font-weight: 500;
+            font-size: clamp(14px, 1.6vw, 22px);
+            margin-top: 0.15em;
+            opacity: 0.85;
         }
 
         /* Mode-specific visibility */
@@ -455,7 +506,10 @@
 </head>
 <body>
     <div id="app">
-        <img id="title-image" src="symmetrywalktitle.png" alt="Symmetry Walker">
+        <div id="title-image">
+            <span class="title-main">Symmetry Stroll</span>
+            <span class="title-walk" id="title-walk-name"></span>
+        </div>
         <div class="loading-overlay" id="loading-overlay">Loading Symmetry Walk...</div>
         <div id="sidebar">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -472,6 +526,11 @@
                 </div>
             </div>
             <p id="app-description">Upload photos with geolocation data to see them on the map.</p>
+
+            <div class="maker-only" style="margin-bottom: 15px;">
+                <label for="walk-name-input" style="display: block; font-size: 13px; margin-bottom: 4px; color: var(--text-muted, #666);">Gallery / walk name</label>
+                <input type="text" id="walk-name-input" placeholder="e.g. Fifth Avenue" style="width: 100%; box-sizing: border-box; padding: 6px 8px; font-size: 14px;">
+            </div>
 
             <div class="dropzone" id="dropzone">
                 <label for="file-input">
@@ -548,7 +607,8 @@
             isMarkerDragging: false,
             markerDragState: null,
             optionKeyDown: false,
-            enlargedMarker: null
+            enlargedMarker: null,
+            walkName: ''
         };
 
         // DOM Elements
@@ -601,6 +661,7 @@
             if (currentWalk) {
                 CONFIG.AUTO_LOAD_FILE = currentWalk.dataFile;
                 CONFIG.PHOTO_BASE = currentWalk.dataFile.replace(/[^/]+$/, '');
+                state.walkName = currentWalk.title || '';
             }
 
             document.title = currentWalk
@@ -619,14 +680,14 @@
             // Setup event listeners
             setupEventListeners();
 
-            // Load title image
-            loadTitleImage();
+            // Show the floating title
+            updateTitleDisplay();
         }
 
         function cacheElements() {
             const ids = ['photo-list', 'file-input', 'load-input', 'dropzone', 'error-message',
                         'success-message', 'fit-all', 'clear-all', 'save-state', 'load-state',
-                        'status', 'app-title', 'app-description'];
+                        'status', 'app-title', 'app-description', 'walk-name-input', 'title-walk-name'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -698,6 +759,10 @@
                 elements['save-state'].addEventListener('click', saveState);
                 elements['load-state'].addEventListener('click', () => elements['load-input'].click());
                 elements['load-input'].addEventListener('change', loadState);
+                elements['walk-name-input'].addEventListener('input', (e) => {
+                    state.walkName = e.target.value;
+                    elements['title-walk-name'].textContent = state.walkName;
+                });
             }
 
             // Mode switching
@@ -839,7 +904,17 @@
                 if (e.target.classList.contains('delete-button')) {
                     return; // Let delete handle itself
                 } else if (e.target.classList.contains('control-point')) {
-                    return; // Let control point handle resize
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const markerContainer = e.target.closest('.marker-container');
+                    const deleteBtn = markerContainer?.querySelector('.delete-button');
+                    if (deleteBtn) {
+                        const photoId = deleteBtn.getAttribute('data-photo-id');
+                        const photoIndex = state.photoData.findIndex(p => p.id === photoId);
+                        if (photoIndex >= 0 && state.markers[photoIndex]) {
+                            startResize(e, state.markers[photoIndex]);
+                        }
+                    }
                 } else if (!state.optionKeyDown) {
                     // Check for marker drag
                     let markerContainer = e.target.closest('.marker-container');
@@ -871,14 +946,16 @@
             }, true);
         }
 
-        function loadTitleImage() {
-            const titleImg = document.getElementById('title-image');
-            if (!titleImg) return;
+        function updateTitleDisplay() {
+            const titleEl = document.getElementById('title-image');
+            if (!titleEl) return;
 
-            const img = new Image();
-            img.onload = () => titleImg.style.display = 'block';
-            img.onerror = () => titleImg.style.display = 'none';
-            img.src = 'symmetrywalktitle.png';
+            elements['title-walk-name'].textContent = state.walkName || '';
+            titleEl.style.display = 'block';
+
+            if (elements['walk-name-input'] && document.activeElement !== elements['walk-name-input']) {
+                elements['walk-name-input'].value = state.walkName || '';
+            }
         }
 
         function autoLoadStrollerData() {
@@ -913,6 +990,13 @@
         // Helper function to check if device is mobile
         function isMobileDevice() {
             return window.innerWidth <= CONFIG.MOBILE_BREAKPOINT;
+        }
+
+        // Default short-side size for a newly placed photo, scaled with the
+        // viewport so it looks reasonable on both small and large screens.
+        function getDefaultMarkerBaseSize() {
+            const viewportMin = Math.min(window.innerWidth, window.innerHeight);
+            return Math.round(Math.max(70, Math.min(160, viewportMin * 0.12)));
         }
 
         // Helper function to get max dimensions based on device type
@@ -1111,18 +1195,19 @@
                 let markerWidth, markerHeight;
 
                 // Calculate initial dimensions with max size constraints
+                const defaultBase = getDefaultMarkerBaseSize();
                 if (this.width <= this.height) {
-                    markerWidth = Math.min(100, maxWidth);
-                    markerHeight = Math.min(Math.round(100 / aspectRatio), maxHeight);
+                    markerWidth = Math.min(defaultBase, maxWidth);
+                    markerHeight = Math.min(Math.round(defaultBase / aspectRatio), maxHeight);
                     // Recalculate width if height was constrained
-                    if (markerHeight < Math.round(100 / aspectRatio)) {
+                    if (markerHeight < Math.round(defaultBase / aspectRatio)) {
                         markerWidth = Math.round(markerHeight * aspectRatio);
                     }
                 } else {
-                    markerHeight = Math.min(100, maxHeight);
-                    markerWidth = Math.min(Math.round(100 * aspectRatio), maxWidth);
+                    markerHeight = Math.min(defaultBase, maxHeight);
+                    markerWidth = Math.min(Math.round(defaultBase * aspectRatio), maxWidth);
                     // Recalculate height if width was constrained
-                    if (markerWidth < Math.round(100 * aspectRatio)) {
+                    if (markerWidth < Math.round(defaultBase * aspectRatio)) {
                         markerHeight = Math.round(markerWidth / aspectRatio);
                     }
                 }
@@ -1283,20 +1368,32 @@
             }
 
             marker.update();
+        }
 
-            // Re-add control point listener if needed
-            if (state.optionKeyDown && CONFIG.IS_MAKER_MODE) {
-                setTimeout(() => {
-                    const controlPoint = marker._icon?.querySelector('.control-point');
-                    if (controlPoint) {
-                        controlPoint.addEventListener('mousedown', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            startResize(e, marker);
-                        });
-                    }
-                }, 10);
+        // Cheap in-place resize during an active drag: mutates the existing
+        // marker DOM directly instead of going through Leaflet's setIcon,
+        // which tears down and rebuilds the icon (image reload, lost
+        // control-point element) on every mousemove.
+        function resizeMarkerIconInPlace(marker, dimensions) {
+            const icon = marker._icon;
+            if (!icon) return;
+
+            const { width, height, mode } = dimensions;
+            const totalHeight = height + CONFIG.MARKER_DOT_OFFSET;
+            const anchorX = Math.round(width / 2);
+            const anchorY = totalHeight;
+
+            const img = icon.querySelector('img');
+            if (img) {
+                img.style.width = width + 'px';
+                img.style.height = height + 'px';
+                img.style.objectFit = mode === 'square' ? 'cover' : 'fill';
             }
+
+            icon.style.width = width + 'px';
+            icon.style.height = totalHeight + 'px';
+            icon.style.marginLeft = (-anchorX) + 'px';
+            icon.style.marginTop = (-anchorY) + 'px';
         }
 
         // UI functions
@@ -1446,6 +1543,7 @@
             });
 
             const walkData = {
+                title: state.walkName || '',
                 photos: leanPhotos,
                 mapCenter: state.map.getCenter(),
                 mapZoom: state.map.getZoom(),
@@ -1492,6 +1590,11 @@
             }
 
             clearAllData();
+
+            if (saveData.title) {
+                state.walkName = saveData.title;
+                updateTitleDisplay();
+            }
 
             if (saveData.mapCenter && saveData.mapZoom) {
                 state.map.setView([saveData.mapCenter.lat, saveData.mapCenter.lng], saveData.mapZoom);
@@ -1542,16 +1645,17 @@
                     }
                 } else {
                     // Calculate with constraints
+                    const defaultBase = getDefaultMarkerBaseSize();
                     if (this.width <= this.height) {
-                        markerWidth = Math.min(100, maxWidth);
-                        markerHeight = Math.min(Math.round(100 / aspectRatio), maxHeight);
-                        if (markerHeight < Math.round(100 / aspectRatio)) {
+                        markerWidth = Math.min(defaultBase, maxWidth);
+                        markerHeight = Math.min(Math.round(defaultBase / aspectRatio), maxHeight);
+                        if (markerHeight < Math.round(defaultBase / aspectRatio)) {
                             markerWidth = Math.round(markerHeight * aspectRatio);
                         }
                     } else {
-                        markerHeight = Math.min(100, maxHeight);
-                        markerWidth = Math.min(Math.round(100 * aspectRatio), maxWidth);
-                        if (markerWidth < Math.round(100 * aspectRatio)) {
+                        markerHeight = Math.min(defaultBase, maxHeight);
+                        markerWidth = Math.min(Math.round(defaultBase * aspectRatio), maxWidth);
+                        if (markerWidth < Math.round(defaultBase * aspectRatio)) {
                             markerHeight = Math.round(markerWidth / aspectRatio);
                         }
                     }
@@ -1593,11 +1697,6 @@
                         const controlPoint = document.createElement('div');
                         controlPoint.className = 'control-point';
                         controlPoint.title = 'Drag to resize';
-                        controlPoint.addEventListener('mousedown', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            startResize(e, marker);
-                        });
                         container.appendChild(controlPoint);
                     }
                 }
@@ -1644,7 +1743,12 @@
 
             const deltaX = e.clientX - state.dragState.startX;
             const deltaY = e.clientY - state.dragState.startY;
-            const scaleDelta = Math.min(deltaX, deltaY);
+            // Control point sits at the top-left corner; moving it away from
+            // the image (up-left, both deltas negative) should grow the
+            // image, moving toward it (down-right) should shrink it. Average
+            // the two axes rather than taking their min, so a drag that's
+            // mostly horizontal or mostly vertical still resizes smoothly.
+            const scaleDelta = (deltaX + deltaY) / 2;
             const scaleMultiplier = Math.max(0.2, 1 - (scaleDelta / 100));
 
             const { maxWidth, maxHeight } = getMaxDimensions();
@@ -1668,18 +1772,24 @@
             state.dragState.marker.originalHeight = newOriginalHeight;
 
             const dimensions = calculateMarkerDimensions(newOriginalWidth, newOriginalHeight);
-            const photoIndex = state.photoData.findIndex(p => p.id === state.dragState.photoId);
-            const position = photoIndex >= 0 ?
-                L.latLng(state.photoData[photoIndex].lat, state.photoData[photoIndex].lng) :
-                state.dragState.marker.getLatLng();
-
-            updateMarkerIcon(state.dragState.marker, dimensions, position);
+            resizeMarkerIconInPlace(state.dragState.marker, dimensions);
         }
 
         function stopResize() {
-            state.isDragging = false;
             document.removeEventListener('mousemove', handleResize);
             document.removeEventListener('mouseup', stopResize);
+
+            if (state.dragState) {
+                const marker = state.dragState.marker;
+                const dimensions = calculateMarkerDimensions(marker.originalWidth, marker.originalHeight);
+                const photoIndex = state.photoData.findIndex(p => p.id === state.dragState.photoId);
+                const position = photoIndex >= 0 ?
+                    L.latLng(state.photoData[photoIndex].lat, state.photoData[photoIndex].lng) :
+                    marker.getLatLng();
+                updateMarkerIcon(marker, dimensions, position);
+            }
+
+            state.isDragging = false;
             state.dragState = null;
         }
 
@@ -1694,11 +1804,20 @@
             let hasMoved = false;
             const dragThreshold = 5;
 
+            // Offset (in map pixel space) between the mouse and the marker's
+            // anchor point, so the grabbed spot on the photo stays under the
+            // cursor instead of the photo's base snapping to the cursor.
+            const mapRect = document.getElementById('map').getBoundingClientRect();
+            const anchorContainerPoint = state.map.latLngToContainerPoint(marker.getLatLng());
+            const mouseContainerPoint = L.point(startX - mapRect.left, startY - mapRect.top);
+            const grabOffset = mouseContainerPoint.subtract(anchorContainerPoint);
+
             const tempDragState = {
                 marker: marker,
                 photoIndex: photoIndex,
                 startMousePos: { x: startX, y: startY },
-                startLatLng: marker.getLatLng()
+                startLatLng: marker.getLatLng(),
+                grabOffset: grabOffset
             };
 
             const tempMouseMove = (moveEvent) => {
@@ -1731,8 +1850,9 @@
             if (!state.isMarkerDragging || !state.markerDragState) return;
 
             const mapRect = document.getElementById('map').getBoundingClientRect();
-            const containerPoint = L.point(e.clientX - mapRect.left, e.clientY - mapRect.top);
-            const newLatLng = state.map.containerPointToLatLng(containerPoint);
+            const mouseContainerPoint = L.point(e.clientX - mapRect.left, e.clientY - mapRect.top);
+            const anchorContainerPoint = mouseContainerPoint.subtract(state.markerDragState.grabOffset);
+            const newLatLng = state.map.containerPointToLatLng(anchorContainerPoint);
 
             state.markerDragState.marker.setLatLng(newLatLng);
         }
