@@ -8,5 +8,10 @@
     "slug": "bedstuy",
     "title": "Bed-Stuy Symmetry Walk",
     "dataFile": "walks/bedstuy/walk.json"
+  },
+  {
+    "slug": "galway",
+    "title": "Galway Manhole Covers",
+    "dataFile": "walks/galway/galway.json"
   }
 ]

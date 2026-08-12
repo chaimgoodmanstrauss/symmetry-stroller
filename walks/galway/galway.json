@@ -1,0 +1,211 @@
+{
+  "slug": "galway",
+  "title": "Galway Manhole Covers",
+  "photos": [
+    {
+      "id": "photo_1786573922964_i6e6x6cib",
+      "photo": "photos/IMG_2754.jpg",
+      "filename": "IMG_2754.JPG",
+      "lat": 53.278908333333334,
+      "lng": -9.058883333333334,
+      "originalWidth": 83,
+      "originalHeight": 550
+    },
+    {
+      "id": "photo_1786573923019_9arhorue2",
+      "photo": "photos/IMG_2982.jpg",
+      "filename": "IMG_2982.jpg",
+      "lat": 53.281844444444445,
+      "lng": -9.065272222222223,
+      "originalWidth": 90,
+      "originalHeight": 500
+    },
+    {
+      "id": "photo_1786573923039_dms2ee7vb",
+      "photo": "photos/IMG_2978.jpg",
+      "filename": "IMG_2978.jpg",
+      "lat": 53.26945555555555,
+      "lng": -9.05338888888889,
+      "originalWidth": 90,
+      "originalHeight": 97
+    },
+    {
+      "id": "photo_1786573923041_chdnzna0d",
+      "photo": "photos/IMG_2891.jpg",
+      "filename": "IMG_2891.jpg",
+      "lat": 53.282222222222224,
+      "lng": -9.065441666666667,
+      "originalWidth": 96,
+      "originalHeight": 90
+    },
+    {
+      "id": "photo_1786573923044_0vgoi1w3i",
+      "photo": "photos/IMG_2737.jpg",
+      "filename": "IMG_2737.JPG",
+      "lat": 53.27531111111111,
+      "lng": -9.056708333333335,
+      "originalWidth": 106,
+      "originalHeight": 90
+    },
+    {
+      "id": "photo_1786573923047_5o816x5ga",
+      "photo": "photos/IMG_2977.jpg",
+      "filename": "IMG_2977.jpg",
+      "lat": 53.269438888888885,
+      "lng": -9.053325000000001,
+      "originalWidth": 97,
+      "originalHeight": 90
+    },
+    {
+      "id": "photo_1786573923050_n0qx4o3vv",
+      "photo": "photos/IMG_2863.jpg",
+      "filename": "IMG_2863.jpg",
+      "lat": 53.27596666666667,
+      "lng": -9.053883333333333,
+      "originalWidth": 90,
+      "originalHeight": 102
+    },
+    {
+      "id": "photo_1786573923053_gejtw38hy",
+      "photo": "photos/IMG_2984.jpg",
+      "filename": "IMG_2984.jpg",
+      "lat": 53.28348888888889,
+      "lng": -9.064066666666667,
+      "originalWidth": 90,
+      "originalHeight": 110
+    },
+    {
+      "id": "photo_1786573923062_fzbivyu6e",
+      "photo": "photos/IMG_2983.jpg",
+      "filename": "IMG_2983.jpg",
+      "lat": 53.28341944444444,
+      "lng": -9.064136111111111,
+      "originalWidth": 90,
+      "originalHeight": 99
+    },
+    {
+      "id": "photo_1786573923066_dh17dp0xy",
+      "photo": "photos/IMG_2967.jpg",
+      "filename": "IMG_2967.jpg",
+      "lat": 53.274169444444446,
+      "lng": -9.047869444444444,
+      "originalWidth": 90,
+      "originalHeight": 90
+    },
+    {
+      "id": "photo_1786573923071_js5io0xtf",
+      "photo": "photos/IMG_2734.jpg",
+      "filename": "IMG_2734.JPG",
+      "lat": 53.27441388888889,
+      "lng": -9.047472222222222,
+      "originalWidth": 90,
+      "originalHeight": 126
+    },
+    {
+      "id": "photo_1786573923076_ksnl2t0xb",
+      "photo": "photos/IMG_2751.jpg",
+      "filename": "IMG_2751.JPG",
+      "lat": 53.27851944444444,
+      "lng": -9.058733333333334,
+      "originalWidth": 90,
+      "originalHeight": 93
+    },
+    {
+      "id": "photo_1786573923080_vl3xuu0z0",
+      "photo": "photos/IMG_2745.jpg",
+      "filename": "IMG_2745.JPG",
+      "lat": 53.27627222222222,
+      "lng": -9.06027777777778,
+      "originalWidth": 98,
+      "originalHeight": 90
+    },
+    {
+      "id": "photo_1786573923084_tlj2sl1zl",
+      "photo": "photos/IMG_2732.jpg",
+      "filename": "IMG_2732.JPG",
+      "lat": 53.428352777777775,
+      "lng": -6.242702777777778,
+      "originalWidth": 90,
+      "originalHeight": 96
+    },
+    {
+      "id": "photo_1786573923087_ee68a76of",
+      "photo": "photos/IMG_2743.jpg",
+      "filename": "IMG_2743.JPG",
+      "lat": 53.27599722222222,
+      "lng": -9.059072222222223,
+      "originalWidth": 90,
+      "originalHeight": 136
+    },
+    {
+      "id": "photo_1786573923092_7s10ldv8t",
+      "photo": "photos/IMG_2747.jpg",
+      "filename": "IMG_2747.JPG",
+      "lat": 53.27713055555555,
+      "lng": -9.059886111111112,
+      "originalWidth": 117,
+      "originalHeight": 90
+    },
+    {
+      "id": "photo_1786573923096_zi9y9bl9o",
+      "photo": "photos/IMG_2768.jpg",
+      "filename": "IMG_2768.JPG",
+      "lat": 53.28841944444444,
+      "lng": -9.068108333333333,
+      "originalWidth": 90,
+      "originalHeight": 94
+    },
+    {
+      "id": "photo_1786573923102_cyb2hawoa",
+      "photo": "photos/IMG_2769.jpg",
+      "filename": "IMG_2769.JPG",
+      "lat": 53.28842222222222,
+      "lng": -9.068052777777778,
+      "originalWidth": 90,
+      "originalHeight": 93
+    },
+    {
+      "id": "photo_1786573923107_tonbuwsvz",
+      "photo": "photos/IMG_2862.jpg",
+      "filename": "IMG_2862.jpg",
+      "lat": 53.27598888888889,
+      "lng": -9.054,
+      "originalWidth": 90,
+      "originalHeight": 98
+    },
+    {
+      "id": "photo_1786573923114_ji0jorjng",
+      "photo": "photos/IMG_2750.jpg",
+      "filename": "IMG_2750.JPG",
+      "lat": 53.27809166666667,
+      "lng": -9.058544444444445,
+      "originalWidth": 90,
+      "originalHeight": 92
+    },
+    {
+      "id": "photo_1786573923120_r19paelhx",
+      "photo": "photos/IMG_2744.jpg",
+      "filename": "IMG_2744.JPG",
+      "lat": 53.27598611111111,
+      "lng": -9.05916388888889,
+      "originalWidth": 94,
+      "originalHeight": 90
+    },
+    {
+      "id": "photo_1786573923126_24lvj0fn2",
+      "photo": "photos/IMG_2753.jpg",
+      "filename": "IMG_2753.JPG",
+      "lat": 53.27865555555555,
+      "lng": -9.058741666666668,
+      "originalWidth": 90,
+      "originalHeight": 104
+    }
+  ],
+  "mapCenter": {
+    "lat": 53.27822471590436,
+    "lng": -9.0587854385376
+  },
+  "mapZoom": 14,
+  "version": "2.0",
+  "savedAt": "2026-08-12T22:32:10.774Z"
+}

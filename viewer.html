@@ -85,10 +85,10 @@
                text) so the title reads over any map tile underneath it,
                rather than a conventional dark drop shadow. */
             text-shadow:
-                0 0 2px #fff,
-                0 0 6px #fff,
-                0 0 14px rgba(255, 255, 255, 0.9),
-                0 2px 18px rgba(255, 255, 255, 0.8);
+                0 0 4px #fff,
+                0 0 12px #fff,
+                0 0 28px rgba(255, 255, 255, 0.9),
+                0 4px 36px rgba(255, 255, 255, 0.8);
         }
 
         #title-image:hover {
@@ -107,7 +107,7 @@
             display: block;
             font-style: italic;
             font-weight: 500;
-            font-size: clamp(14px, 1.6vw, 22px);
+            font-size: clamp(26px, 3.8vw, 54px);
             margin-top: 0.15em;
             opacity: 0.85;
         }
@@ -228,9 +228,7 @@
             width: 56px;
             height: 56px;
             object-fit: cover;
-            border-radius: 50%;
-            cursor: zoom-in;
-            flex-shrink: 0;
+            border-radius: var(--radius-sm);
         }
 
         .photo-item {
@@ -241,25 +239,12 @@
             border-radius: var(--radius-sm);
             background-color: var(--surface);
             cursor: pointer;
-            transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
         }
 
         .photo-item:hover {
             background-color: var(--bg);
             border-color: var(--border-strong);
-        }
-
-        .maker-mode .photo-item {
-            cursor: grab;
-        }
-
-        .photo-item.dragging {
-            opacity: 0.4;
-        }
-
-        .photo-item.drag-over {
-            border-color: var(--accent);
-            border-style: dashed;
         }
 
         .dropzone {
@@ -433,56 +418,6 @@
             background-color: rgba(79, 70, 229, 0.4);
         }
 
-        /* Photo lightbox */
-        .photo-lightbox {
-            position: fixed;
-            inset: 0;
-            background: rgba(20, 16, 24, 0.55);
-            z-index: 4000;
-            display: none;
-        }
-
-        .photo-lightbox.visible {
-            display: block;
-        }
-
-        .photo-lightbox-frame {
-            position: absolute;
-            border-radius: var(--radius);
-            overflow: hidden;
-            background: #16141a;
-            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
-        }
-
-        .maker-mode .photo-lightbox-frame {
-            cursor: move;
-        }
-
-        .photo-lightbox-frame img {
-            display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            pointer-events: none;
-        }
-
-        .lightbox-resize-handle {
-            position: absolute;
-            right: -5px;
-            bottom: -5px;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background-color: rgba(79, 70, 229, 0.25);
-            border: 1.5px solid var(--accent);
-            cursor: nwse-resize;
-            z-index: 4001;
-        }
-
-        .lightbox-resize-handle:hover {
-            background-color: rgba(79, 70, 229, 0.45);
-        }
-
         /* Marker styles */
         .custom-marker {
             position: relative;
@@ -597,6 +532,11 @@
                 <input type="text" id="walk-name-input" placeholder="e.g. Fifth Avenue" style="width: 100%; box-sizing: border-box; padding: 6px 8px; font-size: 14px;">
             </div>
 
+            <div class="maker-only" style="margin-bottom: 15px;">
+                <label for="walk-slug-input" style="display: block; font-size: 13px; margin-bottom: 4px; color: var(--text-muted, #666);">Slug (used for the URL and filenames)</label>
+                <input type="text" id="walk-slug-input" placeholder="e.g. fifth-avenue" style="width: 100%; box-sizing: border-box; padding: 6px 8px; font-size: 14px;">
+            </div>
+
             <div class="dropzone" id="dropzone">
                 <label for="file-input">
                     Click to select photos or folders<br>
@@ -609,7 +549,7 @@
 
             <div class="map-controls">
                 <button id="fit-all">Show All Photos</button>
-                <button id="clear-all" class="danger">Clear All</button>
+                <button id="clear-all" class="danger maker-only">Clear Gallery</button>
             </div>
 
             <div class="divider maker-only"></div>
@@ -631,12 +571,6 @@
         <div id="map-container">
             <div id="map"></div>
         </div>
-        <div id="photo-lightbox" class="photo-lightbox">
-            <div id="photo-lightbox-frame" class="photo-lightbox-frame">
-                <img id="photo-lightbox-img" alt="">
-                <div id="lightbox-resize-handle" class="lightbox-resize-handle maker-only" title="Drag to resize"></div>
-            </div>
-        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
@@ -650,17 +584,15 @@
             MAX_ZOOM: 21,
             SQUARE_ZOOM_MAX: 17,
             FULL_ZOOM_MIN: 19,
-            SQUARE_SIZE: 50,
+            SQUARE_SIZE: 90,
             MARKER_DOT_OFFSET: 11,
             AUTO_LOAD_FILE: null,
             PHOTO_BASE: '',
             // Responsive sizing configuration
-            MAX_MARKER_WIDTH: 300,    // Maximum width for desktop
-            MAX_MARKER_HEIGHT: 400,   // Maximum height for desktop
-            MOBILE_MAX_WIDTH: 200,    // Maximum width for mobile
-            MOBILE_MAX_HEIGHT: 250,   // Maximum height for mobile
-            ENLARGED_MAX_WIDTH: 400,  // Maximum for enlarged markers in stroller mode
-            ENLARGED_MAX_HEIGHT: 500, // Maximum for enlarged markers in stroller mode
+            MAX_MARKER_WIDTH: 500,    // Maximum width for desktop
+            MAX_MARKER_HEIGHT: 550,   // Maximum height for desktop
+            MOBILE_MAX_WIDTH: 320,    // Maximum width for mobile
+            MOBILE_MAX_HEIGHT: 380,   // Maximum height for mobile
             MOBILE_BREAKPOINT: 768    // Width breakpoint for mobile devices
         };
 
@@ -680,7 +612,8 @@
             optionKeyDown: false,
             enlargedMarker: null,
             walkName: '',
-            lightboxPhotoId: null
+            walkSlug: '',
+            walkSlugManuallySet: false
         };
 
         // DOM Elements
@@ -694,7 +627,7 @@
             if (!slug) return null;
 
             try {
-                const res = await fetch('walks.json');
+                const res = await fetch('walks.json', { cache: 'no-store' });
                 const manifest = await res.json();
                 const entry = manifest.find(w => w.slug === slug);
                 if (!entry) console.warn(`No walk found in walks.json for slug "${slug}"`);
@@ -729,6 +662,8 @@
                 CONFIG.AUTO_LOAD_FILE = currentWalk.dataFile;
                 CONFIG.PHOTO_BASE = currentWalk.dataFile.replace(/[^/]+$/, '');
                 state.walkName = currentWalk.title || '';
+                state.walkSlug = currentWalk.slug || '';
+                state.walkSlugManuallySet = true;
             }
 
             document.title = currentWalk
@@ -754,8 +689,7 @@
         function cacheElements() {
             const ids = ['photo-list', 'file-input', 'load-input', 'dropzone', 'error-message',
                         'success-message', 'fit-all', 'clear-all', 'save-state', 'load-state',
-                        'status', 'app-title', 'app-description', 'walk-name-input', 'title-walk-name',
-                        'photo-lightbox', 'photo-lightbox-frame', 'photo-lightbox-img', 'lightbox-resize-handle'];
+                        'status', 'app-title', 'app-description', 'walk-name-input', 'walk-slug-input', 'title-walk-name'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -795,14 +729,15 @@
 
                     elements.status.textContent = 'Map loaded successfully. Ready for photos.';
 
-                    // Auto-load for Stroller mode
-                    if (!CONFIG.IS_MAKER_MODE) {
-                        if (CONFIG.AUTO_LOAD_FILE) {
-                            setTimeout(autoLoadStrollerData, 1000);
-                        } else {
-                            document.getElementById('loading-overlay').classList.add('hidden');
-                            elements.status.textContent = 'No walk specified. Add ?walk=<slug> to the URL (see walks.json).';
-                        }
+                    // Auto-load the walk named by ?walk= in either mode, so
+                    // switching into writer mode (e.g. via the shortcut)
+                    // starts from the gallery you were just viewing instead
+                    // of an empty canvas.
+                    if (CONFIG.AUTO_LOAD_FILE) {
+                        setTimeout(autoLoadStrollerData, CONFIG.IS_MAKER_MODE ? 300 : 1000);
+                    } else if (!CONFIG.IS_MAKER_MODE) {
+                        document.getElementById('loading-overlay').classList.add('hidden');
+                        elements.status.textContent = 'No walk specified. Add ?walk=<slug> to the URL (see walks.json).';
                     }
 
                 } catch (error) {
@@ -820,7 +755,7 @@
 
             // Map controls
             elements['fit-all'].addEventListener('click', fitAllPhotos);
-            elements['clear-all'].addEventListener('click', clearAllData);
+            elements['clear-all'].addEventListener('click', clearGallery);
 
             // Save/Load (Maker mode only)
             if (CONFIG.IS_MAKER_MODE) {
@@ -830,6 +765,16 @@
                 elements['walk-name-input'].addEventListener('input', (e) => {
                     state.walkName = e.target.value;
                     elements['title-walk-name'].textContent = state.walkName;
+
+                    if (!state.walkSlugManuallySet) {
+                        state.walkSlug = slugify(state.walkName);
+                        elements['walk-slug-input'].value = state.walkSlug;
+                    }
+                });
+                elements['walk-slug-input'].addEventListener('input', (e) => {
+                    state.walkSlugManuallySet = true;
+                    state.walkSlug = slugify(e.target.value);
+                    e.target.value = state.walkSlug;
                 });
             }
 
@@ -856,9 +801,6 @@
             if (CONFIG.IS_MAKER_MODE) {
                 setupOptionKeyHandlers();
             }
-
-            // Photo lightbox
-            setupLightboxInteractions();
 
             // Map interactions
             setupMapInteractions();
@@ -1025,13 +967,17 @@
             if (elements['walk-name-input'] && document.activeElement !== elements['walk-name-input']) {
                 elements['walk-name-input'].value = state.walkName || '';
             }
+
+            if (elements['walk-slug-input'] && document.activeElement !== elements['walk-slug-input']) {
+                elements['walk-slug-input'].value = state.walkSlug || '';
+            }
         }
 
         function autoLoadStrollerData() {
             console.log('Loading Symmetry Walk data...');
             const loadingOverlay = document.getElementById('loading-overlay');
 
-            fetch(CONFIG.AUTO_LOAD_FILE)
+            fetch(CONFIG.AUTO_LOAD_FILE, { cache: 'no-store' })
                 .then(response => {
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.json();
@@ -1041,10 +987,14 @@
                     loadStateFromData(data);
                     console.log(`Loaded ${data.photos ? data.photos.length : 0} photos`);
 
-                    // Hide loading overlay and ensure all photos are visible
                     setTimeout(() => {
                         loadingOverlay.classList.add('hidden');
-                        fitAllPhotos();
+                        // Trust the writer's saved view if there is one;
+                        // only fall back to auto-framing (which an outlier
+                        // GPS point can throw off) when the file has none.
+                        if (!(data.mapCenter && data.mapZoom)) {
+                            fitAllPhotos();
+                        }
                     }, 500);
                 })
                 .catch(error => {
@@ -1076,9 +1026,12 @@
                     maxHeight: CONFIG.MOBILE_MAX_HEIGHT
                 };
             } else if (isEnlarged) {
+                // Fill most of the browser window rather than a fixed cap,
+                // so the enlarged view scales with however big the screen
+                // actually is.
                 return {
-                    maxWidth: CONFIG.ENLARGED_MAX_WIDTH,
-                    maxHeight: CONFIG.ENLARGED_MAX_HEIGHT
+                    maxWidth: window.innerWidth * 0.75,
+                    maxHeight: window.innerHeight * 0.75
                 };
             } else {
                 return {
@@ -1325,19 +1278,23 @@
             if (params.mode === 'square' && !isEnlarged) {
                 return { width: CONFIG.SQUARE_SIZE, height: CONFIG.SQUARE_SIZE, mode: 'square' };
             } else if (params.mode === 'full' || isEnlarged) {
-                // Apply max size constraints
                 let width = originalWidth;
                 let height = originalHeight;
                 const aspectRatio = width / height;
 
-                // Constrain to max dimensions while maintaining aspect ratio
-                if (width > maxWidth || height > maxHeight) {
+                if (isEnlarged) {
+                    // Fill the target box (grow OR shrink) rather than only
+                    // ever shrinking oversized originals — the stored
+                    // originalWidth/Height are thumbnail-scale, so without
+                    // this an "enlarged" photo could stay tiny.
+                    const scale = Math.min(maxWidth / width, maxHeight / height);
+                    width = Math.round(width * scale);
+                    height = Math.round(height * scale);
+                } else if (width > maxWidth || height > maxHeight) {
                     if (width / maxWidth > height / maxHeight) {
-                        // Width is the limiting factor
                         width = maxWidth;
                         height = Math.round(maxWidth / aspectRatio);
                     } else {
-                        // Height is the limiting factor
                         height = maxHeight;
                         width = Math.round(maxHeight * aspectRatio);
                     }
@@ -1381,6 +1338,7 @@
             const anchorY = height + CONFIG.MARKER_DOT_OFFSET;
 
             const objectFit = mode === 'square' ? 'cover' : 'fill';
+            const borderRadius = mode === 'square' ? '50%' : '0';
             const deleteBtn = CONFIG.IS_MAKER_MODE ?
                 `<div class="delete-button" data-photo-id="${photoId}" title="Remove photo">×</div>` : '';
             const controlPoint = (state.optionKeyDown && CONFIG.IS_MAKER_MODE) ?
@@ -1390,7 +1348,7 @@
                 className: 'custom-marker',
                 html: `
                     <div class="marker-container">
-                        <img src="${photoSrc}" style="width:${width}px;height:${height}px;object-fit:${objectFit};" />
+                        <img src="${photoSrc}" style="width:${width}px;height:${height}px;object-fit:${objectFit};border-radius:${borderRadius};" />
                         <div class="marker-triangle"></div>
                         <div class="marker-dot"></div>
                         ${deleteBtn}
@@ -1504,57 +1462,14 @@
                     photoItem.appendChild(deleteButton);
                 }
 
-                thumbnail.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    openLightbox(photo, thumbnail);
-                });
-
                 photoItem.addEventListener('click', () => {
                     if (state.markers[index]) {
                         state.map.setView([photo.lat, photo.lng], 16);
                     }
                 });
 
-                if (CONFIG.IS_MAKER_MODE) {
-                    photoItem.draggable = true;
-                    photoItem.addEventListener('dragstart', (e) => {
-                        e.dataTransfer.effectAllowed = 'move';
-                        e.dataTransfer.setData('text/plain', String(index));
-                        photoItem.classList.add('dragging');
-                    });
-                    photoItem.addEventListener('dragend', () => {
-                        photoItem.classList.remove('dragging');
-                    });
-                    photoItem.addEventListener('dragover', (e) => {
-                        e.preventDefault();
-                        photoItem.classList.add('drag-over');
-                    });
-                    photoItem.addEventListener('dragleave', () => {
-                        photoItem.classList.remove('drag-over');
-                    });
-                    photoItem.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        photoItem.classList.remove('drag-over');
-                        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                        reorderPhoto(fromIndex, index);
-                    });
-                }
-
                 elements['photo-list'].appendChild(photoItem);
             });
-        }
-
-        function reorderPhoto(fromIndex, toIndex) {
-            if (isNaN(fromIndex) || fromIndex === toIndex ||
-                fromIndex < 0 || fromIndex >= state.photoData.length) return;
-
-            const [photo] = state.photoData.splice(fromIndex, 1);
-            state.photoData.splice(toIndex, 0, photo);
-
-            const [marker] = state.markers.splice(fromIndex, 1);
-            state.markers.splice(toIndex, 0, marker);
-
-            refreshPhotoList();
         }
 
         function removePhoto(index) {
@@ -1574,14 +1489,32 @@
         }
 
         function fitAllPhotos() {
-            const validMarkers = state.markers.filter(m => m);
-            if (validMarkers.length > 0) {
-                const group = L.featureGroup(validMarkers);
-                state.map.fitBounds(group.getBounds(), { padding: [50, 50] });
-                elements.status.textContent = 'Showing all photos on map.';
-            } else {
+            const placedEntries = state.photoData
+                .map((photo, index) => ({ photo, marker: state.markers[index] }))
+                .filter(entry => entry.marker);
+
+            if (placedEntries.length === 0) {
                 elements.status.textContent = 'No photos with geolocation data available.';
+                return;
             }
+
+            // Same outlier-robust framing as a fresh photo drop: fit to the
+            // inlier bounds first (so one bad GPS fix doesn't force the
+            // whole view to zoom out), then recenter on the inlier centroid.
+            const inliers = filterPositionOutliers(placedEntries.map(entry => entry.photo));
+            const inlierIds = new Set(inliers.map(p => p.id));
+            const framingMarkers = placedEntries
+                .filter(entry => inlierIds.has(entry.photo.id))
+                .map(entry => entry.marker);
+
+            const group = L.featureGroup(framingMarkers);
+            state.map.fitBounds(group.getBounds(), { padding: [50, 50] });
+            const centroid = calculatePhotoCentroid(inliers);
+            if (centroid) {
+                state.map.panTo([centroid.lat, centroid.lng], { animate: false });
+            }
+
+            elements.status.textContent = 'Showing all photos on map.';
         }
 
         function clearAllData() {
@@ -1604,6 +1537,22 @@
             state.map.setView(CONFIG.DEFAULT_CENTER, CONFIG.DEFAULT_ZOOM, { animate: false });
         }
 
+        // Wipes the whole gallery, not just the photos: name and slug reset
+        // too, so this is a genuine "start a new walk" rather than "Show All
+        // Photos"'s sibling. Confirms first since there's no undo.
+        function clearGallery() {
+            if (state.photoData.length > 0 &&
+                !confirm('Clear all photos and reset the gallery name/slug? This cannot be undone.')) {
+                return;
+            }
+
+            clearAllData();
+            state.walkName = '';
+            state.walkSlug = '';
+            state.walkSlugManuallySet = false;
+            updateTitleDisplay();
+        }
+
         // Save/Load functions.
         //
         // Exports a zip containing a lean walk.json (photo metadata + relative
@@ -1612,6 +1561,14 @@
         // walks.json. Photos that were loaded from an existing lean walk.json
         // (carrying a `photo` relative path instead of inline `src` data)
         // are passed through without being re-encoded.
+        function slugify(text) {
+            return (text || '')
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+
         async function saveState() {
             if (state.photoData.length === 0) {
                 elements.status.textContent = 'No photos to save.';
@@ -1619,6 +1576,11 @@
             }
 
             elements.status.textContent = 'Preparing export...';
+
+            const slug = state.walkSlug || currentWalk?.slug || slugify(state.walkName) || `walk-${Date.now()}`;
+            state.walkSlug = slug;
+            const jsonFilename = `${slug}.json`;
+            const dataFile = `walks/${slug}/${jsonFilename}`;
 
             const zip = new JSZip();
             const photosFolder = zip.folder('photos');
@@ -1650,12 +1612,12 @@
                     lat: photo.lat,
                     lng: photo.lng,
                     originalWidth: marker?.originalWidth,
-                    originalHeight: marker?.originalHeight,
-                    previewRect: photo.previewRect
+                    originalHeight: marker?.originalHeight
                 };
             });
 
             const walkData = {
+                slug: slug,
                 title: state.walkName || '',
                 photos: leanPhotos,
                 mapCenter: state.map.getCenter(),
@@ -1664,19 +1626,40 @@
                 savedAt: new Date().toISOString()
             };
 
-            zip.file('walk.json', JSON.stringify(walkData, null, 2));
+            zip.file(jsonFilename, JSON.stringify(walkData, null, 2));
+
+            // Upsert this walk's entry into the manifest and bundle the
+            // updated walks.json in the same download, so saving doesn't
+            // require a separate manual edit to register/update the walk.
+            let manifest = [];
+            try {
+                const res = await fetch('walks.json', { cache: 'no-store' });
+                if (res.ok) manifest = await res.json();
+            } catch (error) {
+                console.warn('Could not load existing walks.json, starting a new manifest.', error);
+            }
+
+            const entry = { slug, title: state.walkName || slug, dataFile };
+            const existingIndex = manifest.findIndex(w => w.slug === slug);
+            if (existingIndex >= 0) {
+                manifest[existingIndex] = entry;
+            } else {
+                manifest.push(entry);
+            }
+
+            zip.file('walks.json', JSON.stringify(manifest, null, 2));
 
             const blob = await zip.generateAsync({ type: 'blob' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = (currentWalk?.slug || 'symmetry-walk') + '.zip';
+            a.download = slug + '.zip';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            elements.status.textContent = 'Exported. Unzip into walks/<slug>/ and update walks.json if this is a new walk.';
+            elements.status.textContent = `Exported. Unzip into walks/${slug}/, and replace the project's walks.json with the one included in the download.`;
         }
 
         function loadState(event) {
@@ -1709,6 +1692,12 @@
                 updateTitleDisplay();
             }
 
+            if (saveData.slug) {
+                state.walkSlug = saveData.slug;
+                state.walkSlugManuallySet = true;
+                updateTitleDisplay();
+            }
+
             if (saveData.mapCenter && saveData.mapZoom) {
                 state.map.setView([saveData.mapCenter.lat, saveData.mapCenter.lng], saveData.mapZoom);
             }
@@ -1722,8 +1711,7 @@
                     lat: photo.lat,
                     lng: photo.lng,
                     originalWidth: photo.originalWidth,
-                    originalHeight: photo.originalHeight,
-                    previewRect: photo.previewRect
+                    originalHeight: photo.originalHeight
                 });
             });
 
@@ -2027,6 +2015,21 @@
 
             const position = L.latLng(state.photoData[index].lat, state.photoData[index].lng);
             updateMarkerIcon(marker, fullDimensions, position);
+
+            // Auto-collapse back to the circle once the mouse leaves the
+            // enlarged photo. Native 'mouseleave' (not Leaflet's marker
+            // 'mouseout', which bubbles from internal children like the
+            // <img> and would fire the instant the cursor crosses onto the
+            // photo itself) only fires on a genuine exit of the icon's
+            // bounds, and {once:true} keeps this from piling up listeners
+            // across repeated enlarge/collapse cycles.
+            if (marker._icon) {
+                marker._icon.addEventListener('mouseleave', () => {
+                    if (state.enlargedMarker === marker) {
+                        resetEnlargedMarker();
+                    }
+                }, { once: true });
+            }
         }
 
         function resetEnlargedMarker() {
@@ -2045,123 +2048,6 @@
             }
 
             state.enlargedMarker = null;
-        }
-
-        // Photo lightbox (sidebar thumbnail -> large view)
-        function openLightbox(photo, thumbnailEl) {
-            elements['photo-lightbox-img'].src = photo.src;
-            elements['photo-lightbox-img'].alt = photo.filename || '';
-            state.lightboxPhotoId = photo.id;
-
-            applyLightboxRect(photo.previewRect || defaultPreviewRect(thumbnailEl));
-            elements['photo-lightbox'].classList.add('visible');
-        }
-
-        function closeLightbox() {
-            elements['photo-lightbox'].classList.remove('visible');
-            state.lightboxPhotoId = null;
-        }
-
-        // Default placement: a large box that overlaps the clicked
-        // thumbnail slightly, so the enlarged view stays visually linked
-        // to where it came from instead of just popping up centered.
-        function defaultPreviewRect(thumbnailEl) {
-            const vw = window.innerWidth, vh = window.innerHeight;
-            const size = Math.min(vw, vh) * 0.7;
-            let left = (vw - size) / 2;
-            let top = (vh - size) / 2;
-
-            if (thumbnailEl) {
-                const tRect = thumbnailEl.getBoundingClientRect();
-                left = Math.min(Math.max(tRect.left - 24, 12), vw - size - 12);
-                top = Math.min(Math.max(tRect.top - 24, 12), vh - size - 12);
-            }
-
-            return {
-                leftPct: (left / vw) * 100,
-                topPct: (top / vh) * 100,
-                widthPct: (size / vw) * 100,
-                heightPct: (size / vh) * 100
-            };
-        }
-
-        function applyLightboxRect(rect) {
-            const frame = elements['photo-lightbox-frame'];
-            frame.style.left = rect.leftPct + 'vw';
-            frame.style.top = rect.topPct + 'vh';
-            frame.style.width = rect.widthPct + 'vw';
-            frame.style.height = rect.heightPct + 'vh';
-        }
-
-        function savePreviewRectFromFrame() {
-            const photo = state.photoData.find(p => p.id === state.lightboxPhotoId);
-            if (!photo) return;
-
-            const rect = elements['photo-lightbox-frame'].getBoundingClientRect();
-            photo.previewRect = {
-                leftPct: (rect.left / window.innerWidth) * 100,
-                topPct: (rect.top / window.innerHeight) * 100,
-                widthPct: (rect.width / window.innerWidth) * 100,
-                heightPct: (rect.height / window.innerHeight) * 100
-            };
-        }
-
-        function setupLightboxInteractions() {
-            const overlay = elements['photo-lightbox'];
-            const frame = elements['photo-lightbox-frame'];
-            const resizeHandle = elements['lightbox-resize-handle'];
-
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) closeLightbox();
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && overlay.classList.contains('visible')) closeLightbox();
-            });
-
-            if (!CONFIG.IS_MAKER_MODE) return;
-
-            // Drag the frame to move it (Editor/writer mode only). The
-            // moved/resized rect becomes this photo's saved default.
-            frame.addEventListener('mousedown', (e) => {
-                if (e.target === resizeHandle) return;
-                e.preventDefault();
-
-                const startX = e.clientX, startY = e.clientY;
-                const startRect = frame.getBoundingClientRect();
-
-                const onMove = (moveEvent) => {
-                    frame.style.left = (startRect.left + moveEvent.clientX - startX) + 'px';
-                    frame.style.top = (startRect.top + moveEvent.clientY - startY) + 'px';
-                };
-                const onUp = () => {
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
-                    savePreviewRectFromFrame();
-                };
-                document.addEventListener('mousemove', onMove);
-                document.addEventListener('mouseup', onUp);
-            });
-
-            resizeHandle.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const startX = e.clientX, startY = e.clientY;
-                const startRect = frame.getBoundingClientRect();
-
-                const onMove = (moveEvent) => {
-                    frame.style.width = Math.max(120, startRect.width + moveEvent.clientX - startX) + 'px';
-                    frame.style.height = Math.max(120, startRect.height + moveEvent.clientY - startY) + 'px';
-                };
-                const onUp = () => {
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
-                    savePreviewRectFromFrame();
-                };
-                document.addEventListener('mousemove', onMove);
-                document.addEventListener('mouseup', onUp);
-            });
         }
 
     </script>
