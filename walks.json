@@ -1,0 +1,12 @@
+[
+  {
+    "slug": "fifthave",
+    "title": "Fifth Avenue Symmetry Walk",
+    "dataFile": "walks/fifthave/walk.json"
+  },
+  {
+    "slug": "bedstuy",
+    "title": "Bed-Stuy Symmetry Walk",
+    "dataFile": "walks/bedstuy/walk.json"
+  }
+]

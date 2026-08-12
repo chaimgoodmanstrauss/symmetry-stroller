@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symmetry Walker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #app {
+            display: flex;
+            height: 100%;
+            width: 100%;
+            position: relative;
+        }
+        
+        #title-image {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 25vw;
+            height: auto;
+            z-index: 1000;
+            opacity: 0.9;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            display: none;
+        }
+        
+        #title-image:hover {
+            opacity: 1;
+        }
+        
+        /* Mode-specific visibility */
+        .stroller-mode .maker-only {
+            display: none !important;
+        }
+        
+        .stroller-mode #sidebar {
+            display: none !important;
+        }
+        
+        .stroller-mode #map-container {
+            width: 100vw !important;
+        }
+        
+        .stroller-mode .delete-button,
+        .stroller-mode .control-point {
+            display: none !important;
+        }
+        
+        /* Mode selector */
+        .mode-selector {
+            display: flex;
+            background: #f0f0f0;
+            border-radius: 20px;
+            padding: 4px;
+            border: 2px solid #ddd;
+        }
+        
+        .mode-option {
+            position: relative;
+            flex: 1;
+        }
+        
+        .mode-option input[type="radio"] {
+            opacity: 0;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            cursor: pointer;
+        }
+        
+        .mode-option label {
+            display: block;
+            padding: 8px 16px;
+            text-align: center;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #666;
+        }
+        
+        .mode-option input[type="radio"]:checked + label {
+            background: linear-gradient(135deg, #4CAF50, #2196F3);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .mode-option:last-child input[type="radio"]:checked + label {
+            background: linear-gradient(135deg, #FF9800, #FF5722);
+        }
+        
+        /* Sidebar */
+        #sidebar {
+            width: 300px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+        
+        #map-container {
+            flex: 1;
+            position: relative;
+            height: 100%;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* UI Elements */
+        .thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 3px;
+        }
+        
+        .photo-item {
+            position: relative;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .photo-item:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .dropzone {
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .dropzone:hover {
+            border-color: #aaa;
+            background-color: #f9f9f9;
+        }
+        
+        #file-input, #load-input {
+            display: none;
+        }
+        
+        .error {
+            color: #d9534f;
+            margin: 10px 0;
+        }
+        
+        .success {
+            color: #5cb85c;
+            margin: 10px 0;
+        }
+        
+        .photo-info {
+            margin-left: 10px;
+            display: inline-block;
+            vertical-align: top;
+        }
+        
+        .photo-info p {
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+        
+        .photo-info small {
+            color: #666;
+        }
+        
+        .map-controls {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        button {
+            padding: 8px 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        button.save {
+            background-color: #2196F3;
+        }
+        
+        button.save:hover {
+            background-color: #0b7dda;
+        }
+        
+        button.load {
+            background-color: #ff9800;
+        }
+        
+        button.load:hover {
+            background-color: #e68a00;
+        }
+        
+        button.danger {
+            background-color: #f44336;
+        }
+        
+        button.danger:hover {
+            background-color: #d32f2f;
+        }
+        
+        .status {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+        }
+        
+        .divider {
+            margin: 20px 0;
+            border-top: 1px solid #ddd;
+        }
+        
+        /* Delete buttons */
+        .delete-button, .photo-delete-button {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #cfcfce;
+            color: white;
+            border: 2px solid white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transition: background-color 0.2s;
+            line-height: 0;
+        }
+        
+        .delete-button {
+            top: -6px;
+            right: -6px;
+            z-index: 1000;
+        }
+        
+        .photo-delete-button {
+            top: 5px;
+            right: 5px;
+            width: 18px;
+            height: 18px;
+            font-size: 22px;
+        }
+        
+        .delete-button:hover, .photo-delete-button:hover {
+            background-color: #a0a0a0;
+        }
+        
+        /* Control point */
+        .control-point {
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: rgba(211, 211, 211, 0.7);
+            border: 1px solid #000000;
+            cursor: pointer;
+            z-index: 1001;
+            transition: background-color 0.2s;
+        }
+        
+        .control-point:hover {
+            background-color: rgba(169, 169, 169, 0.9);
+        }
+        
+        /* Marker styles */
+        .custom-marker {
+            position: relative;
+        }
+        
+        .marker-container {
+            position: relative;
+            display: inline-block;
+            transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        
+        .marker-container img {
+            transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transform-origin: center bottom;
+            border: 4px solid white;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+        }
+        
+        .marker-triangle {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid white;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+            transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        
+        .marker-dot {
+            position: absolute;
+            bottom: -11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background-color: #808080;
+            z-index: 1002;
+            transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        /* Loading overlay for stroller mode */
+        /* Loading overlay for stroller mode */
+        .loading-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(100, 100, 100, 0.7);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 18px;
+            z-index: 3000;
+            display: none;
+        }
+        
+        .loading-overlay::after {
+            content: '';
+            animation: ellipsis 1.5s infinite;
+        }
+        
+        @keyframes ellipsis {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+        }
+        
+        .stroller-mode .loading-overlay {
+            display: block;
+        }
+        
+        .loading-overlay.hidden {
+            display: none !important;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="app">
+        <img id="title-image" src="symmetrywalktitle.png" alt="Symmetry Walker">
+        <div class="loading-overlay" id="loading-overlay">Loading Symmetry Walk...</div>
+        <div id="sidebar">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 id="app-title">Photo Map</h2>
+                <div class="mode-selector">
+                    <div class="mode-option">
+                        <input type="radio" id="maker-mode" name="app-mode" value="maker">
+                        <label for="maker-mode">🔧 MAKER</label>
+                    </div>
+                    <div class="mode-option">
+                        <input type="radio" id="stroller-mode" name="app-mode" value="stroller">
+                        <label for="stroller-mode">🚶 STROLLER</label>
+                    </div>
+                </div>
+            </div>
+            <p id="app-description">Upload photos with geolocation data to see them on the map.</p>
+            
+            <div class="dropzone" id="dropzone">
+                <label for="file-input">
+                    Click to select photos or folders<br>
+                    or drop them here
+                </label>
+                <input type="file" id="file-input" accept="image/*" multiple webkitdirectory directory>
+            </div>
+            <div id="error-message" class="error"></div>
+            <div id="success-message" class="success"></div>
+            
+            <div class="map-controls">
+                <button id="fit-all">Show All Photos</button>
+                <button id="clear-all" class="danger">Clear All</button>
+            </div>
+            
+            <div class="divider maker-only"></div>
+            
+            <h3 class="maker-only">Save & Load</h3>
+            <div class="map-controls maker-only">
+                <button id="save-state" class="save">Save Current State</button>
+                <button id="load-state" class="load">Load Saved State</button>
+                <input type="file" id="load-input" accept="application/json">
+            </div>
+            
+            <div class="status" id="status">Map is loading...</div>
+            
+            <div class="divider"></div>
+            
+            <h3>Uploaded Photos</h3>
+            <div id="photo-list"></div>
+        </div>
+        <div id="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
+    <script>
+        // Configuration
+        const CONFIG = {
+            IS_MAKER_MODE: false, //the program has two states, which are toggled here
+            DEFAULT_CENTER: [40.6797, -73.9318],
+            DEFAULT_ZOOM: 15,
+            MAX_ZOOM: 21,
+            SQUARE_ZOOM_MAX: 17,
+            FULL_ZOOM_MIN: 19,
+            SQUARE_SIZE: 50,
+            MARKER_DOT_OFFSET: 11,
+            AUTO_LOAD_FILE: './bedstysymmetrywalk.json',
+            // New responsive sizing configuration
+            MAX_MARKER_WIDTH: 300,    // Maximum width for desktop
+            MAX_MARKER_HEIGHT: 400,   // Maximum height for desktop
+            MOBILE_MAX_WIDTH: 200,    // Maximum width for mobile
+            MOBILE_MAX_HEIGHT: 250,   // Maximum height for mobile
+            ENLARGED_MAX_WIDTH: 400,  // Maximum for enlarged markers in stroller mode
+            ENLARGED_MAX_HEIGHT: 500, // Maximum for enlarged markers in stroller mode
+            MOBILE_BREAKPOINT: 768    // Width breakpoint for mobile devices
+        };
+
+        // App State
+        const state = {
+            map: null,
+            markers: [],
+            photoData: [],
+            maxZIndex: 1000,
+            isDragging: false,
+            dragState: null,
+            isMarkerDragging: false,
+            markerDragState: null,
+            optionKeyDown: false,
+            enlargedMarker: null
+        };
+
+        // DOM Elements
+        const elements = {};
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+        function initializeApp() {
+            // Set mode
+            const savedMode = sessionStorage.getItem('app_mode');
+            if (savedMode) {
+                CONFIG.IS_MAKER_MODE = savedMode === 'maker';
+                sessionStorage.removeItem('app_mode');
+            }
+
+            // Apply mode
+            document.body.className = CONFIG.IS_MAKER_MODE ? 'maker-mode' : 'stroller-mode';
+            document.title = CONFIG.IS_MAKER_MODE ? 'Symmetry Walk Maker' : 'Symmetry Stroller';
+
+            // Cache DOM elements
+            cacheElements();
+            
+            // Update UI
+            updateUI();
+            
+            // Initialize map
+            initializeMap();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Load title image
+            loadTitleImage();
+        }
+
+        function cacheElements() {
+            const ids = ['photo-list', 'file-input', 'load-input', 'dropzone', 'error-message', 
+                        'success-message', 'fit-all', 'clear-all', 'save-state', 'load-state', 
+                        'status', 'app-title', 'app-description'];
+            
+            ids.forEach(id => {
+                elements[id] = document.getElementById(id);
+            });
+        }
+
+        function updateUI() {
+            if (CONFIG.IS_MAKER_MODE) {
+                elements['app-title'].textContent = 'Symmetry Walk Maker';
+                elements['app-description'].textContent = 'Upload photos with geolocation data to create, edit, and save photo maps.';
+                document.getElementById('maker-mode').checked = true;
+            } else {
+                elements['app-title'].textContent = 'Symmetry Stroller';
+                elements['app-description'].textContent = 'Explore photos on an interactive map. Clean viewing experience.';
+                document.getElementById('stroller-mode').checked = true;
+            }
+        }
+
+        function initializeMap() {
+            elements.status.textContent = 'Initializing map...';
+            
+            setTimeout(() => {
+                try {
+                    state.map = L.map('map', {
+                        zoomControl: true,
+                        attributionControl: false,
+                        maxZoom: CONFIG.MAX_ZOOM
+                    }).setView(CONFIG.DEFAULT_CENTER, CONFIG.DEFAULT_ZOOM);
+                    
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                        maxZoom: CONFIG.MAX_ZOOM,
+                        maxNativeZoom: 19
+                    }).addTo(state.map);
+                    
+                    // Add zoom event listeners
+                    state.map.on('zoom zoomend', handleZoomChange);
+                    
+                    elements.status.textContent = 'Map loaded successfully. Ready for photos.';
+                    
+                    // Auto-load for Stroller mode
+                    if (!CONFIG.IS_MAKER_MODE) {
+                        setTimeout(autoLoadStrollerData, 1000);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error initializing map:', error);
+                    elements.status.textContent = 'Error loading map. Please check console for details.';
+                }
+            }, 100);
+        }
+
+        function setupEventListeners() {
+            // File handling
+            elements['file-input'].addEventListener('change', handleFiles);
+            elements.dropzone.addEventListener('click', () => elements['file-input'].click());
+            setupDragAndDrop();
+            
+            // Map controls
+            elements['fit-all'].addEventListener('click', fitAllPhotos);
+            elements['clear-all'].addEventListener('click', clearAllData);
+            
+            // Save/Load (Maker mode only)
+            if (CONFIG.IS_MAKER_MODE) {
+                elements['save-state'].addEventListener('click', saveState);
+                elements['load-state'].addEventListener('click', () => elements['load-input'].click());
+                elements['load-input'].addEventListener('change', loadState);
+            }
+            
+            // Mode switching
+            document.querySelectorAll('input[name="app-mode"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.checked && ((e.target.value === 'maker') !== CONFIG.IS_MAKER_MODE)) {
+                        sessionStorage.setItem('app_mode', e.target.value);
+                        location.reload();
+                    }
+                });
+            });
+            
+            // Secret keyboard shortcut
+            document.addEventListener('keydown', (e) => {
+                if (e.shiftKey && (e.metaKey || e.ctrlKey) && e.altKey && e.key === '8') {
+                    e.preventDefault();
+                    sessionStorage.setItem('app_mode', CONFIG.IS_MAKER_MODE ? 'stroller' : 'maker');
+                    location.reload();
+                }
+            });
+            
+            // Option key handlers (Maker mode only)
+            if (CONFIG.IS_MAKER_MODE) {
+                setupOptionKeyHandlers();
+            }
+            
+            // Map interactions
+            setupMapInteractions();
+            // Add map click handler for stroller mode
+            if (!CONFIG.IS_MAKER_MODE) {
+                state.map.on('click', () => {
+                    if (state.enlargedMarker) {
+                        resetEnlargedMarker();
+                    }
+                });
+            }
+        }
+
+        function setupDragAndDrop() {
+            elements.dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                elements.dropzone.style.borderColor = '#66afe9';
+                elements.dropzone.style.backgroundColor = '#f0f7ff';
+            });
+            
+            elements.dropzone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                elements.dropzone.style.borderColor = '#ccc';
+                elements.dropzone.style.backgroundColor = '';
+            });
+            
+            elements.dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                elements.dropzone.style.borderColor = '#ccc';
+                elements.dropzone.style.backgroundColor = '';
+                handleFiles({ target: { files: e.dataTransfer.files } });
+            });
+        }
+
+        function setupOptionKeyHandlers() {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Alt' && !state.optionKeyDown) {
+                    state.optionKeyDown = true;
+                    showControlPoints();
+                    state.map.dragging.disable();
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                if (e.key === 'Alt' && state.optionKeyDown) {
+                    state.optionKeyDown = false;
+                    hideControlPoints();
+                    state.map.dragging.enable();
+                }
+            });
+            
+            window.addEventListener('blur', () => {
+                if (state.optionKeyDown) {
+                    state.optionKeyDown = false;
+                    hideControlPoints();
+                    state.map.dragging.enable();
+                }
+            });
+        }
+
+        function setupMapInteractions() {
+            const mapEl = document.getElementById('map');
+            
+            mapEl.addEventListener('mousedown', (e) => {
+                if (!CONFIG.IS_MAKER_MODE) return;
+                
+                if (e.target.classList.contains('delete-button')) {
+                    return; // Let delete handle itself
+                } else if (e.target.classList.contains('control-point')) {
+                    return; // Let control point handle resize
+                } else if (!state.optionKeyDown) {
+                    // Check for marker drag
+                    let markerContainer = e.target.closest('.marker-container');
+                    if (markerContainer) {
+                        const deleteBtn = markerContainer.querySelector('.delete-button');
+                        if (deleteBtn) {
+                            const photoId = deleteBtn.getAttribute('data-photo-id');
+                            const photoIndex = state.photoData.findIndex(p => p.id === photoId);
+                            if (photoIndex >= 0 && state.markers[photoIndex]) {
+                                startMarkerDrag(e, state.markers[photoIndex], photoIndex);
+                            }
+                        }
+                    }
+                }
+            });
+            
+            mapEl.addEventListener('click', (e) => {
+                if (!CONFIG.IS_MAKER_MODE || state.isMarkerDragging) return;
+                
+                if (e.target.classList.contains('delete-button')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const photoId = e.target.getAttribute('data-photo-id');
+                    const photoIndex = state.photoData.findIndex(p => p.id === photoId);
+                    if (photoIndex >= 0) {
+                        removePhoto(photoIndex);
+                    }
+                }
+            }, true);
+        }
+
+        function loadTitleImage() {
+            const titleImg = document.getElementById('title-image');
+            if (!titleImg) return;
+            
+            const img = new Image();
+            img.onload = () => titleImg.style.display = 'block';
+            img.onerror = () => titleImg.style.display = 'none';
+            img.src = 'symmetrywalktitle.png';
+        }
+
+        function autoLoadStrollerData() {
+            console.log('Loading Symmetry Walk data...');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            
+            fetch(CONFIG.AUTO_LOAD_FILE)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    clearAllData();
+                    loadStateFromData(data);
+                    console.log(`Loaded ${data.photos ? data.photos.length : 0} photos`);
+                    
+                    // Hide loading overlay and ensure all photos are visible
+                    setTimeout(() => {
+                        loadingOverlay.classList.add('hidden');
+                        fitAllPhotos();
+                    }, 500);
+                })
+                .catch(error => {
+                    console.error('Auto-load failed:', error);
+                    loadingOverlay.textContent = 'Failed to load photos';
+                    setTimeout(() => {
+                        loadingOverlay.classList.add('hidden');
+                    }, 2000);
+                });
+        }
+
+        // Helper function to check if device is mobile
+        function isMobileDevice() {
+            return window.innerWidth <= CONFIG.MOBILE_BREAKPOINT;
+        }
+
+        // Helper function to get max dimensions based on device type
+        function getMaxDimensions(isEnlarged = false) {
+            if (isMobileDevice()) {
+                return {
+                    maxWidth: CONFIG.MOBILE_MAX_WIDTH,
+                    maxHeight: CONFIG.MOBILE_MAX_HEIGHT
+                };
+            } else if (isEnlarged) {
+                return {
+                    maxWidth: CONFIG.ENLARGED_MAX_WIDTH,
+                    maxHeight: CONFIG.ENLARGED_MAX_HEIGHT
+                };
+            } else {
+                return {
+                    maxWidth: CONFIG.MAX_MARKER_WIDTH,
+                    maxHeight: CONFIG.MAX_MARKER_HEIGHT
+                };
+            }
+        }
+
+        // Photo handling functions
+        function handleFiles(event) {
+            const files = Array.from(event.target.files).filter(f => f.type.startsWith('image/'));
+            if (files.length === 0) {
+                elements.status.textContent = 'No image files found.';
+                return;
+            }
+            
+            elements.status.textContent = `Processing ${files.length} images...`;
+            elements['error-message'].textContent = '';
+            elements['success-message'].textContent = '';
+            
+            let successCount = 0;
+            let errorCount = 0;
+            let processedCount = 0;
+            
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    
+                    img.onload = () => {
+                        EXIF.getData(img, function() {
+                            const gpsLat = EXIF.getTag(this, 'GPSLatitude');
+                            const gpsLng = EXIF.getTag(this, 'GPSLongitude');
+                            
+                            if (gpsLat && gpsLng) {
+                                const lat = convertDMSToDD(gpsLat, EXIF.getTag(this, 'GPSLatitudeRef'));
+                                const lng = convertDMSToDD(gpsLng, EXIF.getTag(this, 'GPSLongitudeRef'));
+                                addPhotoToMap(img.src, file.name, lat, lng);
+                                successCount++;
+                            } else {
+                                errorCount++;
+                            }
+                            
+                            processedCount++;
+                            if (processedCount === files.length) {
+                                updateFileProcessingStatus(successCount, errorCount);
+                            }
+                        });
+                    };
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            event.target.value = '';
+        }
+
+        function updateFileProcessingStatus(successCount, errorCount) {
+            if (successCount > 0) {
+                elements.status.textContent = `Successfully added ${successCount} photos to the map.`;
+                elements['success-message'].textContent = `Added ${successCount} photos to the map.`;
+                
+                setTimeout(() => {
+                    const validMarkers = state.markers.filter(m => m);
+                    if (validMarkers.length > 0) {
+                        const group = L.featureGroup(validMarkers);
+                        state.map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                    }
+                }, 500);
+            }
+            
+            if (errorCount > 0) {
+                elements['error-message'].textContent = `${errorCount} photos had no geolocation data.`;
+            }
+        }
+
+        function convertDMSToDD(dms, ref) {
+            const dd = dms[0] + dms[1]/60 + dms[2]/3600;
+            return (ref === 'S' || ref === 'W') ? -dd : dd;
+        }
+
+        function addPhotoToMap(src, filename, lat, lng) {
+            const photo = {
+                id: 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                src: src,
+                filename: filename,
+                lat: lat,
+                lng: lng
+            };
+            
+            const index = state.photoData.length;
+            state.photoData.push(photo);
+            
+            const img = new Image();
+            img.onload = function() {
+                const aspectRatio = this.width / this.height;
+                const { maxWidth, maxHeight } = getMaxDimensions();
+                let markerWidth, markerHeight;
+                
+                // Calculate initial dimensions with max size constraints
+                if (this.width <= this.height) {
+                    markerWidth = Math.min(100, maxWidth);
+                    markerHeight = Math.min(Math.round(100 / aspectRatio), maxHeight);
+                    // Recalculate width if height was constrained
+                    if (markerHeight < Math.round(100 / aspectRatio)) {
+                        markerWidth = Math.round(markerHeight * aspectRatio);
+                    }
+                } else {
+                    markerHeight = Math.min(100, maxHeight);
+                    markerWidth = Math.min(Math.round(100 * aspectRatio), maxWidth);
+                    // Recalculate height if width was constrained
+                    if (markerWidth < Math.round(100 * aspectRatio)) {
+                        markerHeight = Math.round(markerWidth / aspectRatio);
+                    }
+                }
+                
+                const dimensions = calculateMarkerDimensions(markerWidth, markerHeight);
+                const customIcon = createMarkerIcon(src, photo.id, dimensions);
+                
+                const marker = L.marker([lat, lng], { icon: customIcon }).addTo(state.map);
+                state.maxZIndex += 1;
+                marker.setZIndexOffset(state.maxZIndex);
+                marker._currentZIndex = state.maxZIndex;
+                state.markers[index] = marker;
+                
+                marker.originalWidth = markerWidth;
+                marker.originalHeight = markerHeight;
+                marker.aspectRatio = aspectRatio;
+                marker.photoSrc = src;
+                marker.photoId = photo.id;
+                // Add click handler for stroller mode
+                if (!CONFIG.IS_MAKER_MODE) {
+                    marker.on('click', (e) => {
+                        e.originalEvent.stopPropagation();
+                        handleMarkerClick(marker, index);
+                    });
+                }
+                
+                refreshPhotoList();
+            };
+            img.src = src;
+        }
+
+        // Marker functions with responsive sizing
+        function calculateMarkerDimensions(originalWidth, originalHeight, zoomLevel, isEnlarged = false) {
+            // Always square in stroller mode unless enlarged
+            if (!CONFIG.IS_MAKER_MODE && !isEnlarged) {
+                return { width: CONFIG.SQUARE_SIZE, height: CONFIG.SQUARE_SIZE, mode: 'square' };
+            }
+            
+            // Get max dimensions based on device and state
+            const { maxWidth, maxHeight } = getMaxDimensions(isEnlarged);
+            
+            // Original zoom-based behavior for maker mode
+            const zoom = zoomLevel || state.map.getZoom();
+            const params = getZoomDisplayParams(zoom);
+            
+            if (params.mode === 'square' && !isEnlarged) {
+                return { width: CONFIG.SQUARE_SIZE, height: CONFIG.SQUARE_SIZE, mode: 'square' };
+            } else if (params.mode === 'full' || isEnlarged) {
+                // Apply max size constraints
+                let width = originalWidth;
+                let height = originalHeight;
+                const aspectRatio = width / height;
+                
+                // Constrain to max dimensions while maintaining aspect ratio
+                if (width > maxWidth || height > maxHeight) {
+                    if (width / maxWidth > height / maxHeight) {
+                        // Width is the limiting factor
+                        width = maxWidth;
+                        height = Math.round(maxWidth / aspectRatio);
+                    } else {
+                        // Height is the limiting factor
+                        height = maxHeight;
+                        width = Math.round(maxHeight * aspectRatio);
+                    }
+                }
+                
+                return { 
+                    width: Math.round(width * (params.scale || 1.0)), 
+                    height: Math.round(height * (params.scale || 1.0)),
+                    mode: 'full'
+                };
+            } else {
+                const factor = params.factor;
+                let width = Math.round(CONFIG.SQUARE_SIZE + (originalWidth - CONFIG.SQUARE_SIZE) * factor);
+                let height = Math.round(CONFIG.SQUARE_SIZE + (originalHeight - CONFIG.SQUARE_SIZE) * factor);
+                
+                // Apply constraints during interpolation
+                width = Math.min(width, maxWidth);
+                height = Math.min(height, maxHeight);
+                
+                return { width, height, mode: 'interpolation' };
+            }
+        }
+
+        function getZoomDisplayParams(zoomLevel) {
+            if (zoomLevel <= CONFIG.SQUARE_ZOOM_MAX) {
+                return { mode: 'square' };
+            } else if (zoomLevel >= CONFIG.FULL_ZOOM_MIN) {
+                return { mode: 'full', scale: 1.0 };
+            } else {
+                const range = CONFIG.FULL_ZOOM_MIN - CONFIG.SQUARE_ZOOM_MAX;
+                const progress = zoomLevel - CONFIG.SQUARE_ZOOM_MAX;
+                const factor = progress / range;
+                return { mode: 'interpolation', factor };
+            }
+        }
+
+        function createMarkerIcon(photoSrc, photoId, dimensions) {
+            const { width, height, mode } = dimensions;
+            const totalHeight = height + CONFIG.MARKER_DOT_OFFSET;
+            const anchorX = Math.round(width / 2);
+            const anchorY = height + CONFIG.MARKER_DOT_OFFSET;
+            
+            const objectFit = mode === 'square' ? 'cover' : 'fill';
+            const deleteBtn = CONFIG.IS_MAKER_MODE ? 
+                `<div class="delete-button" data-photo-id="${photoId}" title="Remove photo">×</div>` : '';
+            const controlPoint = (state.optionKeyDown && CONFIG.IS_MAKER_MODE) ? 
+                '<div class="control-point" title="Drag to resize"></div>' : '';
+            
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `
+                    <div class="marker-container">
+                        <img src="${photoSrc}" style="width:${width}px;height:${height}px;object-fit:${objectFit};" />
+                        <div class="marker-triangle"></div>
+                        <div class="marker-dot"></div>
+                        ${deleteBtn}
+                        ${controlPoint}
+                    </div>
+                `,
+                iconSize: [width, totalHeight],
+                iconAnchor: [anchorX, anchorY]
+            });
+        }
+
+        function handleZoomChange() {
+            const currentZoom = state.map.getZoom();
+            
+            state.markers.forEach((marker, index) => {
+                if (marker && marker.originalWidth && marker.originalHeight && state.photoData[index]) {
+                    const newDimensions = calculateMarkerDimensions(marker.originalWidth, marker.originalHeight);
+                    const correctPosition = L.latLng(state.photoData[index].lat, state.photoData[index].lng);
+                    
+                    updateMarkerIcon(marker, newDimensions, correctPosition);
+                }
+            });
+        }
+
+        function updateMarkerIcon(marker, dimensions, position) {
+            const currentZIndex = marker._currentZIndex || marker.options.zIndexOffset;
+            const wasOnMap = state.map.hasLayer(marker);
+            
+            if (wasOnMap) {
+                state.map.removeLayer(marker);
+            }
+            
+            const customIcon = createMarkerIcon(marker.photoSrc, marker.photoId, dimensions);
+            marker.setIcon(customIcon);
+            marker.setLatLng(position);
+            
+            if (wasOnMap) {
+                marker.addTo(state.map);
+            }
+            
+            if (currentZIndex) {
+                marker.setZIndexOffset(currentZIndex);
+                marker._currentZIndex = currentZIndex;
+            }
+            
+            marker.update();
+            
+            // Re-add control point listener if needed
+            if (state.optionKeyDown && CONFIG.IS_MAKER_MODE) {
+                setTimeout(() => {
+                    const controlPoint = marker._icon?.querySelector('.control-point');
+                    if (controlPoint) {
+                        controlPoint.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            startResize(e, marker);
+                        });
+                    }
+                }, 10);
+            }
+        }
+
+        // UI functions
+        function refreshPhotoList() {
+            elements['photo-list'].innerHTML = '';
+            
+            state.photoData.forEach((photo, index) => {
+                const photoItem = document.createElement('div');
+                photoItem.className = 'photo-item';
+                
+                const thumbnail = document.createElement('img');
+                thumbnail.src = photo.src;
+                thumbnail.className = 'thumbnail';
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'photo-info';
+                
+                const photoName = document.createElement('p');
+                photoName.textContent = photo.filename;
+                
+                const coords = document.createElement('small');
+                coords.textContent = `${photo.lat.toFixed(6)}, ${photo.lng.toFixed(6)}`;
+                
+                infoDiv.appendChild(photoName);
+                infoDiv.appendChild(coords);
+                
+                photoItem.appendChild(thumbnail);
+                photoItem.appendChild(infoDiv);
+                
+                if (CONFIG.IS_MAKER_MODE) {
+                    const deleteButton = document.createElement('div');
+                    deleteButton.className = 'photo-delete-button';
+                    deleteButton.innerHTML = '×';
+                    deleteButton.title = 'Remove photo';
+                    deleteButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        removePhoto(index);
+                    });
+                    photoItem.appendChild(deleteButton);
+                }
+                
+                photoItem.addEventListener('click', () => {
+                    if (state.markers[index]) {
+                        state.map.setView([photo.lat, photo.lng], 16);
+                    }
+                });
+                
+                elements['photo-list'].appendChild(photoItem);
+            });
+        }
+
+        function removePhoto(index) {
+            if (index >= 0 && index < state.photoData.length) {
+                if (state.markers[index]) {
+                    state.markers[index].off();
+                    state.map.removeLayer(state.markers[index]);
+                    state.markers[index] = null;
+                }
+                
+                state.markers.splice(index, 1);
+                state.photoData.splice(index, 1);
+                
+                refreshPhotoList();
+                elements.status.textContent = `Photo removed. ${state.photoData.length} photos remaining.`;
+            }
+        }
+
+        function fitAllPhotos() {
+            const validMarkers = state.markers.filter(m => m);
+            if (validMarkers.length > 0) {
+                const group = L.featureGroup(validMarkers);
+                state.map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                elements.status.textContent = 'Showing all photos on map.';
+            } else {
+                elements.status.textContent = 'No photos with geolocation data available.';
+            }
+        }
+
+        function clearAllData() {
+            state.markers.forEach(marker => {
+                if (marker) {
+                    marker.off();
+                    state.map.removeLayer(marker);
+                }
+            });
+            
+            state.markers.length = 0;
+            state.photoData.length = 0;
+            state.maxZIndex = 1000;
+            state.optionKeyDown = false;
+            
+            elements['photo-list'].innerHTML = '';
+            elements['error-message'].textContent = '';
+            elements['success-message'].textContent = '';
+            
+            state.map.setView(CONFIG.DEFAULT_CENTER, CONFIG.DEFAULT_ZOOM, { animate: false });
+        }
+
+        // Save/Load functions
+        function saveState() {
+            if (state.photoData.length === 0) {
+                elements.status.textContent = 'No photos to save.';
+                return;
+            }
+            
+            elements.status.textContent = 'Preparing save file...';
+            
+            const saveData = {
+                photos: state.photoData.map((photo, index) => {
+                    const marker = state.markers[index];
+                    return {
+                        ...photo,
+                        originalWidth: marker?.originalWidth,
+                        originalHeight: marker?.originalHeight
+                    };
+                }),
+                mapCenter: state.map.getCenter(),
+                mapZoom: state.map.getZoom(),
+                version: '1.0',
+                savedAt: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(saveData)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'photo-map-' + new Date().toISOString().slice(0, 10) + '.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            elements.status.textContent = 'Current state saved successfully.';
+        }
+
+        function loadState(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const saveData = JSON.parse(e.target.result);
+                    loadStateFromData(saveData);
+                } catch (error) {
+                    console.error('Error loading state:', error);
+                    elements['error-message'].textContent = 'Failed to load state. The file might be corrupted.';
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function loadStateFromData(saveData) {
+            if (!saveData.photos || !Array.isArray(saveData.photos)) {
+                throw new Error('Invalid save file format');
+            }
+            
+            clearAllData();
+            
+            if (saveData.mapCenter && saveData.mapZoom) {
+                state.map.setView([saveData.mapCenter.lat, saveData.mapCenter.lng], saveData.mapZoom);
+            }
+            
+            saveData.photos.forEach(photo => {
+                addSavedPhotoToMap({
+                    id: photo.id,
+                    src: photo.thumbnailSrc || photo.src,
+                    filename: photo.filename,
+                    lat: photo.lat,
+                    lng: photo.lng,
+                    originalWidth: photo.originalWidth,
+                    originalHeight: photo.originalHeight
+                });
+            });
+            
+            elements.status.textContent = 'Data loaded successfully.';
+        }
+
+        function addSavedPhotoToMap(photo) {
+            if (!photo.id) {
+                photo.id = 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            const index = state.photoData.length;
+            state.photoData.push(photo);
+            
+            const img = new Image();
+            img.onload = function() {
+                const aspectRatio = this.width / this.height;
+                const { maxWidth, maxHeight } = getMaxDimensions();
+                let markerWidth, markerHeight;
+                
+                if (photo.originalWidth && photo.originalHeight) {
+                    // Use saved dimensions but apply constraints
+                    markerWidth = Math.min(photo.originalWidth, maxWidth);
+                    markerHeight = Math.min(photo.originalHeight, maxHeight);
+                    
+                    // Maintain aspect ratio if constrained
+                    if (markerWidth < photo.originalWidth || markerHeight < photo.originalHeight) {
+                        if (markerWidth / photo.originalWidth < markerHeight / photo.originalHeight) {
+                            markerHeight = Math.round(markerWidth / aspectRatio);
+                        } else {
+                            markerWidth = Math.round(markerHeight * aspectRatio);
+                        }
+                    }
+                } else {
+                    // Calculate with constraints
+                    if (this.width <= this.height) {
+                        markerWidth = Math.min(100, maxWidth);
+                        markerHeight = Math.min(Math.round(100 / aspectRatio), maxHeight);
+                        if (markerHeight < Math.round(100 / aspectRatio)) {
+                            markerWidth = Math.round(markerHeight * aspectRatio);
+                        }
+                    } else {
+                        markerHeight = Math.min(100, maxHeight);
+                        markerWidth = Math.min(Math.round(100 * aspectRatio), maxWidth);
+                        if (markerWidth < Math.round(100 * aspectRatio)) {
+                            markerHeight = Math.round(markerWidth / aspectRatio);
+                        }
+                    }
+                }
+                
+                const dimensions = calculateMarkerDimensions(markerWidth, markerHeight);
+                const customIcon = createMarkerIcon(photo.src, photo.id, dimensions);
+                
+                const marker = L.marker([photo.lat, photo.lng], { icon: customIcon }).addTo(state.map);
+                state.maxZIndex += 1;
+                marker.setZIndexOffset(state.maxZIndex);
+                marker._currentZIndex = state.maxZIndex;
+                state.markers[index] = marker;
+                
+                marker.originalWidth = markerWidth;
+                marker.originalHeight = markerHeight;
+                marker.aspectRatio = aspectRatio;
+                marker.photoSrc = photo.src;
+                marker.photoId = photo.id;
+                // Add click handler for stroller mode
+                if (!CONFIG.IS_MAKER_MODE) {
+                    marker.on('click', (e) => {
+                        e.originalEvent.stopPropagation();
+                        handleMarkerClick(marker, index);
+                    });
+                }
+                
+                refreshPhotoList();
+            };
+            img.src = photo.src;
+        }
+
+        // Interaction functions
+        function showControlPoints() {
+            state.markers.forEach(marker => {
+                if (marker?._icon) {
+                    const container = marker._icon.querySelector('.marker-container');
+                    if (container && !container.querySelector('.control-point')) {
+                        const controlPoint = document.createElement('div');
+                        controlPoint.className = 'control-point';
+                        controlPoint.title = 'Drag to resize';
+                        controlPoint.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            startResize(e, marker);
+                        });
+                        container.appendChild(controlPoint);
+                    }
+                }
+            });
+        }
+
+        function hideControlPoints() {
+            state.markers.forEach(marker => {
+                if (marker?._icon) {
+                    const controlPoint = marker._icon.querySelector('.control-point');
+                    if (controlPoint) {
+                        controlPoint.remove();
+                    }
+                }
+            });
+        }
+
+        function startResize(e, marker) {
+            state.isDragging = true;
+            bringMarkerToFront(marker);
+            
+            const img = marker._icon?.querySelector('img');
+            const currentDimensions = calculateMarkerDimensions(marker.originalWidth, marker.originalHeight);
+            
+            state.dragState = {
+                marker: marker,
+                startX: e.clientX,
+                startY: e.clientY,
+                startWidth: img ? parseInt(img.style.width) : currentDimensions.width,
+                startHeight: img ? parseInt(img.style.height) : currentDimensions.height,
+                originalWidth: marker.originalWidth,
+                originalHeight: marker.originalHeight,
+                aspectRatio: marker.aspectRatio,
+                photoSrc: marker.photoSrc,
+                photoId: marker.photoId
+            };
+            
+            document.addEventListener('mousemove', handleResize);
+            document.addEventListener('mouseup', stopResize);
+        }
+
+        function handleResize(e) {
+            if (!state.isDragging || !state.dragState) return;
+            
+            const deltaX = e.clientX - state.dragState.startX;
+            const deltaY = e.clientY - state.dragState.startY;
+            const scaleDelta = Math.min(deltaX, deltaY);
+            const scaleMultiplier = Math.max(0.2, 1 - (scaleDelta / 100));
+            
+            const { maxWidth, maxHeight } = getMaxDimensions();
+            
+            let newOriginalWidth = Math.round(state.dragState.originalWidth * scaleMultiplier);
+            let newOriginalHeight = Math.round(state.dragState.originalHeight * scaleMultiplier);
+            
+            // Apply constraints
+            if (newOriginalWidth > maxWidth || newOriginalHeight > maxHeight) {
+                const aspectRatio = state.dragState.aspectRatio;
+                if (newOriginalWidth / maxWidth > newOriginalHeight / maxHeight) {
+                    newOriginalWidth = maxWidth;
+                    newOriginalHeight = Math.round(maxWidth / aspectRatio);
+                } else {
+                    newOriginalHeight = maxHeight;
+                    newOriginalWidth = Math.round(maxHeight * aspectRatio);
+                }
+            }
+            
+            state.dragState.marker.originalWidth = newOriginalWidth;
+            state.dragState.marker.originalHeight = newOriginalHeight;
+            
+            const dimensions = calculateMarkerDimensions(newOriginalWidth, newOriginalHeight);
+            const photoIndex = state.photoData.findIndex(p => p.id === state.dragState.photoId);
+            const position = photoIndex >= 0 ? 
+                L.latLng(state.photoData[photoIndex].lat, state.photoData[photoIndex].lng) : 
+                state.dragState.marker.getLatLng();
+            
+            updateMarkerIcon(state.dragState.marker, dimensions, position);
+        }
+
+        function stopResize() {
+            state.isDragging = false;
+            document.removeEventListener('mousemove', handleResize);
+            document.removeEventListener('mouseup', stopResize);
+            state.dragState = null;
+        }
+
+        function startMarkerDrag(e, marker, photoIndex) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            bringMarkerToFront(marker);
+            
+            const startX = e.clientX;
+            const startY = e.clientY;
+            let hasMoved = false;
+            const dragThreshold = 5;
+            
+            const tempDragState = {
+                marker: marker,
+                photoIndex: photoIndex,
+                startMousePos: { x: startX, y: startY },
+                startLatLng: marker.getLatLng()
+            };
+            
+            const tempMouseMove = (moveEvent) => {
+                const deltaX = Math.abs(moveEvent.clientX - startX);
+                const deltaY = Math.abs(moveEvent.clientY - startY);
+                
+                if (!hasMoved && (deltaX > dragThreshold || deltaY > dragThreshold)) {
+                    hasMoved = true;
+                    state.isMarkerDragging = true;
+                    state.markerDragState = tempDragState;
+                    state.map.dragging.disable();
+                    
+                    document.removeEventListener('mousemove', tempMouseMove);
+                    document.removeEventListener('mouseup', tempMouseUp);
+                    document.addEventListener('mousemove', handleMarkerDrag);
+                    document.addEventListener('mouseup', stopMarkerDrag);
+                }
+            };
+            
+            const tempMouseUp = () => {
+                document.removeEventListener('mousemove', tempMouseMove);
+                document.removeEventListener('mouseup', tempMouseUp);
+            };
+            
+            document.addEventListener('mousemove', tempMouseMove);
+            document.addEventListener('mouseup', tempMouseUp);
+        }
+
+        function handleMarkerDrag(e) {
+            if (!state.isMarkerDragging || !state.markerDragState) return;
+            
+            const mapRect = document.getElementById('map').getBoundingClientRect();
+            const containerPoint = L.point(e.clientX - mapRect.left, e.clientY - mapRect.top);
+            const newLatLng = state.map.containerPointToLatLng(containerPoint);
+            
+            state.markerDragState.marker.setLatLng(newLatLng);
+        }
+
+        function stopMarkerDrag() {
+            if (!state.isMarkerDragging || !state.markerDragState) return;
+            
+            state.isMarkerDragging = false;
+            
+            const newLatLng = state.markerDragState.marker.getLatLng();
+            if (state.markerDragState.photoIndex >= 0 && state.markerDragState.photoIndex < state.photoData.length) {
+                state.photoData[state.markerDragState.photoIndex].lat = newLatLng.lat;
+                state.photoData[state.markerDragState.photoIndex].lng = newLatLng.lng;
+                refreshPhotoList();
+            }
+            
+            state.map.dragging.enable();
+            document.removeEventListener('mousemove', handleMarkerDrag);
+            document.removeEventListener('mouseup', stopMarkerDrag);
+            
+            elements.status.textContent = `Photo moved to ${newLatLng.lat.toFixed(6)}, ${newLatLng.lng.toFixed(6)}.`;
+            state.markerDragState = null;
+        }
+
+        function bringMarkerToFront(marker) {
+            state.maxZIndex += 1;
+            marker.setZIndexOffset(state.maxZIndex);
+            marker._currentZIndex = state.maxZIndex;
+        }
+
+        // Make functions available globally for external access
+        window.loadStateFromData = loadStateFromData;
+        window.clearAllData = clearAllData;
+
+        function handleMarkerClick(marker, index) {
+            // If clicking the already enlarged marker, just reset it
+            if (state.enlargedMarker === marker) {
+                resetEnlargedMarker();
+                return;
+            }
+            
+            // Reset any previously enlarged marker
+            if (state.enlargedMarker) {
+                resetEnlargedMarker();
+            }
+            
+            // Enlarge this marker
+            state.enlargedMarker = marker;
+            bringMarkerToFront(marker);
+            
+            // Get full dimensions with enlarged constraints
+            const fullDimensions = calculateMarkerDimensions(
+                marker.originalWidth, 
+                marker.originalHeight, 
+                null, 
+                true // isEnlarged = true
+            );
+            
+            const position = L.latLng(state.photoData[index].lat, state.photoData[index].lng);
+            updateMarkerIcon(marker, fullDimensions, position);
+        }
+        
+        function resetEnlargedMarker() {
+            if (!state.enlargedMarker) return;
+            
+            // Find the index of the enlarged marker
+            const index = state.markers.indexOf(state.enlargedMarker);
+            if (index >= 0) {
+                const squareDimensions = { 
+                    width: CONFIG.SQUARE_SIZE, 
+                    height: CONFIG.SQUARE_SIZE, 
+                    mode: 'square' 
+                };
+                const position = L.latLng(state.photoData[index].lat, state.photoData[index].lng);
+                updateMarkerIcon(state.enlargedMarker, squareDimensions, position);
+            }
+            
+            state.enlargedMarker = null;
+        }
+
+    </script>
+</body>
+</html>

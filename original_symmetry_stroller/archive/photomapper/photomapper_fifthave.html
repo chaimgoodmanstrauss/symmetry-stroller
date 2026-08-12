@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fifth Avenue Symmetry Walk</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #app {
+            height: 100%;
+            width: 100%;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Delete button styles */
+        .delete-button {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #cfcfce;
+            color: white;
+            border: 2px solid white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            z-index: 1000;
+            transition: background-color 0.2s;
+            line-height: 0;
+            pointer-events: auto;
+        }
+        
+        .delete-button:hover {
+            background-color: #a0a0a0;
+        }
+        
+        /* Control point styles */
+        .control-point {
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: rgba(211, 211, 211, 0.7);
+            border: 1px solid #000000;
+            cursor: nw-resize;
+            z-index: 1001;
+            transition: background-color 0.2s;
+        }
+        
+        .control-point:hover {
+            background-color: rgba(169, 169, 169, 0.9);
+        }
+        
+        /* Custom marker styles */
+        .custom-marker {
+            position: relative;
+        }
+        
+        .marker-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .marker-triangle {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid white;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+        }
+
+        /* Loading message */
+        .loading-message {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 14px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="map"></div>
+        <div id="loading-message" class="loading-message">Loading Fifth Avenue Symmetry Walk...</div>
+    </div>
+
+    <script>
+        // Wait for full DOM content to be loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            const loadingMessage = document.getElementById('loading-message');
+            
+            // Initialize map with OpenStreetMap tiles
+            let map;
+            
+            // Delay map initialization slightly to ensure container is ready
+            setTimeout(() => {
+                try {
+                    // Create a minimal, light style map
+                    map = L.map('map', {
+                        zoomControl: true,
+                        attributionControl: false
+                    }).setView([40.7404, -73.9909], 15);
+                    
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                        maxZoom: 19
+                    }).addTo(map);
+                    
+                    // Force a resize after map is initialized
+                    setTimeout(() => {
+                        window.dispatchEvent(new Event('resize'));
+                        loadingMessage.textContent = 'Map loaded. Loading photos...';
+                        
+                        // Auto-load the JSON file
+                        loadWalkData();
+                    }, 500);
+                    
+                    initApp(map);
+                } catch (error) {
+                    console.error('Error initializing map:', error);
+                    loadingMessage.textContent = 'Error loading map. Please check console for details.';
+                }
+            }, 100);
+            
+            // Function to automatically load the walk data
+            async function loadWalkData() {
+                try {
+                    const response = await fetch('fifthavesymmetrywalk.json');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const walkData = await response.json();
+                    
+                    // Check if the file has the expected structure
+                    if (!walkData.photos || !Array.isArray(walkData.photos)) {
+                        throw new Error('Invalid file format - no photos array found');
+                    }
+                    
+                    loadingMessage.textContent = `Loading ${walkData.photos.length} photos...`;
+                    
+                    // Clear any existing data first
+                    clearAllData();
+                    
+                    // Restore map position if available
+                    if (walkData.mapCenter && walkData.mapZoom) {
+                        map.setView([walkData.mapCenter.lat, walkData.mapCenter.lng], walkData.mapZoom);
+                    }
+                    
+                    // Load photos
+                    let loadedCount = 0;
+                    walkData.photos.forEach(photo => {
+                        const src = photo.thumbnailSrc || photo.src; // Support both new and old format
+                        addSavedPhotoToMap({
+                            id: photo.id, // May be undefined for old save files
+                            src: src,
+                            filename: photo.filename,
+                            lat: photo.lat,
+                            lng: photo.lng
+                        });
+                        loadedCount++;
+                    });
+                    
+                    loadingMessage.textContent = `Loaded ${loadedCount} photos successfully.`;
+                    
+                    // Hide loading message after a delay
+                    setTimeout(() => {
+                        loadingMessage.style.display = 'none';
+                    }, 2000);
+                    
+                    // Fit all photos on screen after a delay to ensure markers are created
+                    setTimeout(() => {
+                        const validMarkers = markers.filter(marker => marker !== null && marker !== undefined);
+                        if (validMarkers.length > 0) {
+                            const group = L.featureGroup(validMarkers);
+                            map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                        }
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('Error loading walk data:', error);
+                    loadingMessage.textContent = `Error loading fifthavesymmetrywalk.json: ${error.message}`;
+                    loadingMessage.style.backgroundColor = 'rgba(255, 200, 200, 0.9)';
+                }
+            }
+        });
+        
+        function initApp(map) {
+            // Store markers and photo data
+            const markers = [];
+            const photoData = [];
+            let maxZIndex = 1000; // Track the highest z-index for proper ordering
+            let optionKeyDown = false; // Track Option key state
+            let isDragging = false;
+            let dragState = null;
+            let isMarkerDragging = false;
+            let markerDragState = null;
+            
+            // Make these available globally for the loading function
+            window.markers = markers;
+            window.photoData = photoData;
+            window.clearAllData = clearAllData;
+            window.addSavedPhotoToMap = addSavedPhotoToMap;
+            
+            // Option key detection
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Alt' && !optionKeyDown) { // Alt is the Option key on Mac
+                    optionKeyDown = true;
+                    showControlPoints();
+                    // Disable map dragging when Option key is down
+                    map.dragging.disable();
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                if (e.key === 'Alt' && optionKeyDown) {
+                    optionKeyDown = false;
+                    hideControlPoints();
+                    // Re-enable map dragging when Option key is released
+                    map.dragging.enable();
+                }
+            });
+            
+            // Reset Option key state when window loses focus
+            window.addEventListener('blur', () => {
+                if (optionKeyDown) {
+                    optionKeyDown = false;
+                    hideControlPoints();
+                    // Re-enable map dragging when window loses focus
+                    map.dragging.enable();
+                }
+            });
+            
+            // Set up event delegation for delete buttons and marker dragging
+            document.getElementById('map').addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('delete-button')) {
+                    return; // Let delete button handle its own click
+                } else if (e.target.classList.contains('control-point')) {
+                    return; // Let control point handle resize dragging
+                } else if (!optionKeyDown) {
+                    // Check if we clicked on a marker for dragging (when Option key is NOT down)
+                    let markerContainer = null;
+                    let currentElement = e.target;
+                    
+                    // Walk up the DOM tree to find a marker container
+                    while (currentElement && currentElement !== document.getElementById('map')) {
+                        if (currentElement.classList && currentElement.classList.contains('marker-container')) {
+                            markerContainer = currentElement;
+                            break;
+                        }
+                        currentElement = currentElement.parentElement;
+                    }
+                    
+                    if (markerContainer) {
+                        // Find the marker object
+                        const deleteButton = markerContainer.querySelector('.delete-button');
+                        if (deleteButton) {
+                            const photoId = deleteButton.getAttribute('data-photo-id');
+                            if (photoId) {
+                                const photoIndex = photoData.findIndex(photo => photo.id === photoId);
+                                if (photoIndex >= 0 && markers[photoIndex]) {
+                                    startMarkerDrag(e, markers[photoIndex], photoIndex);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            document.getElementById('map').addEventListener('click', (e) => {
+                // Only handle click if we're not dragging and it's not a delete button
+                if (!isMarkerDragging && e.target.classList.contains('delete-button')) {
+                    // Handle delete button clicks
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    
+                    const photoId = e.target.getAttribute('data-photo-id');
+                    if (photoId) {
+                        const photoIndex = photoData.findIndex(photo => photo.id === photoId);
+                        if (photoIndex >= 0) {
+                            removePhoto(photoIndex);
+                        }
+                    }
+                }
+            }, true); // Use capturing phase
+            
+            // Function to remove a photo by index
+            function removePhoto(index) {
+                if (index >= 0 && index < photoData.length) {
+                    // Remove marker from map
+                    if (markers[index]) {
+                        map.removeLayer(markers[index]);
+                    }
+                    
+                    // Remove from arrays
+                    markers.splice(index, 1);
+                    photoData.splice(index, 1);
+                    
+                    console.log(`Photo removed. ${photoData.length} photos remaining.`);
+                }
+            }
+            
+            // Function to bring a marker to the front
+            function bringMarkerToFront(marker) {
+                maxZIndex += 1;
+                marker.setZIndexOffset(maxZIndex);
+                
+                // Store the current highest z-index with the marker for reference
+                marker._currentZIndex = maxZIndex;
+            }
+            
+            // Function to show control points on all markers
+            function showControlPoints() {
+                markers.forEach(marker => {
+                    if (marker && marker._icon) {
+                        const markerContainer = marker._icon.querySelector('.marker-container');
+                        if (markerContainer && !markerContainer.querySelector('.control-point')) {
+                            const controlPoint = document.createElement('div');
+                            controlPoint.className = 'control-point';
+                            controlPoint.title = 'Drag to resize';
+                            
+                            // Add drag functionality to control point
+                            controlPoint.addEventListener('mousedown', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                startResize(e, marker);
+                            });
+                            
+                            markerContainer.appendChild(controlPoint);
+                        }
+                    }
+                });
+            }
+            
+            // Function to hide control points on all markers
+            function hideControlPoints() {
+                markers.forEach(marker => {
+                    if (marker && marker._icon) {
+                        const markerContainer = marker._icon.querySelector('.marker-container');
+                        if (markerContainer) {
+                            const controlPoint = markerContainer.querySelector('.control-point');
+                            if (controlPoint) {
+                                controlPoint.remove();
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Function to start resizing
+            function startResize(e, marker) {
+                isDragging = true;
+                
+                // Bring marker to front when starting resize
+                bringMarkerToFront(marker);
+                
+                const startX = e.clientX;
+                const startY = e.clientY;
+                
+                // Get current size from marker (might have been resized before)
+                const img = marker._icon?.querySelector('img');
+                const currentWidth = img ? parseInt(img.style.width) : marker.originalWidth;
+                const currentHeight = img ? parseInt(img.style.height) : marker.originalHeight;
+                
+                dragState = {
+                    marker: marker,
+                    startX: startX,
+                    startY: startY,
+                    startWidth: currentWidth,
+                    startHeight: currentHeight,
+                    originalWidth: marker.originalWidth,
+                    originalHeight: marker.originalHeight,
+                    aspectRatio: marker.aspectRatio,
+                    photoSrc: marker.photoSrc,
+                    photoId: marker.photoId
+                };
+                
+                // Add global mouse event listeners
+                document.addEventListener('mousemove', handleResize);
+                document.addEventListener('mouseup', stopResize);
+            }
+            
+            // Function to handle resize during drag
+            function handleResize(e) {
+                if (!isDragging || !dragState) return;
+                
+                // Calculate the distance moved
+                const deltaX = e.clientX - dragState.startX;
+                const deltaY = e.clientY - dragState.startY;
+                
+                // For upper-left control point, negative deltas should increase size
+                // Use the more extreme delta (negative = enlarging, positive = shrinking)
+                const scaleDelta = Math.min(deltaX, deltaY);
+                const scaleMultiplier = 1 - (scaleDelta / 100); // Invert the logic
+                
+                // Ensure minimum size
+                const minScale = 0.2;
+                const finalScale = Math.max(minScale, scaleMultiplier);
+                
+                const newWidth = Math.round(dragState.startWidth * finalScale);
+                const newHeight = Math.round(dragState.startHeight * finalScale);
+                
+                // Recreate the marker icon with new size
+                updateMarkerSize(dragState.marker, newWidth, newHeight);
+            }
+            
+            // Function to update marker size
+            function updateMarkerSize(marker, width, height) {
+                const totalHeight = height + 8; // Adding triangle height
+                
+                // Store current z-index before updating icon
+                const currentZIndex = marker._currentZIndex || marker.options.zIndexOffset;
+                
+                // Create new icon HTML
+                const customIcon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `
+                        <div class="marker-container">
+                            <img src="${marker.photoSrc}" style="width:${width}px;height:${height}px;border:4px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.4);object-fit:contain;" />
+                            <div class="marker-triangle"></div>
+                            <div class="delete-button" data-photo-id="${marker.photoId}" title="Remove photo">×</div>
+                            ${optionKeyDown ? '<div class="control-point" title="Drag to resize"></div>' : ''}
+                        </div>
+                    `,
+                    iconSize: [width, totalHeight],
+                    iconAnchor: [Math.round(width/2), totalHeight] // Keep bottom center anchored
+                });
+                
+                // Update the marker icon
+                marker.setIcon(customIcon);
+                
+                // Restore z-index after icon update
+                if (currentZIndex) {
+                    marker.setZIndexOffset(currentZIndex);
+                    marker._currentZIndex = currentZIndex;
+                }
+                
+                // Re-add control point event listener if Option key is down
+                if (optionKeyDown) {
+                    setTimeout(() => {
+                        const controlPoint = marker._icon?.querySelector('.control-point');
+                        if (controlPoint) {
+                            controlPoint.addEventListener('mousedown', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                startResize(e, marker);
+                            });
+                        }
+                    }, 10);
+                }
+            }
+            
+            // Function to stop resizing
+            function stopResize(e) {
+                isDragging = false;
+                
+                // Remove global mouse event listeners
+                document.removeEventListener('mousemove', handleResize);
+                document.removeEventListener('mouseup', stopResize);
+                
+                dragState = null;
+            }
+            
+            // Function to start marker dragging (when Option key is NOT down)
+            function startMarkerDrag(e, marker, photoIndex) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Bring marker to front immediately on mousedown
+                bringMarkerToFront(marker);
+                
+                const startX = e.clientX;
+                const startY = e.clientY;
+                let hasMoved = false;
+                const dragThreshold = 5; // pixels
+                
+                // Temporary state for potential drag
+                const tempDragState = {
+                    marker: marker,
+                    photoIndex: photoIndex,
+                    startMousePos: { x: startX, y: startY },
+                    startLatLng: marker.getLatLng()
+                };
+                
+                // Mouse move handler to detect if we should start dragging
+                const tempMouseMove = (moveEvent) => {
+                    const deltaX = Math.abs(moveEvent.clientX - startX);
+                    const deltaY = Math.abs(moveEvent.clientY - startY);
+                    
+                    if (!hasMoved && (deltaX > dragThreshold || deltaY > dragThreshold)) {
+                        hasMoved = true;
+                        
+                        // Start actual dragging
+                        isMarkerDragging = true;
+                        markerDragState = tempDragState;
+                        
+                        // Disable map interactions
+                        map.dragging.disable();
+                        
+                        // Marker already brought to front on mousedown, so it stays on top
+                        
+                        // Remove temp listeners and add drag listeners
+                        document.removeEventListener('mousemove', tempMouseMove);
+                        document.removeEventListener('mouseup', tempMouseUp);
+                        document.addEventListener('mousemove', handleMarkerDrag);
+                        document.addEventListener('mouseup', stopMarkerDrag);
+                    }
+                };
+                
+                // Mouse up handler for clicks (no drag)
+                const tempMouseUp = (upEvent) => {
+                    document.removeEventListener('mousemove', tempMouseMove);
+                    document.removeEventListener('mouseup', tempMouseUp);
+                    
+                    // Marker already brought to front on mousedown, no additional action needed
+                };
+                
+                // Add temporary listeners
+                document.addEventListener('mousemove', tempMouseMove);
+                document.addEventListener('mouseup', tempMouseUp);
+            }
+            
+            // Function to handle marker dragging
+            function handleMarkerDrag(e) {
+                if (!isMarkerDragging || !markerDragState) return;
+                
+                // Convert mouse position to map coordinates
+                const mousePoint = L.point(e.clientX, e.clientY);
+                const mapElement = document.getElementById('map');
+                const mapRect = mapElement.getBoundingClientRect();
+                
+                // Adjust for map container position
+                const containerPoint = L.point(
+                    mousePoint.x - mapRect.left,
+                    mousePoint.y - mapRect.top
+                );
+                
+                // Convert container point to lat/lng
+                const newLatLng = map.containerPointToLatLng(containerPoint);
+                
+                // Update marker position (this positions the anchor point - tip of arrow - at the coordinates)
+                markerDragState.marker.setLatLng(newLatLng);
+            }
+            
+            // Function to stop marker dragging
+            function stopMarkerDrag(e) {
+                if (!isMarkerDragging || !markerDragState) return;
+                
+                isMarkerDragging = false;
+                
+                // Update the photo data with new coordinates
+                const newLatLng = markerDragState.marker.getLatLng();
+                if (markerDragState.photoIndex >= 0 && markerDragState.photoIndex < photoData.length) {
+                    photoData[markerDragState.photoIndex].lat = newLatLng.lat;
+                    photoData[markerDragState.photoIndex].lng = newLatLng.lng;
+                }
+                
+                // Re-enable map interactions
+                map.dragging.enable();
+                
+                // Remove global mouse event listeners
+                document.removeEventListener('mousemove', handleMarkerDrag);
+                document.removeEventListener('mouseup', stopMarkerDrag);
+                
+                console.log(`Photo moved to ${newLatLng.lat.toFixed(6)}, ${newLatLng.lng.toFixed(6)}.`);
+                
+                // Marker stays on top after drag completion (no z-index reset)
+                
+                markerDragState = null;
+            }
+            
+            function addSavedPhotoToMap(photo) {
+                // Add unique ID if not present
+                if (!photo.id) {
+                    photo.id = 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                }
+                
+                // Add to photo data array
+                const index = photoData.length;
+                photoData.push(photo);
+                
+                // Load image to get dimensions and create proportional marker
+                const img = new Image();
+                img.onload = function() {
+                    const aspectRatio = this.width / this.height;
+                    const markerHeight = 100;
+                    const markerWidth = Math.round(markerHeight * aspectRatio);
+                    const totalHeight = markerHeight + 8; // Adding triangle height
+                    
+                    // Create custom icon with proportional image and triangle pointer
+                    const customIcon = L.divIcon({
+                        className: 'custom-marker',
+                        html: `
+                            <div class="marker-container">
+                                <img src="${photo.src}" style="width:${markerWidth}px;height:${markerHeight}px;border:4px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.4);object-fit:contain;" />
+                                <div class="marker-triangle"></div>
+                                <div class="delete-button" data-photo-id="${photo.id}" title="Remove photo">×</div>
+                            </div>
+                        `,
+                        iconSize: [markerWidth, totalHeight], // Adjusted for triangle
+                        iconAnchor: [Math.round(markerWidth/2), totalHeight] // Point to the triangle tip
+                    });
+                    
+                    // Add marker to map with consistent z-indexing
+                    const marker = L.marker([photo.lat, photo.lng], { icon: customIcon }).addTo(map);
+                    maxZIndex += 1;
+                    marker.setZIndexOffset(maxZIndex);
+                    marker._currentZIndex = maxZIndex;
+                    markers[index] = marker;
+                    
+                    // Store original size information with the marker
+                    marker.originalWidth = markerWidth;
+                    marker.originalHeight = markerHeight;
+                    marker.aspectRatio = aspectRatio;
+                    marker.photoSrc = photo.src;
+                    marker.photoId = photo.id;
+                    
+                    // If Option key is currently down, add control point to this new marker
+                    if (optionKeyDown) {
+                        setTimeout(() => {
+                            const markerContainer = marker._icon?.querySelector('.marker-container');
+                            if (markerContainer && !markerContainer.querySelector('.control-point')) {
+                                const controlPoint = document.createElement('div');
+                                controlPoint.className = 'control-point';
+                                controlPoint.title = 'Drag to resize';
+                                
+                                controlPoint.addEventListener('mousedown', (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    startResize(e, marker);
+                                });
+                                
+                                markerContainer.appendChild(controlPoint);
+                            }
+                        }, 100);
+                    }
+                };
+                img.src = photo.src;
+                
+                return null; // Marker will be created asynchronously
+            }
+            
+            function clearAllData() {
+                // Clear markers from map
+                markers.forEach(marker => map.removeLayer(marker));
+                markers.length = 0;
+                
+                // Clear photo data array
+                photoData.length = 0;
+                
+                // Reset z-index counter
+                maxZIndex = 1000;
+                
+                // Reset Option key state
+                optionKeyDown = false;
+                
+                // Reset drag states
+                isDragging = false;
+                dragState = null;
+                isMarkerDragging = false;
+                markerDragState = null;
+                
+                // Re-enable map dragging if it was disabled
+                map.dragging.enable();
+                
+                // Reset view
+                map.setView([40.7404, -73.9909], 15, {
+                    animate: false
+                });
+            }
+        }
+    </script>
+</body>
+</html>

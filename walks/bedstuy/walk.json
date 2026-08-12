@@ -1,0 +1,362 @@
+{
+  "photos": [
+    {
+      "id": "photo_1760188918466_bessujngx",
+      "photo": "photos/IMG_0538.jpg",
+      "filename": "IMG_0538.jpg",
+      "lat": 40.68008611111111,
+      "lng": -73.93151111111112,
+      "originalWidth": 516,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918477_vo9bk486t",
+      "photo": "photos/IMG_0548.jpg",
+      "filename": "IMG_0548.jpg",
+      "lat": 40.68211111111111,
+      "lng": -73.93431944444445,
+      "originalWidth": 700,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918640_pf5p4758s",
+      "photo": "photos/IMG_0554.jpg",
+      "filename": "IMG_0554.jpg",
+      "lat": 40.68250555555555,
+      "lng": -73.93505833333333,
+      "originalWidth": 293,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918643_diil7357i",
+      "photo": "photos/IMG_0576.jpg",
+      "filename": "IMG_0576.jpg",
+      "lat": 40.67812222222222,
+      "lng": -73.94050555555556,
+      "originalWidth": 117,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918646_7ttab90qc",
+      "photo": "photos/IMG_0555.jpg",
+      "filename": "IMG_0555.jpg",
+      "lat": 40.68300555555555,
+      "lng": -73.93500555555556,
+      "originalWidth": 100,
+      "originalHeight": 123
+    },
+    {
+      "id": "photo_1760188918649_qes4625yi",
+      "photo": "photos/IMG_0574.jpg",
+      "filename": "IMG_0574.jpg",
+      "lat": 40.68067222222222,
+      "lng": -73.92871944444445,
+      "originalWidth": 790,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918653_2zsohlx0l",
+      "photo": "photos/IMG_0543.jpg",
+      "filename": "IMG_0543.jpg",
+      "lat": 40.68186111111111,
+      "lng": -73.93189166666667,
+      "originalWidth": 684,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918656_9zqu8dmn5",
+      "photo": "photos/IMG_0571.jpg",
+      "filename": "IMG_0571.jpg",
+      "lat": 40.68101111111111,
+      "lng": -73.93063333333333,
+      "originalWidth": 298,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918660_hb3pn16i7",
+      "photo": "photos/IMG_0556.jpg",
+      "filename": "IMG_0556.jpg",
+      "lat": 40.683230555555554,
+      "lng": -73.93507222222223,
+      "originalWidth": 463,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918666_1du83dqat",
+      "photo": "photos/IMG_0537.jpg",
+      "filename": "IMG_0537.jpg",
+      "lat": 40.67955833333333,
+      "lng": -73.93161111111111,
+      "originalWidth": 349,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918671_utipy6rbu",
+      "photo": "photos/IMG_0563.jpg",
+      "filename": "IMG_0563.jpg",
+      "lat": 40.684488888888886,
+      "lng": -73.93305277777779,
+      "originalWidth": 216,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918676_gdlqyyoy7",
+      "photo": "photos/IMG_0572.jpg",
+      "filename": "IMG_0572.jpg",
+      "lat": 40.68103333333333,
+      "lng": -73.92866388888889,
+      "originalWidth": 146,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918693_yw2ii1fnn",
+      "photo": "photos/IMG_0544.jpg",
+      "filename": "IMG_0544.jpg",
+      "lat": 40.68227222222222,
+      "lng": -73.932,
+      "originalWidth": 100,
+      "originalHeight": 112
+    },
+    {
+      "id": "photo_1760188918698_echo5hn5q",
+      "photo": "photos/IMG_0586.jpg",
+      "filename": "IMG_0586.jpg",
+      "lat": 40.68143055555555,
+      "lng": -73.93361666666667,
+      "originalWidth": 146,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918704_e64v9wlrh",
+      "photo": "photos/IMG_0557.jpg",
+      "filename": "IMG_0557.jpg",
+      "lat": 40.684219444444444,
+      "lng": -73.93495277777778,
+      "originalWidth": 266,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918710_2nhh6pm54",
+      "photo": "photos/IMG_0565.jpg",
+      "filename": "IMG_0565.jpg",
+      "lat": 40.68288888888889,
+      "lng": -73.93206111111111,
+      "originalWidth": 100,
+      "originalHeight": 343
+    },
+    {
+      "id": "photo_1760188918716_r8am9o03i",
+      "photo": "photos/IMG_0587.jpg",
+      "filename": "IMG_0587.jpg",
+      "lat": 40.68149444444444,
+      "lng": -73.93287777777778,
+      "originalWidth": 100,
+      "originalHeight": 208
+    },
+    {
+      "id": "photo_1760188918721_m6mpn5atj",
+      "photo": "photos/IMG_0590.jpg",
+      "filename": "IMG_0590.jpg",
+      "lat": 40.681580555555556,
+      "lng": -73.93235,
+      "originalWidth": 248,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918728_qezp2luvd",
+      "photo": "photos/IMG_0577.jpg",
+      "filename": "IMG_0577.jpg",
+      "lat": 40.678127777777775,
+      "lng": -73.94043055555557,
+      "originalWidth": 100,
+      "originalHeight": 226
+    },
+    {
+      "id": "photo_1760188918738_f92y2eebp",
+      "photo": "photos/IMG_0545.jpg",
+      "filename": "IMG_0545.jpg",
+      "lat": 40.68225277777778,
+      "lng": -73.93242777777779,
+      "originalWidth": 151,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918745_ivyw700z7",
+      "photo": "photos/IMG_0550.jpg",
+      "filename": "IMG_0550.jpg",
+      "lat": 40.68216111111111,
+      "lng": -73.93450277777778,
+      "originalWidth": 100,
+      "originalHeight": 145
+    },
+    {
+      "id": "photo_1760188918753_f99idohxi",
+      "photo": "photos/IMG_0541.jpg",
+      "filename": "IMG_0541.jpg",
+      "lat": 40.68107777777777,
+      "lng": -73.93158055555556,
+      "originalWidth": 100,
+      "originalHeight": 155
+    },
+    {
+      "id": "photo_1760188918764_vxbmszurs",
+      "photo": "photos/IMG_0560.jpg",
+      "filename": "IMG_0560.jpg",
+      "lat": 40.68441111111111,
+      "lng": -73.9334638888889,
+      "originalWidth": 157,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918774_04fseen4m",
+      "photo": "photos/IMG_0549.jpg",
+      "filename": "IMG_0549.jpg",
+      "lat": 40.682116666666666,
+      "lng": -73.93444722222223,
+      "originalWidth": 133,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918782_xzxdv3672",
+      "photo": "photos/IMG_0559.jpg",
+      "filename": "IMG_0559.jpg",
+      "lat": 40.68438611111111,
+      "lng": -73.93396944444444,
+      "originalWidth": 120,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918804_36zqm8xba",
+      "photo": "photos/IMG_0540.jpg",
+      "filename": "IMG_0540.jpg",
+      "lat": 40.68069444444444,
+      "lng": -73.93173055555556,
+      "originalWidth": 137,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918814_ghtwg25ka",
+      "photo": "photos/IMG_0564.jpg",
+      "filename": "IMG_0564.jpg",
+      "lat": 40.68453888888889,
+      "lng": -73.93250277777778,
+      "originalWidth": 199,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918822_m6zdozxjv",
+      "photo": "photos/IMG_0579.jpg",
+      "filename": "IMG_0579.jpg",
+      "lat": 40.67825555555555,
+      "lng": -73.93985,
+      "originalWidth": 190,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918829_g06e4utek",
+      "photo": "photos/IMG_0582.jpg",
+      "filename": "IMG_0582.jpg",
+      "lat": 40.68120277777778,
+      "lng": -73.93560000000001,
+      "originalWidth": 113,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918836_g41qsp54b",
+      "photo": "photos/IMG_0575.jpg",
+      "filename": "IMG_0575.jpg",
+      "lat": 40.67833333333333,
+      "lng": -73.9403138888889,
+      "originalWidth": 262,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918845_b99zgxsk6",
+      "photo": "photos/IMG_0589.jpg",
+      "filename": "IMG_0589.jpg",
+      "lat": 40.681527777777774,
+      "lng": -73.93233611111111,
+      "originalWidth": 291,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918853_hsbvgl9wg",
+      "photo": "photos/IMG_0585.jpg",
+      "filename": "IMG_0585.jpg",
+      "lat": 40.68136944444444,
+      "lng": -73.93415833333334,
+      "originalWidth": 277,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918877_dnxd9tmkx",
+      "photo": "photos/IMG_0583.jpg",
+      "filename": "IMG_0583.jpg",
+      "lat": 40.681102777777774,
+      "lng": -73.93530277777778,
+      "originalWidth": 129,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918889_mjijdqcxr",
+      "photo": "photos/IMG_0558.jpg",
+      "filename": "IMG_0558.jpg",
+      "lat": 40.684372222222215,
+      "lng": -73.93402222222223,
+      "originalWidth": 100,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918901_94ar6nq26",
+      "photo": "photos/IMG_0562.jpg",
+      "filename": "IMG_0562.jpg",
+      "lat": 40.684425,
+      "lng": -73.93306111111112,
+      "originalWidth": 100,
+      "originalHeight": 103
+    },
+    {
+      "id": "photo_1760188918915_bizbxfnpu",
+      "photo": "photos/IMG_0570.jpg",
+      "filename": "IMG_0570.jpg",
+      "lat": 40.68095833333333,
+      "lng": -73.93064722222223,
+      "originalWidth": 266,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918927_se4snf1zc",
+      "photo": "photos/IMG_0566.jpg",
+      "filename": "IMG_0566.jpg",
+      "lat": 40.682786111111106,
+      "lng": -73.93202222222223,
+      "originalWidth": 143,
+      "originalHeight": 100
+    },
+    {
+      "id": "photo_1760188918964_djumaa3wo",
+      "photo": "photos/IMG_0539.jpg",
+      "filename": "IMG_0539.jpg",
+      "lat": 40.68029722222222,
+      "lng": -73.9316388888889,
+      "originalWidth": 100,
+      "originalHeight": 123
+    },
+    {
+      "id": "photo_1760188918995_t5oawzbpv",
+      "photo": "photos/IMG_0561.jpg",
+      "filename": "IMG_0561.jpg",
+      "lat": 40.68443055555555,
+      "lng": -73.93337222222223,
+      "originalWidth": 100,
+      "originalHeight": 104
+    }
+  ],
+  "mapCenter": {
+    "lat": 40.6818177728785,
+    "lng": -73.93127202987672
+  },
+  "mapZoom": 18,
+  "version": "2.0",
+  "savedAt": "2025-10-11T13:23:10.138Z"
+}
