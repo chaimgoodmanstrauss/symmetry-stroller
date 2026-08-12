@@ -228,7 +228,9 @@
             width: 56px;
             height: 56px;
             object-fit: cover;
-            border-radius: var(--radius-sm);
+            border-radius: 50%;
+            cursor: zoom-in;
+            flex-shrink: 0;
         }
 
         .photo-item {
@@ -239,12 +241,25 @@
             border-radius: var(--radius-sm);
             background-color: var(--surface);
             cursor: pointer;
-            transition: background-color 0.15s ease, border-color 0.15s ease;
+            transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
         }
 
         .photo-item:hover {
             background-color: var(--bg);
             border-color: var(--border-strong);
+        }
+
+        .maker-mode .photo-item {
+            cursor: grab;
+        }
+
+        .photo-item.dragging {
+            opacity: 0.4;
+        }
+
+        .photo-item.drag-over {
+            border-color: var(--accent);
+            border-style: dashed;
         }
 
         .dropzone {
@@ -418,6 +433,56 @@
             background-color: rgba(79, 70, 229, 0.4);
         }
 
+        /* Photo lightbox */
+        .photo-lightbox {
+            position: fixed;
+            inset: 0;
+            background: rgba(20, 16, 24, 0.55);
+            z-index: 4000;
+            display: none;
+        }
+
+        .photo-lightbox.visible {
+            display: block;
+        }
+
+        .photo-lightbox-frame {
+            position: absolute;
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #16141a;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+        }
+
+        .maker-mode .photo-lightbox-frame {
+            cursor: move;
+        }
+
+        .photo-lightbox-frame img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+
+        .lightbox-resize-handle {
+            position: absolute;
+            right: -5px;
+            bottom: -5px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: rgba(79, 70, 229, 0.25);
+            border: 1.5px solid var(--accent);
+            cursor: nwse-resize;
+            z-index: 4001;
+        }
+
+        .lightbox-resize-handle:hover {
+            background-color: rgba(79, 70, 229, 0.45);
+        }
+
         /* Marker styles */
         .custom-marker {
             position: relative;
@@ -516,7 +581,7 @@
                 <h2 id="app-title">Photo Map</h2>
                 <div class="mode-selector">
                     <div class="mode-option">
-                        <input type="radio" id="maker-mode" name="app-mode" value="maker">
+                        <input type="radio" id="maker-mode" name="app-mode" value="writer">
                         <label for="maker-mode">Editor</label>
                     </div>
                     <div class="mode-option">
@@ -566,6 +631,12 @@
         <div id="map-container">
             <div id="map"></div>
         </div>
+        <div id="photo-lightbox" class="photo-lightbox">
+            <div id="photo-lightbox-frame" class="photo-lightbox-frame">
+                <img id="photo-lightbox-img" alt="">
+                <div id="lightbox-resize-handle" class="lightbox-resize-handle maker-only" title="Drag to resize"></div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
@@ -608,7 +679,8 @@
             markerDragState: null,
             optionKeyDown: false,
             enlargedMarker: null,
-            walkName: ''
+            walkName: '',
+            lightboxPhotoId: null
         };
 
         // DOM Elements
@@ -633,25 +705,20 @@
             }
         }
 
-        async function initializeApp() {
-            // Set mode: explicit ?mode= wins, then a pending mode from a
-            // just-triggered reload (see setupEventListeners), else Stroller.
+        // Navigate to a given mode ('writer' or 'stroller') by rewriting the
+        // `mode` URL param, so the address bar always reflects the current
+        // mode and can be bookmarked/shared/reloaded directly.
+        function navigateToMode(mode) {
             const params = new URLSearchParams(location.search);
-            const modeParam = params.get('mode');
-            const savedMode = sessionStorage.getItem('app_mode');
-            if (modeParam === 'maker' || modeParam === 'stroller') {
-                CONFIG.IS_MAKER_MODE = modeParam === 'maker';
-                sessionStorage.removeItem('app_mode');
-                // Strip `mode` from the URL immediately, otherwise every later
-                // reload (radio toggle, keyboard shortcut) re-reads it and
-                // snaps back to this mode no matter what was clicked.
-                params.delete('mode');
-                const newSearch = params.toString();
-                history.replaceState(null, '', location.pathname + (newSearch ? `?${newSearch}` : ''));
-            } else if (savedMode) {
-                CONFIG.IS_MAKER_MODE = savedMode === 'maker';
-                sessionStorage.removeItem('app_mode');
-            }
+            params.set('mode', mode);
+            location.search = params.toString();
+        }
+
+        async function initializeApp() {
+            // Mode is driven entirely by ?mode=writer in the URL; anything
+            // else (including no param at all) is Stroller/viewer mode.
+            const params = new URLSearchParams(location.search);
+            CONFIG.IS_MAKER_MODE = params.get('mode') === 'writer';
 
             // Apply mode
             document.body.className = CONFIG.IS_MAKER_MODE ? 'maker-mode' : 'stroller-mode';
@@ -687,7 +754,8 @@
         function cacheElements() {
             const ids = ['photo-list', 'file-input', 'load-input', 'dropzone', 'error-message',
                         'success-message', 'fit-all', 'clear-all', 'save-state', 'load-state',
-                        'status', 'app-title', 'app-description', 'walk-name-input', 'title-walk-name'];
+                        'status', 'app-title', 'app-description', 'walk-name-input', 'title-walk-name',
+                        'photo-lightbox', 'photo-lightbox-frame', 'photo-lightbox-img', 'lightbox-resize-handle'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -768,9 +836,8 @@
             // Mode switching
             document.querySelectorAll('input[name="app-mode"]').forEach(radio => {
                 radio.addEventListener('change', (e) => {
-                    if (e.target.checked && ((e.target.value === 'maker') !== CONFIG.IS_MAKER_MODE)) {
-                        sessionStorage.setItem('app_mode', e.target.value);
-                        location.reload();
+                    if (e.target.checked && ((e.target.value === 'writer') !== CONFIG.IS_MAKER_MODE)) {
+                        navigateToMode(e.target.value);
                     }
                 });
             });
@@ -781,8 +848,7 @@
             document.addEventListener('keydown', (e) => {
                 if (e.shiftKey && (e.metaKey || e.ctrlKey) && e.altKey && e.code === 'Digit8') {
                     e.preventDefault();
-                    sessionStorage.setItem('app_mode', CONFIG.IS_MAKER_MODE ? 'stroller' : 'maker');
-                    location.reload();
+                    navigateToMode(CONFIG.IS_MAKER_MODE ? 'stroller' : 'writer');
                 }
             });
 
@@ -790,6 +856,9 @@
             if (CONFIG.IS_MAKER_MODE) {
                 setupOptionKeyHandlers();
             }
+
+            // Photo lightbox
+            setupLightboxInteractions();
 
             // Map interactions
             setupMapInteractions();
@@ -1435,14 +1504,57 @@
                     photoItem.appendChild(deleteButton);
                 }
 
+                thumbnail.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openLightbox(photo, thumbnail);
+                });
+
                 photoItem.addEventListener('click', () => {
                     if (state.markers[index]) {
                         state.map.setView([photo.lat, photo.lng], 16);
                     }
                 });
 
+                if (CONFIG.IS_MAKER_MODE) {
+                    photoItem.draggable = true;
+                    photoItem.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', String(index));
+                        photoItem.classList.add('dragging');
+                    });
+                    photoItem.addEventListener('dragend', () => {
+                        photoItem.classList.remove('dragging');
+                    });
+                    photoItem.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        photoItem.classList.add('drag-over');
+                    });
+                    photoItem.addEventListener('dragleave', () => {
+                        photoItem.classList.remove('drag-over');
+                    });
+                    photoItem.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        photoItem.classList.remove('drag-over');
+                        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                        reorderPhoto(fromIndex, index);
+                    });
+                }
+
                 elements['photo-list'].appendChild(photoItem);
             });
+        }
+
+        function reorderPhoto(fromIndex, toIndex) {
+            if (isNaN(fromIndex) || fromIndex === toIndex ||
+                fromIndex < 0 || fromIndex >= state.photoData.length) return;
+
+            const [photo] = state.photoData.splice(fromIndex, 1);
+            state.photoData.splice(toIndex, 0, photo);
+
+            const [marker] = state.markers.splice(fromIndex, 1);
+            state.markers.splice(toIndex, 0, marker);
+
+            refreshPhotoList();
         }
 
         function removePhoto(index) {
@@ -1538,7 +1650,8 @@
                     lat: photo.lat,
                     lng: photo.lng,
                     originalWidth: marker?.originalWidth,
-                    originalHeight: marker?.originalHeight
+                    originalHeight: marker?.originalHeight,
+                    previewRect: photo.previewRect
                 };
             });
 
@@ -1609,7 +1722,8 @@
                     lat: photo.lat,
                     lng: photo.lng,
                     originalWidth: photo.originalWidth,
-                    originalHeight: photo.originalHeight
+                    originalHeight: photo.originalHeight,
+                    previewRect: photo.previewRect
                 });
             });
 
@@ -1931,6 +2045,123 @@
             }
 
             state.enlargedMarker = null;
+        }
+
+        // Photo lightbox (sidebar thumbnail -> large view)
+        function openLightbox(photo, thumbnailEl) {
+            elements['photo-lightbox-img'].src = photo.src;
+            elements['photo-lightbox-img'].alt = photo.filename || '';
+            state.lightboxPhotoId = photo.id;
+
+            applyLightboxRect(photo.previewRect || defaultPreviewRect(thumbnailEl));
+            elements['photo-lightbox'].classList.add('visible');
+        }
+
+        function closeLightbox() {
+            elements['photo-lightbox'].classList.remove('visible');
+            state.lightboxPhotoId = null;
+        }
+
+        // Default placement: a large box that overlaps the clicked
+        // thumbnail slightly, so the enlarged view stays visually linked
+        // to where it came from instead of just popping up centered.
+        function defaultPreviewRect(thumbnailEl) {
+            const vw = window.innerWidth, vh = window.innerHeight;
+            const size = Math.min(vw, vh) * 0.7;
+            let left = (vw - size) / 2;
+            let top = (vh - size) / 2;
+
+            if (thumbnailEl) {
+                const tRect = thumbnailEl.getBoundingClientRect();
+                left = Math.min(Math.max(tRect.left - 24, 12), vw - size - 12);
+                top = Math.min(Math.max(tRect.top - 24, 12), vh - size - 12);
+            }
+
+            return {
+                leftPct: (left / vw) * 100,
+                topPct: (top / vh) * 100,
+                widthPct: (size / vw) * 100,
+                heightPct: (size / vh) * 100
+            };
+        }
+
+        function applyLightboxRect(rect) {
+            const frame = elements['photo-lightbox-frame'];
+            frame.style.left = rect.leftPct + 'vw';
+            frame.style.top = rect.topPct + 'vh';
+            frame.style.width = rect.widthPct + 'vw';
+            frame.style.height = rect.heightPct + 'vh';
+        }
+
+        function savePreviewRectFromFrame() {
+            const photo = state.photoData.find(p => p.id === state.lightboxPhotoId);
+            if (!photo) return;
+
+            const rect = elements['photo-lightbox-frame'].getBoundingClientRect();
+            photo.previewRect = {
+                leftPct: (rect.left / window.innerWidth) * 100,
+                topPct: (rect.top / window.innerHeight) * 100,
+                widthPct: (rect.width / window.innerWidth) * 100,
+                heightPct: (rect.height / window.innerHeight) * 100
+            };
+        }
+
+        function setupLightboxInteractions() {
+            const overlay = elements['photo-lightbox'];
+            const frame = elements['photo-lightbox-frame'];
+            const resizeHandle = elements['lightbox-resize-handle'];
+
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) closeLightbox();
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && overlay.classList.contains('visible')) closeLightbox();
+            });
+
+            if (!CONFIG.IS_MAKER_MODE) return;
+
+            // Drag the frame to move it (Editor/writer mode only). The
+            // moved/resized rect becomes this photo's saved default.
+            frame.addEventListener('mousedown', (e) => {
+                if (e.target === resizeHandle) return;
+                e.preventDefault();
+
+                const startX = e.clientX, startY = e.clientY;
+                const startRect = frame.getBoundingClientRect();
+
+                const onMove = (moveEvent) => {
+                    frame.style.left = (startRect.left + moveEvent.clientX - startX) + 'px';
+                    frame.style.top = (startRect.top + moveEvent.clientY - startY) + 'px';
+                };
+                const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    savePreviewRectFromFrame();
+                };
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+
+            resizeHandle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const startX = e.clientX, startY = e.clientY;
+                const startRect = frame.getBoundingClientRect();
+
+                const onMove = (moveEvent) => {
+                    frame.style.width = Math.max(120, startRect.width + moveEvent.clientX - startX) + 'px';
+                    frame.style.height = Math.max(120, startRect.height + moveEvent.clientY - startY) + 'px';
+                };
+                const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    savePreviewRectFromFrame();
+                };
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
         }
 
     </script>
