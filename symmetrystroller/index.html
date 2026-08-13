@@ -549,6 +549,31 @@
             display: none !important;
         }
 
+        /* Enlarged marker photo: a floating element centered on the
+           viewport rather than anchored to the marker's map position, so
+           it's always fully visible regardless of where its marker sits
+           on screen (edge of the map, behind the sidebar, etc.). */
+        #marker-enlarge {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 75vw;
+            max-height: 75vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: var(--radius);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+            z-index: 3500;
+            display: none;
+            cursor: zoom-out;
+        }
+
+        #marker-enlarge.visible {
+            display: block;
+        }
+
     </style>
 </head>
 <body>
@@ -623,6 +648,7 @@
         <div id="map-container">
             <div id="map"></div>
         </div>
+        <img id="marker-enlarge" alt="">
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
@@ -657,6 +683,7 @@
             markers: [],
             photoData: [],
             maxZIndex: 1000,
+            minZIndex: 999,
             isDragging: false,
             dragState: null,
             isMarkerDragging: false,
@@ -747,7 +774,7 @@
             const ids = ['photo-list', 'file-input', 'load-input', 'dropzone', 'error-message',
                         'success-message', 'fit-all', 'clear-all', 'save-state', 'load-state',
                         'status', 'app-title', 'app-description', 'walk-name-input', 'walk-slug-input',
-                        'title-walk-name', 'tour-list'];
+                        'title-walk-name', 'tour-list', 'marker-enlarge'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -1077,19 +1104,11 @@
         }
 
         // Helper function to get max dimensions based on device type
-        function getMaxDimensions(isEnlarged = false) {
+        function getMaxDimensions() {
             if (isMobileDevice()) {
                 return {
                     maxWidth: CONFIG.MOBILE_MAX_WIDTH,
                     maxHeight: CONFIG.MOBILE_MAX_HEIGHT
-                };
-            } else if (isEnlarged) {
-                // Fill most of the browser window rather than a fixed cap,
-                // so the enlarged view scales with however big the screen
-                // actually is.
-                return {
-                    maxWidth: window.innerWidth * 0.75,
-                    maxHeight: window.innerHeight * 0.75
                 };
             } else {
                 return {
@@ -1320,35 +1339,27 @@
         }
 
         // Marker functions with responsive sizing
-        function calculateMarkerDimensions(originalWidth, originalHeight, zoomLevel, isEnlarged = false) {
-            // Always square in stroller mode unless enlarged
-            if (!CONFIG.IS_MAKER_MODE && !isEnlarged) {
+        function calculateMarkerDimensions(originalWidth, originalHeight, zoomLevel) {
+            // Always square in stroller mode
+            if (!CONFIG.IS_MAKER_MODE) {
                 return { width: CONFIG.SQUARE_SIZE, height: CONFIG.SQUARE_SIZE, mode: 'square' };
             }
 
             // Get max dimensions based on device and state
-            const { maxWidth, maxHeight } = getMaxDimensions(isEnlarged);
+            const { maxWidth, maxHeight } = getMaxDimensions();
 
             // Original zoom-based behavior for maker mode
             const zoom = zoomLevel || state.map.getZoom();
             const params = getZoomDisplayParams(zoom);
 
-            if (params.mode === 'square' && !isEnlarged) {
+            if (params.mode === 'square') {
                 return { width: CONFIG.SQUARE_SIZE, height: CONFIG.SQUARE_SIZE, mode: 'square' };
-            } else if (params.mode === 'full' || isEnlarged) {
+            } else if (params.mode === 'full') {
                 let width = originalWidth;
                 let height = originalHeight;
                 const aspectRatio = width / height;
 
-                if (isEnlarged) {
-                    // Fill the target box (grow OR shrink) rather than only
-                    // ever shrinking oversized originals — the stored
-                    // originalWidth/Height are thumbnail-scale, so without
-                    // this an "enlarged" photo could stay tiny.
-                    const scale = Math.min(maxWidth / width, maxHeight / height);
-                    width = Math.round(width * scale);
-                    height = Math.round(height * scale);
-                } else if (width > maxWidth || height > maxHeight) {
+                if (width > maxWidth || height > maxHeight) {
                     if (width / maxWidth > height / maxHeight) {
                         width = maxWidth;
                         height = Math.round(maxWidth / aspectRatio);
@@ -2151,6 +2162,17 @@
             marker._currentZIndex = state.maxZIndex;
         }
 
+        // Opposite of bringMarkerToFront: used when a marker collapses back
+        // down after being viewed, so a stack of overlapping circles can be
+        // clicked through one at a time — each click reveals whichever
+        // marker is now on top, since the one you just looked at sank to
+        // the bottom of that stack.
+        function sendMarkerToBack(marker) {
+            state.minZIndex -= 1;
+            marker.setZIndexOffset(state.minZIndex);
+            marker._currentZIndex = state.minZIndex;
+        }
+
         // Make functions available globally for external access
         window.loadStateFromData = loadStateFromData;
         window.clearAllData = clearAllData;
@@ -2167,52 +2189,30 @@
                 resetEnlargedMarker();
             }
 
-            // Enlarge this marker
+            // Show the photo as a floating element centered on the
+            // viewport instead of resizing the marker's own icon in place
+            // — that kept the enlarged photo anchored to its map position,
+            // which could push most of it off-screen or behind the
+            // sidebar depending on where on the map it was clicked.
             state.enlargedMarker = marker;
             bringMarkerToFront(marker);
 
-            // Get full dimensions with enlarged constraints
-            const fullDimensions = calculateMarkerDimensions(
-                marker.originalWidth,
-                marker.originalHeight,
-                null,
-                true // isEnlarged = true
-            );
+            const enlargeEl = elements['marker-enlarge'];
+            enlargeEl.src = marker.photoSrc;
+            enlargeEl.alt = state.photoData[index]?.filename || '';
+            enlargeEl.classList.add('visible');
 
-            const position = L.latLng(state.photoData[index].lat, state.photoData[index].lng);
-            updateMarkerIcon(marker, fullDimensions, position);
-
-            // Auto-collapse back to the circle once the mouse leaves the
-            // enlarged photo. Native 'mouseleave' (not Leaflet's marker
-            // 'mouseout', which bubbles from internal children like the
-            // <img> and would fire the instant the cursor crosses onto the
-            // photo itself) only fires on a genuine exit of the icon's
-            // bounds, and {once:true} keeps this from piling up listeners
-            // across repeated enlarge/collapse cycles.
-            if (marker._icon) {
-                marker._icon.addEventListener('mouseleave', () => {
-                    if (state.enlargedMarker === marker) {
-                        resetEnlargedMarker();
-                    }
-                }, { once: true });
-            }
+            enlargeEl.addEventListener('mouseleave', () => {
+                if (state.enlargedMarker === marker) resetEnlargedMarker();
+            }, { once: true });
         }
 
         function resetEnlargedMarker() {
             if (!state.enlargedMarker) return;
 
-            // Find the index of the enlarged marker
-            const index = state.markers.indexOf(state.enlargedMarker);
-            if (index >= 0) {
-                const squareDimensions = {
-                    width: CONFIG.SQUARE_SIZE,
-                    height: CONFIG.SQUARE_SIZE,
-                    mode: 'square'
-                };
-                const position = L.latLng(state.photoData[index].lat, state.photoData[index].lng);
-                updateMarkerIcon(state.enlargedMarker, squareDimensions, position);
-            }
-
+            elements['marker-enlarge'].classList.remove('visible');
+            elements['marker-enlarge'].src = '';
+            sendMarkerToBack(state.enlargedMarker);
             state.enlargedMarker = null;
         }
 
