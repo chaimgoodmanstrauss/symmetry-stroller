@@ -648,6 +648,7 @@
             width: auto;
             height: auto;
             object-fit: contain;
+            transition: transform 0.2s ease;
         }
 
         #marker-detail-svg {
@@ -656,11 +657,23 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            transition: opacity 0.15s ease;
+            transition: opacity 0.15s ease, transform 0.2s ease;
         }
 
         #marker-detail-svg.overlay-hidden {
             opacity: 0;
+        }
+
+        /* Soft 5px white outer glow behind all annotation marks (lines,
+           dots, splines, brush, text), so they read as sitting above the
+           photo. Applied once to the whole group (not each mark
+           individually) so there's no visible glow seam where marks
+           overlap or sit close together. Sits above the fundamental-domain
+           inverse layer and below nothing — the marks themselves render on
+           top of their own glow, both inside this same group. */
+        #marker-detail-svg .annotation-group {
+            filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9))
+                    drop-shadow(0 0 5px rgba(255, 255, 255, 0.6));
         }
 
         #marker-detail-svg.drawable {
@@ -881,21 +894,28 @@
             <div id="marker-edit-panel" class="maker-only">
                 <h4>Draw</h4>
                 <div class="tool-row">
-                    <button type="button" class="tool-button" data-tool="brush">Brush</button>
                     <button type="button" class="tool-button" data-tool="domain">Fundamental domain</button>
+                    <button type="button" class="tool-button" data-tool="line">Line</button>
+                    <button type="button" class="tool-button" data-tool="dot">Dot</button>
+                    <button type="button" class="tool-button" data-tool="spline">Spline</button>
+                    <button type="button" class="tool-button" data-tool="brush">Brush</button>
+                    <button type="button" class="tool-button" data-tool="text">Text</button>
+                    <button type="button" class="tool-button" data-tool="region">Viewer region</button>
+                </div>
+                <div class="tool-row">
                     <button type="button" id="overlay-undo" class="tool-button">Undo</button>
                     <button type="button" id="overlay-clear" class="tool-button">Clear</button>
                 </div>
-                <div class="tool-row" id="brush-options">
-                    <button type="button" class="tool-button" data-size="5">Thick</button>
-                    <button type="button" class="tool-button" data-size="2">Thin</button>
+                <div class="tool-row" id="color-options">
+                    <span style="font-size:12px;">Color:</span>
                     <button type="button" class="color-swatch" data-color="#d0212b" style="background:#d0212b" title="Red"></button>
-                    <button type="button" class="color-swatch" data-color="#111111" style="background:#111111" title="Black"></button>
-                    <button type="button" class="color-swatch" data-color="#1f4fc4" style="background:#1f4fc4" title="Blue"></button>
-                    <button type="button" class="tool-button" data-blend="opaque">Opaque</button>
-                    <button type="button" class="tool-button" data-blend="multiply">Multiply</button>
-                    <button type="button" class="tool-button" data-dash="solid">Solid</button>
-                    <button type="button" class="tool-button" data-dash="dashed">Dashed</button>
+                    <button type="button" class="color-swatch" data-color="#2883ff" style="background:#2883ff" title="Blue"></button>
+                </div>
+                <div class="tool-row" id="text-options">
+                    <input type="text" id="text-run-input" placeholder="e.g. 4 or *2" style="width:80px;">
+                    <button type="button" id="text-run-add" class="tool-button">+ Add run</button>
+                    <button type="button" id="text-run-reset" class="tool-button">Reset</button>
+                    <span id="text-run-preview" style="font-family:'EB Garamond','Georgia',serif;font-size:16px;"></span>
                 </div>
 
                 <h4>Comment</h4>
@@ -1020,12 +1040,12 @@
             // Marker detail view (enlarged photo + symmetry info/editor)
             detailPhotoId: null,
             editingOverlay: false,
-            overlayTool: 'brush',
-            brushSize: 5,
-            brushColor: '#d0212b',
-            brushBlend: 'opaque',
-            brushDash: 'solid',
-            activeStroke: null
+            overlayTool: 'domain',
+            drawColor: '#d0212b',
+            activeStroke: null,
+            textRuns: [],
+            regionDragState: null,
+            viewerRegionOpen: false
         };
 
         // DOM Elements
@@ -1111,7 +1131,8 @@
                         'marker-info-toggle', 'marker-info-panel', 'marker-edit-panel',
                         'symmetry-comment', 'symmetry-type-list', 'symmetry-class-select',
                         'symmetry-class-controls', 'symmetry-add-type', 'overlay-undo', 'overlay-clear',
-                        'marker-edit-done', 'brush-options'];
+                        'marker-edit-done', 'color-options', 'text-options',
+                        'text-run-input', 'text-run-add', 'text-run-reset', 'text-run-preview'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -1148,6 +1169,16 @@
 
                     // Add zoom event listeners
                     state.map.on('zoom zoomend', handleZoomChange);
+
+                    // Stroller mode: clicking the map background closes an
+                    // enlarged photo.
+                    if (!CONFIG.IS_MAKER_MODE) {
+                        state.map.on('click', () => {
+                            if (state.enlargedMarker) {
+                                resetEnlargedMarker();
+                            }
+                        });
+                    }
 
                     elements.status.textContent = 'Map loaded successfully. Ready for photos.';
 
@@ -1229,14 +1260,6 @@
 
             // Map interactions
             setupMapInteractions();
-            // Add map click handler for stroller mode
-            if (!CONFIG.IS_MAKER_MODE) {
-                state.map.on('click', () => {
-                    if (state.enlargedMarker) {
-                        resetEnlargedMarker();
-                    }
-                });
-            }
         }
 
         function setupDragAndDrop() {
@@ -1624,7 +1647,8 @@
                 lng: lng,
                 comment: '',
                 symmetryTypes: [],
-                overlay: []
+                overlay: [],
+                viewerRegion: null
             };
 
             const index = state.photoData.length;
@@ -2193,7 +2217,8 @@
                     originalHeight: marker?.originalHeight,
                     comment: photo.comment || '',
                     symmetryTypes: photo.symmetryTypes || [],
-                    overlay: photo.overlay || []
+                    overlay: photo.overlay || [],
+                    viewerRegion: photo.viewerRegion || null
                 };
             }));
 
@@ -2297,7 +2322,8 @@
                     originalHeight: photo.originalHeight,
                     comment: photo.comment || '',
                     symmetryTypes: photo.symmetryTypes || [],
-                    overlay: photo.overlay || []
+                    overlay: photo.overlay || [],
+                    viewerRegion: photo.viewerRegion || null
                 });
             });
 
@@ -2648,66 +2674,377 @@
         // the photo is displayed, independent of its actual resolution.
 
         const SVG_UNIT = 1000;
-        const PAUSE_TO_STRAIGHT_MS = 350;
+        const PAUSE_TO_STRAIGHT_MS = 1000;
+        const RED = '#d0212b';
+        const BLUE = '#2883ff';
+        const LINE_WIDTH = 6;
+        const DOT_SIZE = 20;
+        const SPLINE_WIDTH = 6;
+        const SPLINE_END_DOT = 10;
+        const BRUSH_WIDTH = 6;
 
         function findPhotoById(id) {
             return state.photoData.find(p => p.id === id);
         }
 
-        // Renders a photo's saved overlay into the detail SVG. Domain
-        // (fundamental-domain fill) strokes are drawn first regardless of
-        // the order they were added, so brush strokes always end up on top.
+        // Renders a photo's saved overlay into the detail SVG. The
+        // fundamental domain itself stays untouched ("normal") — instead,
+        // everything OUTSIDE the union of domain shapes gets a soft
+        // translucent white wash, sitting above the photo but below the
+        // brush strokes (which render after it, i.e. on top).
         function renderOverlay(photo) {
             const svg = elements['marker-detail-svg'];
             svg.innerHTML = '';
-            const strokes = [...(photo.overlay || [])].sort((a, b) =>
-                (a.tool === 'domain' ? 0 : 1) - (b.tool === 'domain' ? 0 : 1));
-            strokes.forEach(stroke => svg.appendChild(strokeToSvgElement(stroke)));
+
+            const strokes = photo.overlay || [];
+            const domainStrokes = strokes.filter(s => s.tool === 'domain');
+            const markStrokes = strokes.filter(s => s.tool !== 'domain');
+
+            // Bottom: fundamental domain inverse (translucent white over
+            // everything except the domain, which stays untouched).
+            if (domainStrokes.length > 0) {
+                svg.appendChild(buildDomainWhiteout(domainStrokes));
+            }
+
+            // Top: everything else (lines, dots, splines, brush, text) in
+            // one shared <g> so the soft glow (applied to the group in CSS)
+            // is computed once for their combined silhouette — applying it
+            // per-mark instead left a visible glow seam wherever two marks
+            // overlapped or sat close together.
+            const ns = 'http://www.w3.org/2000/svg';
+            const group = document.createElementNS(ns, 'g');
+            group.setAttribute('class', 'annotation-group');
+            markStrokes.forEach(stroke => group.appendChild(strokeToSvgElement(stroke)));
+            svg.appendChild(group);
+
+            if (state.editingOverlay) renderViewerRegion(photo);
+        }
+
+        // The writer-only "viewer region" box: a plain reference rectangle
+        // (not part of the glowing annotation group — it's a UI control,
+        // not a drawn mark) that can be dragged, resized via its corner
+        // handle, or deleted via its × button.
+        function renderViewerRegion(photo) {
+            const svg = elements['marker-detail-svg'];
+            svg.querySelectorAll('.viewer-region-ui').forEach(el => el.remove());
+
+            const region = photo.viewerRegion;
+            if (!region) return;
+
+            const g = document.createElementNS(SVG_NS, 'g');
+            g.setAttribute('class', 'viewer-region-ui');
+
+            const rect = document.createElementNS(SVG_NS, 'rect');
+            rect.setAttribute('x', region.x);
+            rect.setAttribute('y', region.y);
+            rect.setAttribute('width', region.width);
+            rect.setAttribute('height', region.height);
+            rect.setAttribute('fill', 'rgba(40, 131, 255, 0.08)');
+            rect.setAttribute('stroke', BLUE);
+            rect.setAttribute('stroke-width', '2');
+            rect.setAttribute('stroke-dasharray', '8,5');
+            rect.setAttribute('vector-effect', 'non-scaling-stroke');
+            rect.style.cursor = 'move';
+            rect.addEventListener('mousedown', (e) => startRegionMove(e, photo));
+            g.appendChild(rect);
+
+            const handle = document.createElementNS(SVG_NS, 'circle');
+            handle.setAttribute('cx', region.x + region.width);
+            handle.setAttribute('cy', region.y + region.height);
+            handle.setAttribute('r', '7');
+            handle.setAttribute('fill', BLUE);
+            handle.style.cursor = 'nwse-resize';
+            handle.addEventListener('mousedown', (e) => startRegionResize(e, photo));
+            g.appendChild(handle);
+
+            const del = document.createElementNS(SVG_NS, 'text');
+            del.setAttribute('x', region.x + region.width);
+            del.setAttribute('y', Math.max(16, region.y - 8));
+            del.setAttribute('fill', BLUE);
+            del.setAttribute('font-size', '28');
+            del.setAttribute('text-anchor', 'end');
+            del.style.cursor = 'pointer';
+            del.textContent = '×';
+            del.addEventListener('click', (e) => {
+                e.stopPropagation();
+                photo.viewerRegion = null;
+                renderViewerRegion(photo);
+            });
+            g.appendChild(del);
+
+            svg.appendChild(g);
+        }
+
+        function startRegionMove(e, photo) {
+            e.preventDefault();
+            e.stopPropagation();
+            const startPt = svgPointFromEvent(e);
+            const startRegion = { ...photo.viewerRegion };
+            const vb = elements['marker-detail-svg'].viewBox.baseVal;
+
+            const onMove = (moveEvent) => {
+                const pt = svgPointFromEvent(moveEvent);
+                photo.viewerRegion.x = Math.max(0, Math.min(vb.width - startRegion.width, startRegion.x + (pt[0] - startPt[0])));
+                photo.viewerRegion.y = Math.max(0, Math.min(vb.height - startRegion.height, startRegion.y + (pt[1] - startPt[1])));
+                renderViewerRegion(photo);
+            };
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        function startRegionResize(e, photo) {
+            e.preventDefault();
+            e.stopPropagation();
+            const naturalW = elements['marker-detail-img'].naturalWidth || 1;
+            const naturalH = elements['marker-detail-img'].naturalHeight || 1;
+            const vb = elements['marker-detail-svg'].viewBox.baseVal;
+
+            const onMove = (moveEvent) => {
+                const pt = svgPointFromEvent(moveEvent);
+                const w = clampRegionDimension(Math.max(10, pt[0] - photo.viewerRegion.x), naturalW, vb.width || SVG_UNIT);
+                const h = clampRegionDimension(Math.max(10, pt[1] - photo.viewerRegion.y), naturalH, vb.height || SVG_UNIT);
+                photo.viewerRegion.width = w;
+                photo.viewerRegion.height = h;
+                renderViewerRegion(photo);
+            };
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        function startRegionDraw(e) {
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+            e.preventDefault();
+            const startPt = svgPointFromEvent(e);
+            const naturalW = elements['marker-detail-img'].naturalWidth || 1;
+            const naturalH = elements['marker-detail-img'].naturalHeight || 1;
+            const vb = elements['marker-detail-svg'].viewBox.baseVal;
+            photo.viewerRegion = { x: startPt[0], y: startPt[1], width: 1, height: 1 };
+
+            const onMove = (moveEvent) => {
+                const pt = svgPointFromEvent(moveEvent);
+                const x = Math.min(startPt[0], pt[0]);
+                const y = Math.min(startPt[1], pt[1]);
+                const w = clampRegionDimension(Math.abs(pt[0] - startPt[0]), naturalW, vb.width || SVG_UNIT);
+                const h = clampRegionDimension(Math.abs(pt[1] - startPt[1]), naturalH, vb.height || SVG_UNIT);
+                photo.viewerRegion = { x, y, width: w, height: h };
+                renderViewerRegion(photo);
+            };
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        // A single path covering the whole image with each domain shape
+        // cut out of it (evenodd fill rule), so the domain areas show the
+        // photo unmodified while the rest gets a translucent white veil.
+        function buildDomainWhiteout(domainStrokes) {
+            const ns = 'http://www.w3.org/2000/svg';
+            const vb = elements['marker-detail-svg'].viewBox.baseVal;
+            const w = vb.width || SVG_UNIT;
+            const h = vb.height || SVG_UNIT;
+
+            let d = `M0,0 H${w} V${h} H0 Z `;
+            domainStrokes.forEach(stroke => {
+                const pts = stroke.points;
+                if (pts.length < 3) return;
+                d += `M${pts[0][0]},${pts[0][1]} ` +
+                    pts.slice(1).map(p => `L${p[0]},${p[1]}`).join(' ') + ' Z ';
+            });
+
+            const el = document.createElementNS(ns, 'path');
+            el.setAttribute('d', d);
+            el.setAttribute('fill-rule', 'evenodd');
+            el.setAttribute('fill', 'white');
+            el.setAttribute('fill-opacity', '0.5');
+            return el;
+        }
+
+        const SVG_NS = 'http://www.w3.org/2000/svg';
+
+        // A zero-length <line> with a round linecap renders as a filled
+        // circular dot — the standard SVG trick for a fixed-diameter point
+        // marker. Combined with non-scaling-stroke, the diameter stays
+        // literally `size` screen pixels regardless of viewBox scaling.
+        function makeDot(point, size, color) {
+            const el = document.createElementNS(SVG_NS, 'line');
+            el.setAttribute('x1', point[0]);
+            el.setAttribute('y1', point[1]);
+            el.setAttribute('x2', point[0]);
+            el.setAttribute('y2', point[1]);
+            el.setAttribute('stroke', color);
+            el.setAttribute('stroke-width', size);
+            el.setAttribute('stroke-linecap', 'round');
+            el.setAttribute('vector-effect', 'non-scaling-stroke');
+            return el;
+        }
+
+        // Smooth curve through the given points (Catmull-Rom converted to
+        // cubic Bezier segments) rather than a straight-segment polyline.
+        function smoothPathData(points) {
+            if (points.length < 2) return '';
+            if (points.length === 2) {
+                return `M${points[0][0]},${points[0][1]} L${points[1][0]},${points[1][1]}`;
+            }
+            let d = `M${points[0][0]},${points[0][1]} `;
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = points[i - 1] || points[i];
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const p3 = points[i + 2] || p2;
+                const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+                const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+                const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+                const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+                d += `C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]} `;
+            }
+            return d;
         }
 
         function strokeToSvgElement(stroke) {
-            const ns = 'http://www.w3.org/2000/svg';
-            const pointsAttr = stroke.points.map(p => p.join(',')).join(' ');
+            const pointsAttr = (stroke.points || []).map(p => p.join(',')).join(' ');
 
             if (stroke.tool === 'domain') {
-                const el = document.createElementNS(ns, 'polygon');
+                // Live in-progress preview only (the finished shape renders
+                // via buildDomainWhiteout instead) — just an outline so the
+                // drawn-so-far boundary is visible while dragging.
+                const el = document.createElementNS(SVG_NS, 'polyline');
                 el.setAttribute('points', pointsAttr);
-                el.setAttribute('fill', '#999999');
-                el.setAttribute('fill-opacity', '0.5');
-                el.setAttribute('stroke', 'none');
-                el.style.mixBlendMode = 'multiply';
+                el.setAttribute('fill', 'none');
+                el.setAttribute('stroke', '#999999');
+                el.setAttribute('stroke-width', '2');
+                el.setAttribute('stroke-dasharray', '6,4');
+                el.setAttribute('vector-effect', 'non-scaling-stroke');
                 return el;
             }
 
-            const el = document.createElementNS(ns, 'polyline');
-            el.setAttribute('points', pointsAttr);
-            el.setAttribute('fill', 'none');
-            el.setAttribute('stroke', stroke.color);
-            el.setAttribute('stroke-width', stroke.size);
-            el.setAttribute('stroke-linecap', 'round');
-            el.setAttribute('stroke-linejoin', 'round');
-            if (stroke.dash === 'dashed') {
-                el.setAttribute('stroke-dasharray', `${stroke.size * 3},${stroke.size * 2}`);
+            if (stroke.tool === 'line') {
+                const [p0, p1] = stroke.points;
+                const el = document.createElementNS(SVG_NS, 'line');
+                el.setAttribute('x1', p0[0]);
+                el.setAttribute('y1', p0[1]);
+                el.setAttribute('x2', p1[0]);
+                el.setAttribute('y2', p1[1]);
+                el.setAttribute('stroke', RED);
+                el.setAttribute('stroke-width', LINE_WIDTH);
+                el.setAttribute('stroke-linecap', 'round');
+                el.setAttribute('vector-effect', 'non-scaling-stroke');
+                return el;
             }
-            if (stroke.blend === 'multiply') {
-                el.style.mixBlendMode = 'multiply';
-                // Black at full multiply opacity is visually indistinguishable
-                // from an opaque black stroke, so the "multiply" choice would
-                // do nothing for it — halving its opacity is what actually
-                // makes multiply mean something for black specifically.
-                el.setAttribute('stroke-opacity', stroke.color === '#111111' ? '0.5' : '1');
+
+            if (stroke.tool === 'dot') {
+                return makeDot(stroke.point, DOT_SIZE, BLUE);
             }
-            return el;
+
+            if (stroke.tool === 'spline') {
+                const g = document.createElementNS(SVG_NS, 'g');
+                const path = document.createElementNS(SVG_NS, 'path');
+                path.setAttribute('d', smoothPathData(stroke.points));
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke', stroke.color);
+                path.setAttribute('stroke-width', SPLINE_WIDTH);
+                path.setAttribute('stroke-linecap', 'round');
+                path.setAttribute('vector-effect', 'non-scaling-stroke');
+                path.setAttribute('stroke-dasharray', `${SPLINE_WIDTH * 3},${SPLINE_WIDTH * 2}`);
+                g.appendChild(path);
+                g.appendChild(makeDot(stroke.points[0], SPLINE_END_DOT, stroke.color));
+                g.appendChild(makeDot(stroke.points[stroke.points.length - 1], SPLINE_END_DOT, stroke.color));
+                return g;
+            }
+
+            if (stroke.tool === 'brush') {
+                const el = document.createElementNS(SVG_NS, 'polyline');
+                el.setAttribute('points', pointsAttr);
+                el.setAttribute('fill', 'none');
+                el.setAttribute('stroke', stroke.color);
+                el.setAttribute('stroke-width', BRUSH_WIDTH);
+                el.setAttribute('stroke-linecap', 'round');
+                el.setAttribute('stroke-linejoin', 'round');
+                // Point positions live in a normalized 0-1000 space so they
+                // track the image at any display size, but stroke width
+                // should stay literally 6px on screen regardless of that
+                // scaling — non-scaling-stroke decouples the two.
+                el.setAttribute('vector-effect', 'non-scaling-stroke');
+                return el;
+            }
+
+            if (stroke.tool === 'text') {
+                const el = document.createElementNS(SVG_NS, 'text');
+                el.setAttribute('x', stroke.point[0]);
+                el.setAttribute('y', stroke.point[1]);
+                el.setAttribute('font-family', "'EB Garamond', 'Georgia', serif");
+                el.setAttribute('font-size', '48');
+                el.setAttribute('dominant-baseline', 'middle');
+                (stroke.runs || []).forEach(run => {
+                    const tspan = document.createElementNS(SVG_NS, 'tspan');
+                    tspan.setAttribute('fill', run.color);
+                    tspan.textContent = run.text;
+                    el.appendChild(tspan);
+                });
+                return el;
+            }
+
+            return document.createElementNS(SVG_NS, 'g'); // unknown tool: render nothing
         }
 
         // Shows a photo in the floating detail view and sizes the overlay
         // SVG's viewBox to match its aspect ratio (fixed 1000-unit width,
         // so stroke widths stay meaningful regardless of the source photo's
         // actual resolution).
+
+        // Clamps a region box dimension (given in normalized 0-1000 units)
+        // so its real pixel size on the source photo stays within
+        // [min(naturalPx, 200), naturalPx] — never smaller than 200px (or
+        // the whole photo, if it's already narrower than that), never
+        // bigger than the photo itself.
+        function clampRegionDimension(normUnits, naturalPx, svgUnit) {
+            const minPx = Math.min(naturalPx, 200);
+            const px = (normUnits / svgUnit) * naturalPx;
+            const clampedPx = Math.max(minPx, Math.min(naturalPx, px));
+            return (clampedPx / naturalPx) * svgUnit;
+        }
+
+        // Zooms the image + overlay 2x, centered on the writer-placed
+        // viewer region box. Only active once the viewer opts in (the info
+        // toggle) — while editing, the writer sees the full image with the
+        // box drawn as a plain reference rectangle instead.
+        function applyRegionZoom(photo) {
+            const img = elements['marker-detail-img'];
+            const svg = elements['marker-detail-svg'];
+            const region = photo.viewerRegion;
+
+            if (!state.viewerRegionOpen || !region) {
+                img.style.transform = '';
+                svg.style.transform = '';
+                return;
+            }
+
+            const vb = svg.viewBox.baseVal;
+            const w = vb.width || SVG_UNIT;
+            const h = vb.height || SVG_UNIT;
+            const origin = `${((region.x + region.width / 2) / w) * 100}% ${((region.y + region.height / 2) / h) * 100}%`;
+            img.style.transformOrigin = origin;
+            svg.style.transformOrigin = origin;
+            img.style.transform = 'scale(2)';
+            svg.style.transform = 'scale(2)';
+        }
+
         function showMarkerDetailImage(photo, { hideOverlayInitially = false } = {}) {
             const img = elements['marker-detail-img'];
             const svg = elements['marker-detail-svg'];
             state.detailPhotoId = photo.id;
+            state.viewerRegionOpen = false;
 
             const sync = () => {
                 const w = img.naturalWidth || 1;
@@ -2715,6 +3052,7 @@
                 svg.setAttribute('viewBox', `0 0 ${SVG_UNIT} ${Math.round(SVG_UNIT * h / w)}`);
                 renderOverlay(photo);
                 svg.classList.toggle('overlay-hidden', hideOverlayInitially);
+                applyRegionZoom(photo);
             };
 
             img.src = photo.src;
@@ -2820,19 +3158,38 @@
         function updateToolButtonStates() {
             document.querySelectorAll('#marker-edit-panel [data-tool]').forEach(btn =>
                 btn.classList.toggle('active', btn.dataset.tool === state.overlayTool));
-            document.querySelectorAll('#marker-edit-panel [data-size]').forEach(btn =>
-                btn.classList.toggle('active', Number(btn.dataset.size) === state.brushSize));
             document.querySelectorAll('#marker-edit-panel [data-color]').forEach(btn =>
-                btn.classList.toggle('active', btn.dataset.color === state.brushColor));
-            document.querySelectorAll('#marker-edit-panel [data-blend]').forEach(btn =>
-                btn.classList.toggle('active', btn.dataset.blend === state.brushBlend));
-            document.querySelectorAll('#marker-edit-panel [data-dash]').forEach(btn =>
-                btn.classList.toggle('active', btn.dataset.dash === state.brushDash));
-            elements['brush-options'].style.display = state.overlayTool === 'brush' ? 'flex' : 'none';
+                btn.classList.toggle('active', btn.dataset.color === state.drawColor));
+
+            const showColor = ['spline', 'brush', 'text'].includes(state.overlayTool);
+            elements['color-options'].style.display = showColor ? 'flex' : 'none';
+            elements['text-options'].style.display = state.overlayTool === 'text' ? 'flex' : 'none';
+            updateOverlayCursor();
+        }
+
+        // A plain outline circle sized to the brush width (à la
+        // Illustrator's brush-tip cursor) while the brush tool is active,
+        // rather than a picture of a brush — just enough to show where and
+        // how wide it'll draw. Every other tool keeps a plain crosshair.
+        function updateOverlayCursor() {
+            const svg = elements['marker-detail-svg'];
+            if (state.overlayTool === 'brush') {
+                const r = BRUSH_WIDTH / 2;
+                const size = Math.ceil(r * 2 + 2);
+                const c = size / 2;
+                const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>` +
+                    `<circle cx='${c}' cy='${c}' r='${r}' fill='none' stroke='black' stroke-width='1'/></svg>`;
+                svg.style.cursor = `url("data:image/svg+xml,${encodeURIComponent(cursorSvg)}") ${c} ${c}, crosshair`;
+            } else {
+                svg.style.cursor = 'crosshair';
+            }
         }
 
         function openAnnotationEditor(photo) {
             state.editingOverlay = true;
+            state.overlayTool = 'domain';
+            state.drawColor = RED;
+            resetTextBuilder();
             showMarkerDetailImage(photo, { hideOverlayInitially: false });
             elements['marker-detail-svg'].classList.add('drawable');
             elements['marker-detail-frame'].classList.add('editing');
@@ -2865,10 +3222,21 @@
             const stroke = state.activeStroke;
             if (!stroke) return;
             clearTimeout(stroke.pauseTimer);
-            // Holding the mouse still (without releasing) mid-stroke snaps
-            // the rest of that stroke to a straight line from here — lets a
-            // freehand stroke finish as a ruler-straight segment on demand.
-            stroke.pauseTimer = setTimeout(() => { stroke.straight = true; }, PAUSE_TO_STRAIGHT_MS);
+            // Holding the mouse still (without releasing) turns the whole
+            // stroke into a single straight segment from mousedown to
+            // wherever mouseup ends up — not the freehand path plus a
+            // straight tail, the freehand part is discarded entirely.
+            stroke.pauseTimer = setTimeout(() => {
+                stroke.straight = true;
+                const start = stroke.points[0];
+                // The second point starts at wherever the cursor currently
+                // is (the pause point) rather than duplicating start — a
+                // 2-point segment with identical endpoints has zero length
+                // and is invisible, which is why the line was vanishing.
+                const current = stroke.points[stroke.points.length - 1];
+                stroke.points = [start, current];
+                renderActiveStrokePreview();
+            }, PAUSE_TO_STRAIGHT_MS);
         }
 
         function renderActiveStrokePreview() {
@@ -2876,9 +3244,20 @@
             if (!photo) return;
             renderOverlay(photo);
             if (state.activeStroke) {
-                elements['marker-detail-svg'].appendChild(strokeToSvgElement(state.activeStroke));
+                const svg = elements['marker-detail-svg'];
+                const target = state.activeStroke.tool === 'domain'
+                    ? svg
+                    : svg.querySelector('.annotation-group');
+                target.appendChild(strokeToSvgElement(state.activeStroke));
             }
         }
+
+        // Sub-pixel hardware jitter fires real mousemove events even when a
+        // hand is genuinely held still, which would otherwise keep
+        // re-arming the pause timer forever and prevent it from ever
+        // firing. Movement below this (in the normalized 0-1000 space)
+        // doesn't count as real motion.
+        const JITTER_THRESHOLD = 3;
 
         function onOverlayMouseMove(e) {
             const stroke = state.activeStroke;
@@ -2887,13 +3266,20 @@
 
             if (stroke.straight) {
                 stroke.points[stroke.points.length - 1] = pt;
-            } else {
-                stroke.points.push(pt);
-                armPauseTimer();
+                renderActiveStrokePreview();
+                return;
             }
+
+            const last = stroke.points[stroke.points.length - 1];
+            if (Math.hypot(pt[0] - last[0], pt[1] - last[1]) < JITTER_THRESHOLD) return;
+
+            stroke.points.push(pt);
+            armPauseTimer();
             renderActiveStrokePreview();
         }
 
+        // domain and brush share the freehand + hold-to-straighten engine
+        // above; each just tags the finished stroke with its own shape.
         function onOverlayMouseUp() {
             const stroke = state.activeStroke;
             document.removeEventListener('mousemove', onOverlayMouseMove);
@@ -2906,44 +3292,134 @@
                 photo.overlay.push(
                     stroke.tool === 'domain'
                         ? { tool: 'domain', points: stroke.points }
-                        : {
-                            tool: 'brush',
-                            color: stroke.color,
-                            size: stroke.size,
-                            blend: stroke.blend,
-                            dash: stroke.dash,
-                            points: stroke.points
-                        }
+                        : { tool: 'brush', color: stroke.color, points: stroke.points }
                 );
-                renderOverlay(photo);
-            } else if (photo) {
-                renderOverlay(photo);
             }
+            if (photo) renderOverlay(photo);
             state.activeStroke = null;
+        }
+
+        // Line: always a straight segment from mousedown to mouseup, no
+        // freehand phase at all.
+        function onLineMouseMove(e) {
+            if (!state.activeStroke) return;
+            state.activeStroke.points[1] = svgPointFromEvent(e);
+            renderActiveStrokePreview();
+        }
+
+        function onLineMouseUp() {
+            document.removeEventListener('mousemove', onLineMouseMove);
+            document.removeEventListener('mouseup', onLineMouseUp);
+            const stroke = state.activeStroke;
+            state.activeStroke = null;
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+            const [p0, p1] = stroke.points;
+            if (Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 1) {
+                photo.overlay.push({ tool: 'line', points: [p0, p1] });
+            }
+            renderOverlay(photo);
+        }
+
+        // Spline: pure freehand (smoothed at render time), no
+        // hold-to-straighten — that behavior is brush-specific.
+        function onSplineMouseMove(e) {
+            const stroke = state.activeStroke;
+            if (!stroke) return;
+            const pt = svgPointFromEvent(e);
+            const last = stroke.points[stroke.points.length - 1];
+            if (Math.hypot(pt[0] - last[0], pt[1] - last[1]) < JITTER_THRESHOLD) return;
+            stroke.points.push(pt);
+            renderActiveStrokePreview();
+        }
+
+        function onSplineMouseUp() {
+            document.removeEventListener('mousemove', onSplineMouseMove);
+            document.removeEventListener('mouseup', onSplineMouseUp);
+            const stroke = state.activeStroke;
+            state.activeStroke = null;
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+            if (stroke.points.length > 1) {
+                photo.overlay.push({ tool: 'spline', color: stroke.color, points: stroke.points });
+            }
+            renderOverlay(photo);
         }
 
         function setupOverlayDrawing() {
             elements['marker-detail-svg'].addEventListener('mousedown', (e) => {
                 if (!state.editingOverlay) return;
-                e.preventDefault();
+                if (e.target.closest('.viewer-region-ui')) return; // handled by its own listeners
 
+                if (state.overlayTool === 'region') {
+                    startRegionDraw(e);
+                    return;
+                }
+
+                e.preventDefault();
                 const pt = svgPointFromEvent(e);
+                const photo = findPhotoById(state.detailPhotoId);
+                if (!photo) return;
+
+                if (state.overlayTool === 'dot') {
+                    photo.overlay.push({ tool: 'dot', point: pt });
+                    renderOverlay(photo);
+                    return;
+                }
+
+                if (state.overlayTool === 'text') {
+                    if (state.textRuns.length === 0) return;
+                    photo.overlay.push({ tool: 'text', point: pt, runs: state.textRuns.slice() });
+                    renderOverlay(photo);
+                    resetTextBuilder();
+                    return;
+                }
+
+                if (state.overlayTool === 'line') {
+                    state.activeStroke = { tool: 'line', points: [pt, pt] };
+                    renderActiveStrokePreview();
+                    document.addEventListener('mousemove', onLineMouseMove);
+                    document.addEventListener('mouseup', onLineMouseUp);
+                    return;
+                }
+
+                if (state.overlayTool === 'spline') {
+                    state.activeStroke = { tool: 'spline', color: state.drawColor, points: [pt] };
+                    renderActiveStrokePreview();
+                    document.addEventListener('mousemove', onSplineMouseMove);
+                    document.addEventListener('mouseup', onSplineMouseUp);
+                    return;
+                }
+
+                // domain, brush: freehand + hold-to-straighten
                 state.activeStroke = {
                     tool: state.overlayTool,
-                    color: state.brushColor,
-                    size: state.brushSize,
-                    blend: state.brushBlend,
-                    dash: state.brushDash,
+                    color: state.drawColor,
                     points: [pt],
                     straight: false,
                     pauseTimer: null
                 };
                 armPauseTimer();
                 renderActiveStrokePreview();
-
                 document.addEventListener('mousemove', onOverlayMouseMove);
                 document.addEventListener('mouseup', onOverlayMouseUp);
             });
+        }
+
+        function updateTextRunPreview() {
+            const preview = elements['text-run-preview'];
+            preview.innerHTML = '';
+            state.textRuns.forEach(run => {
+                const span = document.createElement('span');
+                span.style.color = run.color;
+                span.textContent = run.text;
+                preview.appendChild(span);
+            });
+        }
+
+        function resetTextBuilder() {
+            state.textRuns = [];
+            updateTextRunPreview();
         }
 
         function setupAnnotationEditorControls() {
@@ -2953,27 +3429,9 @@
                     updateToolButtonStates();
                 });
             });
-            document.querySelectorAll('#marker-edit-panel [data-size]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    state.brushSize = Number(btn.dataset.size);
-                    updateToolButtonStates();
-                });
-            });
             document.querySelectorAll('#marker-edit-panel [data-color]').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    state.brushColor = btn.dataset.color;
-                    updateToolButtonStates();
-                });
-            });
-            document.querySelectorAll('#marker-edit-panel [data-blend]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    state.brushBlend = btn.dataset.blend;
-                    updateToolButtonStates();
-                });
-            });
-            document.querySelectorAll('#marker-edit-panel [data-dash]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    state.brushDash = btn.dataset.dash;
+                    state.drawColor = btn.dataset.color;
                     updateToolButtonStates();
                 });
             });
@@ -2991,6 +3449,15 @@
                 renderOverlay(photo);
             });
 
+            elements['text-run-add'].addEventListener('click', () => {
+                const text = elements['text-run-input'].value.trim();
+                if (!text) return;
+                state.textRuns.push({ text, color: state.drawColor });
+                elements['text-run-input'].value = '';
+                updateTextRunPreview();
+            });
+            elements['text-run-reset'].addEventListener('click', resetTextBuilder);
+
             elements['symmetry-comment'].addEventListener('input', (e) => {
                 const photo = findPhotoById(state.detailPhotoId);
                 if (photo) photo.comment = e.target.value;
@@ -2999,12 +3466,18 @@
             elements['symmetry-add-type'].addEventListener('click', addSymmetryType);
             elements['marker-edit-done'].addEventListener('click', closeAnnotationEditor);
 
+            // Viewer-only: toggles the info panel, the drawn overlay, and
+            // the 2x zoom into the writer's placed region, all together.
             elements['marker-info-toggle'].addEventListener('click', (e) => {
                 e.stopPropagation();
                 const photo = findPhotoById(state.detailPhotoId);
                 const nowVisible = elements['marker-info-panel'].classList.toggle('visible');
                 elements['marker-detail-svg'].classList.toggle('overlay-hidden', !nowVisible);
-                if (photo) renderInfoPanel(photo);
+                state.viewerRegionOpen = nowVisible;
+                if (photo) {
+                    renderInfoPanel(photo);
+                    applyRegionZoom(photo);
+                }
             });
 
             setupOverlayDrawing();
