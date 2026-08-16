@@ -117,6 +117,10 @@
             display: none !important;
         }
 
+        .maker-mode .viewer-only {
+            display: none !important;
+        }
+
         .stroller-mode #sidebar {
             display: none !important;
         }
@@ -349,6 +353,28 @@
             font-size: 11.5px;
         }
 
+        .coord-row {
+            display: flex;
+            gap: 4px;
+            margin-top: 3px;
+        }
+
+        .coord-input {
+            width: 72px;
+            font-size: 11px;
+            padding: 2px 4px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-muted);
+            font-family: inherit;
+        }
+
+        .coord-input:focus {
+            color: var(--text);
+            border-color: var(--accent);
+            outline: none;
+        }
+
         .map-controls {
             margin: 16px 0;
             display: flex;
@@ -444,6 +470,33 @@
             background-color: var(--danger);
             color: white;
             border-color: var(--danger);
+        }
+
+        .photo-annotate-button {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background-color: var(--surface);
+            color: var(--accent);
+            border: 1.5px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'EB Garamond', 'Georgia', serif;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.15s ease;
+        }
+
+        .photo-annotate-button:hover {
+            background-color: var(--accent);
+            color: white;
+            border-color: var(--accent);
         }
 
         /* Control point */
@@ -552,26 +605,196 @@
         /* Enlarged marker photo: a floating element centered on the
            viewport rather than anchored to the marker's map position, so
            it's always fully visible regardless of where its marker sits
-           on screen (edge of the map, behind the sidebar, etc.). */
-        #marker-enlarge {
+           on screen (edge of the map, behind the sidebar, etc.). Holds the
+           image, an SVG symmetry-overlay layer, an info toggle (Viewer),
+           and an annotation editor (Writer). */
+        #marker-detail {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            z-index: 3500;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            max-width: 90vw;
+            max-height: 92vh;
+        }
+
+        #marker-detail.visible {
+            display: flex;
+        }
+
+        #marker-detail-frame {
+            position: relative;
+            max-width: 75vw;
+            max-height: 75vh;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+            line-height: 0;
+            cursor: zoom-out;
+        }
+
+        .maker-mode #marker-detail-frame.editing {
+            cursor: default;
+        }
+
+        #marker-detail-img {
+            display: block;
             max-width: 75vw;
             max-height: 75vh;
             width: auto;
             height: auto;
             object-fit: contain;
-            border-radius: var(--radius);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
-            z-index: 3500;
-            display: none;
-            cursor: zoom-out;
         }
 
-        #marker-enlarge.visible {
+        #marker-detail-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+        }
+
+        #marker-detail-svg.overlay-hidden {
+            opacity: 0;
+        }
+
+        #marker-detail-svg.drawable {
+            pointer-events: auto;
+            cursor: crosshair;
+        }
+
+        #marker-info-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: rgba(20, 16, 24, 0.6);
+            color: #fff;
+            border: 1.5px solid rgba(255, 255, 255, 0.65);
+            font-family: 'EB Garamond', 'Georgia', serif;
+            font-size: 17px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+
+        #marker-info-toggle.hidden {
+            display: none;
+        }
+
+        #marker-info-panel {
+            display: none;
+            max-width: 75vw;
+            max-height: 26vh;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            font-size: 14px;
+        }
+
+        #marker-info-panel.visible {
             display: block;
+        }
+
+        #marker-info-panel .info-comment {
+            margin: 0 0 8px 0;
+            white-space: pre-wrap;
+        }
+
+        .symmetry-chip {
+            display: inline-block;
+            padding: 3px 10px;
+            margin: 0 6px 6px 0;
+            border-radius: 999px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            font-family: 'EB Garamond', 'Georgia', serif;
+            font-size: 15px;
+        }
+
+        /* Writer-mode annotation editor */
+        #marker-edit-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            padding: 12px 14px;
+            width: min(75vw, 480px);
+            max-height: 30vh;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+
+        #marker-edit-panel h4 {
+            margin: 0 0 6px 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+        }
+
+        .tool-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .tool-button {
+            padding: 4px 10px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .tool-button.active {
+            border-color: var(--accent);
+            background: #eeecff;
+            font-weight: 600;
+        }
+
+        .color-swatch {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .color-swatch.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+
+        #symmetry-comment {
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 50px;
+            font: inherit;
+            padding: 6px 8px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            resize: vertical;
+            margin-bottom: 10px;
+        }
+
+        #symmetry-type-list {
+            margin-bottom: 8px;
         }
 
     </style>
@@ -648,7 +871,55 @@
         <div id="map-container">
             <div id="map"></div>
         </div>
-        <img id="marker-enlarge" alt="">
+        <div id="marker-detail">
+            <div id="marker-detail-frame">
+                <img id="marker-detail-img" alt="">
+                <svg id="marker-detail-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+                <button id="marker-info-toggle" class="viewer-only hidden" title="Show symmetry info">Ω</button>
+            </div>
+            <div id="marker-info-panel" class="viewer-only"></div>
+            <div id="marker-edit-panel" class="maker-only">
+                <h4>Draw</h4>
+                <div class="tool-row">
+                    <button type="button" class="tool-button" data-tool="brush">Brush</button>
+                    <button type="button" class="tool-button" data-tool="domain">Fundamental domain</button>
+                    <button type="button" id="overlay-undo" class="tool-button">Undo</button>
+                    <button type="button" id="overlay-clear" class="tool-button">Clear</button>
+                </div>
+                <div class="tool-row" id="brush-options">
+                    <button type="button" class="tool-button" data-size="5">Thick</button>
+                    <button type="button" class="tool-button" data-size="2">Thin</button>
+                    <button type="button" class="color-swatch" data-color="#d0212b" style="background:#d0212b" title="Red"></button>
+                    <button type="button" class="color-swatch" data-color="#111111" style="background:#111111" title="Black"></button>
+                    <button type="button" class="color-swatch" data-color="#1f4fc4" style="background:#1f4fc4" title="Blue"></button>
+                    <button type="button" class="tool-button" data-blend="opaque">Opaque</button>
+                    <button type="button" class="tool-button" data-blend="multiply">Multiply</button>
+                    <button type="button" class="tool-button" data-dash="solid">Solid</button>
+                    <button type="button" class="tool-button" data-dash="dashed">Dashed</button>
+                </div>
+
+                <h4>Comment</h4>
+                <textarea id="symmetry-comment" placeholder="Notes about this photo's symmetry..."></textarea>
+
+                <h4>Symmetry types</h4>
+                <div id="symmetry-type-list"></div>
+                <div class="tool-row">
+                    <select id="symmetry-class-select">
+                        <option value="mirror">Mirror</option>
+                        <option value="rosette">Rosette</option>
+                        <option value="frieze">Frieze</option>
+                        <option value="planar">Planar pattern</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <span id="symmetry-class-controls"></span>
+                    <button type="button" id="symmetry-add-type" class="tool-button">Add</button>
+                </div>
+
+                <div class="tool-row">
+                    <button type="button" id="marker-edit-done" class="tool-button">Done editing</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
@@ -674,6 +945,58 @@
             MOBILE_BREAKPOINT: 768    // Width breakpoint for mobile devices
         };
 
+        // Orbifold notation, following the conventions of Conway, Burgiel &
+        // Goodman-Strauss's "The Symmetries of Things" / "The Magic
+        // Theorem": rosette (point) groups get a trailing "•"; the seven
+        // frieze groups and seventeen planar (wallpaper) groups are fixed
+        // sets of symbols, listed here with their crystallographic names
+        // as a memory aid in the dropdowns.
+        const FRIEZE_TYPES = [
+            { symbol: '∞∞', name: 'hop' },
+            { symbol: '∞×', name: 'step' },
+            { symbol: '*∞∞', name: 'sidle' },
+            { symbol: '22∞', name: 'spinning hop' },
+            { symbol: '2*∞', name: 'spinning sidle' },
+            { symbol: '∞*', name: 'jump' },
+            { symbol: '*22∞', name: 'spinning jump' }
+        ];
+
+        const PLANAR_TYPES = [
+            { symbol: 'o', name: 'p1' },
+            { symbol: '××', name: 'pg' },
+            { symbol: '*×', name: 'cm' },
+            { symbol: '**', name: 'pm' },
+            { symbol: '2222', name: 'p2' },
+            { symbol: '22×', name: 'pgg' },
+            { symbol: '22*', name: 'pmg' },
+            { symbol: '*2222', name: 'pmm' },
+            { symbol: '2*22', name: 'cmm' },
+            { symbol: '333', name: 'p3' },
+            { symbol: '3*3', name: 'p31m' },
+            { symbol: '*333', name: 'p3m1' },
+            { symbol: '442', name: 'p4' },
+            { symbol: '4*2', name: 'p4g' },
+            { symbol: '*442', name: 'p4m' },
+            { symbol: '632', name: 'p6' },
+            { symbol: '*632', name: 'p6m' }
+        ];
+
+        // Multi-digit rosette orders get auto-parenthesized (e.g. 12• ->
+        // (12)•) since a bare "12" next to the dot notation is ambiguous
+        // with "1" followed by "2".
+        function formatRosette(n, hasMirror) {
+            const order = n >= 10 ? `(${n})` : String(n);
+            return (hasMirror ? '*' : '') + order + '•';
+        }
+
+        const SYMMETRY_CLASS_LABELS = {
+            mirror: 'Mirror',
+            rosette: 'Rosette',
+            frieze: 'Frieze',
+            planar: 'Planar pattern',
+            other: 'Other'
+        };
+
         // Which walk this page instance is showing, resolved from ?walk=<slug> via walks.json
         let currentWalk = null;
 
@@ -693,7 +1016,16 @@
             walkName: '',
             walkSlug: '',
             walkSlugManuallySet: false,
-            tourManifest: []
+            tourManifest: [],
+            // Marker detail view (enlarged photo + symmetry info/editor)
+            detailPhotoId: null,
+            editingOverlay: false,
+            overlayTool: 'brush',
+            brushSize: 5,
+            brushColor: '#d0212b',
+            brushBlend: 'opaque',
+            brushDash: 'solid',
+            activeStroke: null
         };
 
         // DOM Elements
@@ -774,7 +1106,12 @@
             const ids = ['photo-list', 'file-input', 'load-input', 'dropzone', 'error-message',
                         'success-message', 'fit-all', 'clear-all', 'save-state', 'load-state',
                         'status', 'app-title', 'app-description', 'walk-name-input', 'walk-slug-input',
-                        'title-walk-name', 'tour-list', 'marker-enlarge'];
+                        'title-walk-name', 'tour-list',
+                        'marker-detail', 'marker-detail-frame', 'marker-detail-img', 'marker-detail-svg',
+                        'marker-info-toggle', 'marker-info-panel', 'marker-edit-panel',
+                        'symmetry-comment', 'symmetry-type-list', 'symmetry-class-select',
+                        'symmetry-class-controls', 'symmetry-add-type', 'overlay-undo', 'overlay-clear',
+                        'marker-edit-done', 'brush-options'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -886,6 +1223,9 @@
             if (CONFIG.IS_MAKER_MODE) {
                 setupOptionKeyHandlers();
             }
+
+            // Symmetry-type / drawing-overlay detail view
+            setupAnnotationEditorControls();
 
             // Map interactions
             setupMapInteractions();
@@ -1281,7 +1621,10 @@
                 src: src,
                 filename: filename,
                 lat: lat,
-                lng: lng
+                lng: lng,
+                comment: '',
+                symmetryTypes: [],
+                overlay: []
             };
 
             const index = state.photoData.length;
@@ -1509,12 +1852,62 @@
 
                 const photoName = document.createElement('p');
                 photoName.textContent = photo.filename;
-
-                const coords = document.createElement('small');
-                coords.textContent = `${photo.lat.toFixed(6)}, ${photo.lng.toFixed(6)}`;
-
                 infoDiv.appendChild(photoName);
-                infoDiv.appendChild(coords);
+
+                if (CONFIG.IS_MAKER_MODE) {
+                    const coordRow = document.createElement('div');
+                    coordRow.className = 'coord-row';
+
+                    const latInput = document.createElement('input');
+                    latInput.type = 'number';
+                    latInput.step = 'any';
+                    latInput.className = 'coord-input';
+                    latInput.value = photo.lat;
+                    latInput.title = 'Latitude';
+
+                    const lngInput = document.createElement('input');
+                    lngInput.type = 'number';
+                    lngInput.step = 'any';
+                    lngInput.className = 'coord-input';
+                    lngInput.value = photo.lng;
+                    lngInput.title = 'Longitude';
+
+                    const applyCoords = () => {
+                        const lat = parseFloat(latInput.value);
+                        const lng = parseFloat(lngInput.value);
+                        if (isNaN(lat) || isNaN(lng)) return;
+                        photo.lat = lat;
+                        photo.lng = lng;
+                        if (state.markers[index]) {
+                            state.markers[index].setLatLng([lat, lng]);
+                        }
+                        elements.status.textContent = `${photo.filename} moved to ${lat.toFixed(6)}, ${lng.toFixed(6)}.`;
+                    };
+
+                    const pasteCoordPair = (e) => {
+                        const text = (e.clipboardData || window.clipboardData).getData('text');
+                        const match = text.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+                        if (!match) return; // not a "lat, lng" pair — let the normal paste happen
+                        e.preventDefault();
+                        latInput.value = match[1];
+                        lngInput.value = match[2];
+                        applyCoords();
+                    };
+
+                    [latInput, lngInput].forEach(input => {
+                        input.addEventListener('click', (e) => e.stopPropagation());
+                        input.addEventListener('change', applyCoords);
+                        input.addEventListener('paste', pasteCoordPair);
+                    });
+
+                    coordRow.appendChild(latInput);
+                    coordRow.appendChild(lngInput);
+                    infoDiv.appendChild(coordRow);
+                } else {
+                    const coords = document.createElement('small');
+                    coords.textContent = `${photo.lat.toFixed(6)}, ${photo.lng.toFixed(6)}`;
+                    infoDiv.appendChild(coords);
+                }
 
                 photoItem.appendChild(thumbnail);
                 photoItem.appendChild(infoDiv);
@@ -1529,6 +1922,16 @@
                         removePhoto(index);
                     });
                     photoItem.appendChild(deleteButton);
+
+                    const annotateButton = document.createElement('div');
+                    annotateButton.className = 'photo-annotate-button';
+                    annotateButton.innerHTML = 'Ω';
+                    annotateButton.title = 'Symmetry type & drawing overlay';
+                    annotateButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openAnnotationEditor(photo);
+                    });
+                    photoItem.appendChild(annotateButton);
                 }
 
                 photoItem.addEventListener('click', () => {
@@ -1787,7 +2190,10 @@
                     lat: photo.lat,
                     lng: photo.lng,
                     originalWidth: marker?.originalWidth,
-                    originalHeight: marker?.originalHeight
+                    originalHeight: marker?.originalHeight,
+                    comment: photo.comment || '',
+                    symmetryTypes: photo.symmetryTypes || [],
+                    overlay: photo.overlay || []
                 };
             }));
 
@@ -1888,7 +2294,10 @@
                     lat: photo.lat,
                     lng: photo.lng,
                     originalWidth: photo.originalWidth,
-                    originalHeight: photo.originalHeight
+                    originalHeight: photo.originalHeight,
+                    comment: photo.comment || '',
+                    symmetryTypes: photo.symmetryTypes || [],
+                    overlay: photo.overlay || []
                 });
             });
 
@@ -2197,12 +2606,22 @@
             state.enlargedMarker = marker;
             bringMarkerToFront(marker);
 
-            const enlargeEl = elements['marker-enlarge'];
-            enlargeEl.src = marker.photoSrc;
-            enlargeEl.alt = state.photoData[index]?.filename || '';
-            enlargeEl.classList.add('visible');
+            const photo = state.photoData[index];
+            showMarkerDetailImage(photo, { hideOverlayInitially: true });
 
-            enlargeEl.addEventListener('mouseleave', () => {
+            const hasInfo = Boolean(
+                (photo.comment && photo.comment.trim()) ||
+                (photo.symmetryTypes && photo.symmetryTypes.length) ||
+                (photo.overlay && photo.overlay.length)
+            );
+            elements['marker-info-toggle'].classList.toggle('hidden', !hasInfo);
+            elements['marker-info-panel'].classList.remove('visible');
+            renderInfoPanel(photo);
+
+            // Auto-collapse once the mouse leaves the whole detail view
+            // (image + toggle + info panel), not just the image, so
+            // moving down into the info panel doesn't count as leaving.
+            elements['marker-detail'].addEventListener('mouseleave', () => {
                 if (state.enlargedMarker === marker) resetEnlargedMarker();
             }, { once: true });
         }
@@ -2210,12 +2629,386 @@
         function resetEnlargedMarker() {
             if (!state.enlargedMarker) return;
 
-            elements['marker-enlarge'].classList.remove('visible');
-            elements['marker-enlarge'].src = '';
+            elements['marker-detail'].classList.remove('visible');
+            elements['marker-detail-img'].src = '';
+            elements['marker-info-panel'].classList.remove('visible');
             sendMarkerToBack(state.enlargedMarker);
             state.enlargedMarker = null;
+            state.detailPhotoId = null;
         }
 
+        // ---- Symmetry type & drawing-overlay engine ----------------------
+        //
+        // Follows the orbifold notation of Conway, Burgiel & Goodman-Strauss
+        // ("The Symmetries of Things" / "The Magic Theorem"). Each photo can
+        // carry: a comment, any number of symmetry types (mirror/rosette/
+        // frieze/planar/other), and a freehand drawing overlay (brush
+        // strokes + filled "fundamental domain" regions), all stored in
+        // normalized 0-1000-wide coordinates so they scale with however big
+        // the photo is displayed, independent of its actual resolution.
+
+        const SVG_UNIT = 1000;
+        const PAUSE_TO_STRAIGHT_MS = 350;
+
+        function findPhotoById(id) {
+            return state.photoData.find(p => p.id === id);
+        }
+
+        // Renders a photo's saved overlay into the detail SVG. Domain
+        // (fundamental-domain fill) strokes are drawn first regardless of
+        // the order they were added, so brush strokes always end up on top.
+        function renderOverlay(photo) {
+            const svg = elements['marker-detail-svg'];
+            svg.innerHTML = '';
+            const strokes = [...(photo.overlay || [])].sort((a, b) =>
+                (a.tool === 'domain' ? 0 : 1) - (b.tool === 'domain' ? 0 : 1));
+            strokes.forEach(stroke => svg.appendChild(strokeToSvgElement(stroke)));
+        }
+
+        function strokeToSvgElement(stroke) {
+            const ns = 'http://www.w3.org/2000/svg';
+            const pointsAttr = stroke.points.map(p => p.join(',')).join(' ');
+
+            if (stroke.tool === 'domain') {
+                const el = document.createElementNS(ns, 'polygon');
+                el.setAttribute('points', pointsAttr);
+                el.setAttribute('fill', '#999999');
+                el.setAttribute('fill-opacity', '0.5');
+                el.setAttribute('stroke', 'none');
+                el.style.mixBlendMode = 'multiply';
+                return el;
+            }
+
+            const el = document.createElementNS(ns, 'polyline');
+            el.setAttribute('points', pointsAttr);
+            el.setAttribute('fill', 'none');
+            el.setAttribute('stroke', stroke.color);
+            el.setAttribute('stroke-width', stroke.size);
+            el.setAttribute('stroke-linecap', 'round');
+            el.setAttribute('stroke-linejoin', 'round');
+            if (stroke.dash === 'dashed') {
+                el.setAttribute('stroke-dasharray', `${stroke.size * 3},${stroke.size * 2}`);
+            }
+            if (stroke.blend === 'multiply') {
+                el.style.mixBlendMode = 'multiply';
+                // Black at full multiply opacity is visually indistinguishable
+                // from an opaque black stroke, so the "multiply" choice would
+                // do nothing for it — halving its opacity is what actually
+                // makes multiply mean something for black specifically.
+                el.setAttribute('stroke-opacity', stroke.color === '#111111' ? '0.5' : '1');
+            }
+            return el;
+        }
+
+        // Shows a photo in the floating detail view and sizes the overlay
+        // SVG's viewBox to match its aspect ratio (fixed 1000-unit width,
+        // so stroke widths stay meaningful regardless of the source photo's
+        // actual resolution).
+        function showMarkerDetailImage(photo, { hideOverlayInitially = false } = {}) {
+            const img = elements['marker-detail-img'];
+            const svg = elements['marker-detail-svg'];
+            state.detailPhotoId = photo.id;
+
+            const sync = () => {
+                const w = img.naturalWidth || 1;
+                const h = img.naturalHeight || 1;
+                svg.setAttribute('viewBox', `0 0 ${SVG_UNIT} ${Math.round(SVG_UNIT * h / w)}`);
+                renderOverlay(photo);
+                svg.classList.toggle('overlay-hidden', hideOverlayInitially);
+            };
+
+            img.src = photo.src;
+            img.alt = photo.filename || '';
+            if (img.complete && img.naturalWidth) {
+                sync();
+            } else {
+                img.onload = sync;
+            }
+
+            elements['marker-detail'].classList.add('visible');
+        }
+
+        function renderInfoPanel(photo) {
+            const panel = elements['marker-info-panel'];
+            panel.innerHTML = '';
+
+            if (photo.comment && photo.comment.trim()) {
+                const p = document.createElement('p');
+                p.className = 'info-comment';
+                p.textContent = photo.comment;
+                panel.appendChild(p);
+            }
+
+            (photo.symmetryTypes || []).forEach(type => {
+                const chip = document.createElement('span');
+                chip.className = 'symmetry-chip';
+                chip.textContent = `${SYMMETRY_CLASS_LABELS[type.class]}: ${type.value}`;
+                panel.appendChild(chip);
+            });
+        }
+
+        function renderSymmetryTypeList(photo) {
+            const container = elements['symmetry-type-list'];
+            container.innerHTML = '';
+
+            photo.symmetryTypes.forEach((type, i) => {
+                const chip = document.createElement('span');
+                chip.className = 'symmetry-chip';
+                chip.textContent = `${SYMMETRY_CLASS_LABELS[type.class]}: ${type.value} `;
+
+                const remove = document.createElement('span');
+                remove.textContent = '×';
+                remove.style.cursor = 'pointer';
+                remove.addEventListener('click', () => {
+                    photo.symmetryTypes.splice(i, 1);
+                    renderSymmetryTypeList(photo);
+                });
+
+                chip.appendChild(remove);
+                container.appendChild(chip);
+            });
+        }
+
+        function renderClassControls() {
+            const cls = elements['symmetry-class-select'].value;
+            const container = elements['symmetry-class-controls'];
+
+            if (cls === 'rosette') {
+                container.innerHTML =
+                    `<input type="number" id="rosette-n" min="1" step="1" value="6" style="width:50px;">` +
+                    `<label style="font-size:12px;margin-left:4px;"><input type="checkbox" id="rosette-mirror"> mirror (*)</label>`;
+            } else if (cls === 'frieze') {
+                container.innerHTML = `<select id="frieze-select">` +
+                    FRIEZE_TYPES.map(t => `<option value="${t.symbol}">${t.symbol} (${t.name})</option>`).join('') +
+                    `</select>`;
+            } else if (cls === 'planar') {
+                container.innerHTML = `<select id="planar-select">` +
+                    PLANAR_TYPES.map(t => `<option value="${t.symbol}">${t.symbol} (${t.name})</option>`).join('') +
+                    `</select>`;
+            } else if (cls === 'other') {
+                container.innerHTML = `<span style="font-size:12px;color:var(--text-muted);">Not yet supported</span>`;
+            } else {
+                container.innerHTML = '';
+            }
+        }
+
+        function addSymmetryType() {
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+
+            const cls = elements['symmetry-class-select'].value;
+            let value = null;
+
+            if (cls === 'mirror') {
+                value = '*';
+            } else if (cls === 'rosette') {
+                const n = parseInt(document.getElementById('rosette-n').value, 10);
+                if (!n || n < 1) return;
+                value = formatRosette(n, document.getElementById('rosette-mirror').checked);
+            } else if (cls === 'frieze') {
+                value = document.getElementById('frieze-select').value;
+            } else if (cls === 'planar') {
+                value = document.getElementById('planar-select').value;
+            } else {
+                return; // "other" isn't implemented yet
+            }
+
+            photo.symmetryTypes.push({ class: cls, value });
+            renderSymmetryTypeList(photo);
+        }
+
+        function updateToolButtonStates() {
+            document.querySelectorAll('#marker-edit-panel [data-tool]').forEach(btn =>
+                btn.classList.toggle('active', btn.dataset.tool === state.overlayTool));
+            document.querySelectorAll('#marker-edit-panel [data-size]').forEach(btn =>
+                btn.classList.toggle('active', Number(btn.dataset.size) === state.brushSize));
+            document.querySelectorAll('#marker-edit-panel [data-color]').forEach(btn =>
+                btn.classList.toggle('active', btn.dataset.color === state.brushColor));
+            document.querySelectorAll('#marker-edit-panel [data-blend]').forEach(btn =>
+                btn.classList.toggle('active', btn.dataset.blend === state.brushBlend));
+            document.querySelectorAll('#marker-edit-panel [data-dash]').forEach(btn =>
+                btn.classList.toggle('active', btn.dataset.dash === state.brushDash));
+            elements['brush-options'].style.display = state.overlayTool === 'brush' ? 'flex' : 'none';
+        }
+
+        function openAnnotationEditor(photo) {
+            state.editingOverlay = true;
+            showMarkerDetailImage(photo, { hideOverlayInitially: false });
+            elements['marker-detail-svg'].classList.add('drawable');
+            elements['marker-detail-frame'].classList.add('editing');
+            elements['symmetry-comment'].value = photo.comment || '';
+            renderSymmetryTypeList(photo);
+            renderClassControls();
+            updateToolButtonStates();
+        }
+
+        function closeAnnotationEditor() {
+            state.editingOverlay = false;
+            state.activeStroke = null;
+            elements['marker-detail-svg'].classList.remove('drawable');
+            elements['marker-detail-frame'].classList.remove('editing');
+            elements['marker-detail'].classList.remove('visible');
+            elements['marker-detail-img'].src = '';
+            state.detailPhotoId = null;
+        }
+
+        function svgPointFromEvent(e) {
+            const svg = elements['marker-detail-svg'];
+            const rect = svg.getBoundingClientRect();
+            const vb = svg.viewBox.baseVal;
+            const x = ((e.clientX - rect.left) / rect.width) * vb.width;
+            const y = ((e.clientY - rect.top) / rect.height) * vb.height;
+            return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+        }
+
+        function armPauseTimer() {
+            const stroke = state.activeStroke;
+            if (!stroke) return;
+            clearTimeout(stroke.pauseTimer);
+            // Holding the mouse still (without releasing) mid-stroke snaps
+            // the rest of that stroke to a straight line from here — lets a
+            // freehand stroke finish as a ruler-straight segment on demand.
+            stroke.pauseTimer = setTimeout(() => { stroke.straight = true; }, PAUSE_TO_STRAIGHT_MS);
+        }
+
+        function renderActiveStrokePreview() {
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+            renderOverlay(photo);
+            if (state.activeStroke) {
+                elements['marker-detail-svg'].appendChild(strokeToSvgElement(state.activeStroke));
+            }
+        }
+
+        function onOverlayMouseMove(e) {
+            const stroke = state.activeStroke;
+            if (!stroke) return;
+            const pt = svgPointFromEvent(e);
+
+            if (stroke.straight) {
+                stroke.points[stroke.points.length - 1] = pt;
+            } else {
+                stroke.points.push(pt);
+                armPauseTimer();
+            }
+            renderActiveStrokePreview();
+        }
+
+        function onOverlayMouseUp() {
+            const stroke = state.activeStroke;
+            document.removeEventListener('mousemove', onOverlayMouseMove);
+            document.removeEventListener('mouseup', onOverlayMouseUp);
+            if (!stroke) return;
+            clearTimeout(stroke.pauseTimer);
+
+            const photo = findPhotoById(state.detailPhotoId);
+            if (photo && stroke.points.length > 1) {
+                photo.overlay.push(
+                    stroke.tool === 'domain'
+                        ? { tool: 'domain', points: stroke.points }
+                        : {
+                            tool: 'brush',
+                            color: stroke.color,
+                            size: stroke.size,
+                            blend: stroke.blend,
+                            dash: stroke.dash,
+                            points: stroke.points
+                        }
+                );
+                renderOverlay(photo);
+            } else if (photo) {
+                renderOverlay(photo);
+            }
+            state.activeStroke = null;
+        }
+
+        function setupOverlayDrawing() {
+            elements['marker-detail-svg'].addEventListener('mousedown', (e) => {
+                if (!state.editingOverlay) return;
+                e.preventDefault();
+
+                const pt = svgPointFromEvent(e);
+                state.activeStroke = {
+                    tool: state.overlayTool,
+                    color: state.brushColor,
+                    size: state.brushSize,
+                    blend: state.brushBlend,
+                    dash: state.brushDash,
+                    points: [pt],
+                    straight: false,
+                    pauseTimer: null
+                };
+                armPauseTimer();
+                renderActiveStrokePreview();
+
+                document.addEventListener('mousemove', onOverlayMouseMove);
+                document.addEventListener('mouseup', onOverlayMouseUp);
+            });
+        }
+
+        function setupAnnotationEditorControls() {
+            document.querySelectorAll('#marker-edit-panel [data-tool]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.overlayTool = btn.dataset.tool;
+                    updateToolButtonStates();
+                });
+            });
+            document.querySelectorAll('#marker-edit-panel [data-size]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.brushSize = Number(btn.dataset.size);
+                    updateToolButtonStates();
+                });
+            });
+            document.querySelectorAll('#marker-edit-panel [data-color]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.brushColor = btn.dataset.color;
+                    updateToolButtonStates();
+                });
+            });
+            document.querySelectorAll('#marker-edit-panel [data-blend]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.brushBlend = btn.dataset.blend;
+                    updateToolButtonStates();
+                });
+            });
+            document.querySelectorAll('#marker-edit-panel [data-dash]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.brushDash = btn.dataset.dash;
+                    updateToolButtonStates();
+                });
+            });
+
+            elements['overlay-undo'].addEventListener('click', () => {
+                const photo = findPhotoById(state.detailPhotoId);
+                if (!photo || photo.overlay.length === 0) return;
+                photo.overlay.pop();
+                renderOverlay(photo);
+            });
+            elements['overlay-clear'].addEventListener('click', () => {
+                const photo = findPhotoById(state.detailPhotoId);
+                if (!photo) return;
+                photo.overlay = [];
+                renderOverlay(photo);
+            });
+
+            elements['symmetry-comment'].addEventListener('input', (e) => {
+                const photo = findPhotoById(state.detailPhotoId);
+                if (photo) photo.comment = e.target.value;
+            });
+            elements['symmetry-class-select'].addEventListener('change', renderClassControls);
+            elements['symmetry-add-type'].addEventListener('click', addSymmetryType);
+            elements['marker-edit-done'].addEventListener('click', closeAnnotationEditor);
+
+            elements['marker-info-toggle'].addEventListener('click', (e) => {
+                e.stopPropagation();
+                const photo = findPhotoById(state.detailPhotoId);
+                const nowVisible = elements['marker-info-panel'].classList.toggle('visible');
+                elements['marker-detail-svg'].classList.toggle('overlay-hidden', !nowVisible);
+                if (photo) renderInfoPanel(photo);
+            });
+
+            setupOverlayDrawing();
+        }
     </script>
 </body>
 </html>
