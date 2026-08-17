@@ -1267,8 +1267,14 @@
             map: null,
             markers: [],
             photoData: [],
-            maxZIndex: 1000,
-            minZIndex: 999,
+            // Leaflet computes a marker's actual z-index as its map
+            // layer-point Y (position-dependent, can run into the
+            // thousands across a city-block-scale walk) plus this offset —
+            // so the offset has to comfortably dominate that range or
+            // "bring to front" silently loses to whichever marker just
+            // happens to sit further down the map.
+            maxZIndex: 1000000,
+            minZIndex: -1000000,
             isDragging: false,
             dragState: null,
             isMarkerDragging: false,
@@ -2343,7 +2349,8 @@
 
             state.markers.length = 0;
             state.photoData.length = 0;
-            state.maxZIndex = 1000;
+            state.maxZIndex = 1000000;
+            state.minZIndex = -1000000;
             state.optionKeyDown = false;
 
             elements['photo-list'].innerHTML = '';
@@ -3430,9 +3437,23 @@
         // forward, sends it back down to its default resting position —
         // so the route never sits on top of the very photo you just picked.
         function bringMarkerToFront(marker) {
-            state.maxZIndex += 1;
+            // A huge step, not +1: every marker (including this one, from
+            // when it was created) already carries a small zIndexOffset of
+            // its own, so a +1 bump here could land only a few units above
+            // markers it's supposed to beat — nowhere near enough to
+            // overcome a natural map layer-point Y gap of, easily, over a
+            // thousand pixels between two photos on the same walk. Jumping
+            // by a step this size guarantees dominance regardless.
+            state.maxZIndex += 1000000;
             marker.setZIndexOffset(state.maxZIndex);
             marker._currentZIndex = state.maxZIndex;
+            // Belt-and-suspenders on top of the z-index offset above:
+            // moving the icon to be the last child of its pane guarantees
+            // it paints above every sibling even in the (should now be
+            // impossible, but cheap to also just rule out) case of a tie.
+            if (marker._icon && marker._icon.parentNode) {
+                marker._icon.parentNode.appendChild(marker._icon);
+            }
             if (state.routeFront) {
                 state.routeFront = false;
                 renderRoute();
@@ -3490,7 +3511,7 @@
         // marker is now on top, since the one you just looked at sank to
         // the bottom of that stack.
         function sendMarkerToBack(marker) {
-            state.minZIndex -= 1;
+            state.minZIndex -= 1000000;
             marker.setZIndexOffset(state.minZIndex);
             marker._currentZIndex = state.minZIndex;
         }
@@ -3504,10 +3525,14 @@
         // together. Idempotent — safe to call whether or not it's already
         // showing, unlike the Ω button's own click handler which toggles.
         function enterViewerDrawingMode(photo) {
-            elements['marker-info-panel'].classList.add('visible');
+            renderInfoPanel(photo);
+            // The panel's background is a gradient scrim meant to keep text
+            // legible over the photo — showing it with nothing in it (e.g.
+            // a photo with drawn marks but no comment/symmetry chips) just
+            // puts an unexplained dark bar across the bottom of the image.
+            elements['marker-info-panel'].classList.toggle('visible', elements['marker-info-panel'].children.length > 0);
             elements['marker-detail-svg'].classList.remove('overlay-hidden');
             state.viewerRegionOpen = true;
-            renderInfoPanel(photo);
             applyRegionZoom(photo);
         }
 
