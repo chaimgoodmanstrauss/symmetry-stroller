@@ -3718,6 +3718,17 @@
         // doesn't respond to on its own, so it'd stay a constant size next
         // to text that's otherwise getting bigger. Compensate manually so
         // the glow scales the same way in both cases.
+        // CSS filter lengths (drop-shadow's blur radius, used for the glow)
+        // are resolved in real screen pixels, not the SVG's own viewBox
+        // coordinate system — unlike stroke width or font-size, they don't
+        // automatically grow when the svg is explicitly resized bigger (no
+        // transform involved), so edit/crop zoom (both explicit-resize)
+        // need this JS-driven compensation. Viewer's region-zoom is the one
+        // mechanism that instead uses a CSS `transform: scale()` — verified
+        // (test_transform_filter_isolated.js) that a scale() transform DOES
+        // visually inflate a drop-shadow's blur radius on its own, so
+        // viewer must NOT also be compensated here or the glow would be
+        // scaled twice (scale² instead of scale).
         function updateAnnotationGlowScale(group) {
             group = group || document.querySelector('#marker-detail-svg .annotation-group');
             if (!group) return;
@@ -3773,19 +3784,12 @@
             if (!img.naturalWidth || !img.naturalHeight) return;
             const maxW = window.innerWidth * 0.95;
             const maxH = window.innerHeight * 0.78;
-            const fitScale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
             // Same baseline as applyEditingImageSize (2x fit, clamped to
             // the viewport) so cropZoom=1 looks identical to the plain
             // editing view — cropZoom then scales up from that baseline,
             // deliberately allowed to exceed the viewport since that's the
             // whole point of zooming in here.
-            let baseWidth = img.naturalWidth * fitScale * 2;
-            let baseHeight = img.naturalHeight * fitScale * 2;
-            if (baseWidth > maxW || baseHeight > maxH) {
-                const clamp = Math.min(maxW / baseWidth, maxH / baseHeight);
-                baseWidth *= clamp;
-                baseHeight *= clamp;
-            }
+            const { width: baseWidth, height: baseHeight } = computeBaselineSize(img, maxW, maxH, 2);
             // The .editing CSS rules cap width/height at 95vw/78vh — exactly
             // right for that plain baseline, but zooming past cropZoom=1
             // means deliberately growing beyond it, so those caps need to
@@ -4092,16 +4096,7 @@
         function exitRegionTool() {
             state.cropZoom = 1;
             state.cropPan = { x: 0, y: 0 };
-            const img = elements['marker-detail-img'];
-            const svg = elements['marker-detail-svg'];
-            img.style.maxWidth = '';
-            img.style.maxHeight = '';
-            elements['marker-detail-frame'].style.maxWidth = '';
-            elements['marker-detail-frame'].style.maxHeight = '';
-            img.style.transform = '';
-            svg.style.transform = '';
-            applyEditingImageSize(img);
-            updateAnnotationGlowScale();
+            resetEditingImageDisplay(elements['marker-detail-img']);
 
             const photo = findPhotoById(state.detailPhotoId);
             if (photo) showPassiveRegionIndicator(photo);
@@ -4451,17 +4446,10 @@
             const frame = elements['marker-detail-frame'];
 
             if (state.editZoom <= 1) {
-                img.style.maxWidth = '';
-                img.style.maxHeight = '';
-                frame.style.maxWidth = '';
-                frame.style.maxHeight = '';
                 img.style.transition = '';
                 svg.style.transition = '';
                 frame.style.transition = '';
-                img.style.transform = '';
-                svg.style.transform = '';
-                applyEditingImageSize(img);
-                updateAnnotationGlowScale();
+                resetEditingImageDisplay(img);
                 return;
             }
             if (!img.naturalWidth || !img.naturalHeight) return;
@@ -4484,14 +4472,7 @@
 
             const maxW = window.innerWidth * 0.95;
             const maxH = window.innerHeight * 0.78;
-            const fitScale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
-            let baseWidth = img.naturalWidth * fitScale * 2;
-            let baseHeight = img.naturalHeight * fitScale * 2;
-            if (baseWidth > maxW || baseHeight > maxH) {
-                const clamp = Math.min(maxW / baseWidth, maxH / baseHeight);
-                baseWidth *= clamp;
-                baseHeight *= clamp;
-            }
+            const { width: baseWidth, height: baseHeight } = computeBaselineSize(img, maxW, maxH, 2);
 
             img.style.maxWidth = 'none';
             img.style.maxHeight = 'none';
@@ -4547,6 +4528,23 @@
             }, { passive: false });
         }
 
+        // Shared "fit natural image size into maxW/maxH, then scale by
+        // `multiplier`, re-clamping if that overshoots" baseline math — used
+        // by every explicit-resize zoom mechanism (plain editing size, crop
+        // zoom, general edit zoom) so they all agree on what "unzoomed"
+        // looks like instead of drifting apart via copy-pasted variants.
+        function computeBaselineSize(img, maxW, maxH, multiplier) {
+            const fitScale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+            let width = img.naturalWidth * fitScale * multiplier;
+            let height = img.naturalHeight * fitScale * multiplier;
+            if (width > maxW || height > maxH) {
+                const clamp = Math.min(maxW / width, maxH / height);
+                width *= clamp;
+                height *= clamp;
+            }
+            return { width, height };
+        }
+
         // Drawing mode shows the image at ~2x its normal fitted size (clamped
         // to the viewport) via explicit pixel dimensions — a CSS transform
         // would scale the image without growing the frame's own layout box,
@@ -4556,16 +4554,26 @@
             if (!img.naturalWidth || !img.naturalHeight) return;
             const maxW = window.innerWidth * 0.95;
             const maxH = window.innerHeight * 0.78;
-            const fitScale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
-            let width = img.naturalWidth * fitScale * 2;
-            let height = img.naturalHeight * fitScale * 2;
-            if (width > maxW || height > maxH) {
-                const clamp = Math.min(maxW / width, maxH / height);
-                width *= clamp;
-                height *= clamp;
-            }
+            const { width, height } = computeBaselineSize(img, maxW, maxH, 2);
             img.style.width = `${width}px`;
             img.style.height = `${height}px`;
+        }
+
+        // Shared reset for the two maker-side explicit-resize zoom
+        // mechanisms (general edit zoom and crop zoom) back to the plain
+        // editing baseline — both grow the same img/frame pair the same
+        // way, so they share the same way back down.
+        function resetEditingImageDisplay(img) {
+            const svg = elements['marker-detail-svg'];
+            const frame = elements['marker-detail-frame'];
+            img.style.maxWidth = '';
+            img.style.maxHeight = '';
+            frame.style.maxWidth = '';
+            frame.style.maxHeight = '';
+            img.style.transform = '';
+            svg.style.transform = '';
+            applyEditingImageSize(img);
+            updateAnnotationGlowScale();
         }
 
         function resetImageSize(img) {
@@ -4782,14 +4790,15 @@
         }
 
         // How many viewBox units correspond to one screen pixel, measured
-        // against the frame's own (untransformed) box rather than the
-        // svg's current transformed rect — so text sized from this stays
-        // consistent through zoom changes instead of getting "corrected"
-        // for whatever zoom happened to be active at render time.
+        // against the svg's own current rendered box. In maker mode's
+        // explicit-resize zooms (edit/crop) the svg is always sized 100% of
+        // the frame, so this agrees with measuring the frame there; it also
+        // stays correct for viewer's region-zoom, where the svg is given
+        // its own explicit size decoupled from the (reshaped) frame and the
+        // frame's rect wouldn't reflect the svg's actual rendered scale.
         function getViewBoxUnitsPerScreenPixel() {
-            const frame = elements['marker-detail-frame'];
             const svg = elements['marker-detail-svg'];
-            const rect = frame.getBoundingClientRect();
+            const rect = svg.getBoundingClientRect();
             const vb = svg.viewBox.baseVal;
             if (!rect.width || !vb.width) return 1;
             return vb.width / rect.width;
