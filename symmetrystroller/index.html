@@ -681,6 +681,51 @@
             cursor: crosshair;
         }
 
+        /* Crop overlay: fixed to the frame (never transformed), so it
+           stays put while the image pans/zooms underneath it. */
+        #region-crop-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+
+        #region-crop-svg.visible {
+            display: block;
+        }
+
+        #region-crop-svg .crop-scrim {
+            fill: white;
+            fill-opacity: 0.6;
+            pointer-events: none;
+        }
+
+        #region-crop-svg .crop-box-outline {
+            fill: none;
+            stroke: #2883ff;
+            stroke-width: 0.4;
+            stroke-dasharray: 1.5,1;
+            pointer-events: none;
+        }
+
+        #region-crop-svg .crop-pan-area {
+            fill: transparent;
+            cursor: move;
+        }
+
+        #region-crop-svg .crop-edge-handle {
+            fill: transparent;
+        }
+
+        #region-crop-svg .crop-edge-handle.horizontal {
+            cursor: ns-resize;
+        }
+
+        #region-crop-svg .crop-edge-handle.vertical {
+            cursor: ew-resize;
+        }
+
         #marker-info-toggle {
             position: absolute;
             top: 10px;
@@ -888,6 +933,7 @@
             <div id="marker-detail-frame">
                 <img id="marker-detail-img" alt="">
                 <svg id="marker-detail-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+                <svg id="region-crop-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
                 <button id="marker-info-toggle" class="viewer-only hidden" title="Show symmetry info">Ω</button>
             </div>
             <div id="marker-info-panel" class="viewer-only"></div>
@@ -1056,7 +1102,12 @@
             textRuns: [],
             regionDragState: null,
             viewerRegionOpen: false,
-            editZoom: 1
+            editZoom: 1,
+            // Crop-tool state (Viewer region tool): the image pans/zooms
+            // underneath a box that's fixed to the frame.
+            cropZoom: 1,
+            cropPan: { x: 0, y: 0 },
+            cropBoxPct: null
         };
 
         // DOM Elements
@@ -1143,7 +1194,8 @@
                         'symmetry-comment', 'symmetry-type-list', 'symmetry-class-select',
                         'symmetry-class-controls', 'symmetry-add-type', 'overlay-undo', 'overlay-clear',
                         'marker-edit-done', 'color-options', 'text-options',
-                        'text-run-input', 'text-run-add', 'text-run-reset', 'text-run-preview', 'text-run-hint'];
+                        'text-run-input', 'text-run-add', 'text-run-reset', 'text-run-preview', 'text-run-hint',
+                        'region-crop-svg'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -2727,126 +2779,172 @@
             group.setAttribute('class', 'annotation-group');
             markStrokes.forEach(stroke => group.appendChild(strokeToSvgElement(stroke)));
             svg.appendChild(group);
-
-            if (state.editingOverlay) renderViewerRegion(photo);
         }
 
-        // The writer-only "viewer region" box: a plain reference rectangle
-        // (not part of the glowing annotation group — it's a UI control,
-        // not a drawn mark) that can be dragged, resized via its corner
-        // handle, or deleted via its × button.
-        function renderViewerRegion(photo) {
+        // Crop tool (Viewer region): a box fixed to the frame — never
+        // transformed — while the image pans/zooms underneath it. The
+        // excluded area gets a translucent scrim so it's clear what's cut
+        // out; dragging inside the box pans the image, dragging an edge
+        // resizes that side of the box.
+        function applyCropTransform() {
+            const img = elements['marker-detail-img'];
             const svg = elements['marker-detail-svg'];
-            svg.querySelectorAll('.viewer-region-ui').forEach(el => el.remove());
-
-            const region = photo.viewerRegion;
-            if (!region) return;
-
-            const g = document.createElementNS(SVG_NS, 'g');
-            g.setAttribute('class', 'viewer-region-ui');
-
-            const rect = document.createElementNS(SVG_NS, 'rect');
-            rect.setAttribute('x', region.x);
-            rect.setAttribute('y', region.y);
-            rect.setAttribute('width', region.width);
-            rect.setAttribute('height', region.height);
-            rect.setAttribute('fill', 'rgba(40, 131, 255, 0.08)');
-            rect.setAttribute('stroke', BLUE);
-            rect.setAttribute('stroke-width', '2');
-            rect.setAttribute('stroke-dasharray', '8,5');
-            rect.setAttribute('vector-effect', 'non-scaling-stroke');
-            rect.style.cursor = 'move';
-            rect.addEventListener('mousedown', (e) => startRegionMove(e, photo));
-            g.appendChild(rect);
-
-            const handle = document.createElementNS(SVG_NS, 'circle');
-            handle.setAttribute('cx', region.x + region.width);
-            handle.setAttribute('cy', region.y + region.height);
-            handle.setAttribute('r', '7');
-            handle.setAttribute('fill', BLUE);
-            handle.style.cursor = 'nwse-resize';
-            handle.addEventListener('mousedown', (e) => startRegionResize(e, photo));
-            g.appendChild(handle);
-
-            const del = document.createElementNS(SVG_NS, 'text');
-            del.setAttribute('x', region.x + region.width);
-            del.setAttribute('y', Math.max(16, region.y - 8));
-            del.setAttribute('fill', BLUE);
-            del.setAttribute('font-size', '28');
-            del.setAttribute('text-anchor', 'end');
-            del.style.cursor = 'pointer';
-            del.textContent = '×';
-            del.addEventListener('click', (e) => {
-                e.stopPropagation();
-                photo.viewerRegion = null;
-                renderViewerRegion(photo);
-            });
-            g.appendChild(del);
-
-            svg.appendChild(g);
+            const t = `translate(${state.cropPan.x}px, ${state.cropPan.y}px) scale(${state.cropZoom})`;
+            img.style.transformOrigin = 'center center';
+            svg.style.transformOrigin = 'center center';
+            img.style.transform = t;
+            svg.style.transform = t;
         }
 
-        function startRegionMove(e, photo) {
-            e.preventDefault();
-            e.stopPropagation();
-            const startPt = svgPointFromEvent(e);
-            const startRegion = { ...photo.viewerRegion };
+        // Reads the box's position against the image's actual on-screen
+        // (transformed) bounds via getBoundingClientRect — which already
+        // reflects whatever pan/zoom is currently applied — and converts
+        // that into the normalized 0-1000 image-space rect used everywhere
+        // else (and by the viewer's fixed 2x zoom).
+        function computeViewerRegionFromCropBox(photo) {
+            const frame = elements['marker-detail-frame'];
+            const img = elements['marker-detail-img'];
+            const frameRect = frame.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            if (!imgRect.width || !imgRect.height || !state.cropBoxPct) return;
+
+            const b = state.cropBoxPct;
+            const boxLeftPx = frameRect.left + (b.x / 100) * frameRect.width;
+            const boxTopPx = frameRect.top + (b.y / 100) * frameRect.height;
+            const boxRightPx = frameRect.left + ((b.x + b.w) / 100) * frameRect.width;
+            const boxBottomPx = frameRect.top + ((b.y + b.h) / 100) * frameRect.height;
+
+            const fracLeft = (boxLeftPx - imgRect.left) / imgRect.width;
+            const fracTop = (boxTopPx - imgRect.top) / imgRect.height;
+            const fracRight = (boxRightPx - imgRect.left) / imgRect.width;
+            const fracBottom = (boxBottomPx - imgRect.top) / imgRect.height;
+
             const vb = elements['marker-detail-svg'].viewBox.baseVal;
-
-            const onMove = (moveEvent) => {
-                const pt = svgPointFromEvent(moveEvent);
-                photo.viewerRegion.x = Math.max(0, Math.min(vb.width - startRegion.width, startRegion.x + (pt[0] - startPt[0])));
-                photo.viewerRegion.y = Math.max(0, Math.min(vb.height - startRegion.height, startRegion.y + (pt[1] - startPt[1])));
-                renderViewerRegion(photo);
+            photo.viewerRegion = {
+                x: fracLeft * vb.width,
+                y: fracTop * vb.height,
+                width: (fracRight - fracLeft) * vb.width,
+                height: (fracBottom - fracTop) * vb.height
             };
-            const onUp = () => {
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-            };
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
         }
 
-        function startRegionResize(e, photo) {
+        function renderCropOverlay(photo) {
+            const svg = elements['region-crop-svg'];
+            svg.innerHTML = '';
+            const b = state.cropBoxPct;
+            if (!b) return;
+
+            const scrim = document.createElementNS(SVG_NS, 'path');
+            scrim.setAttribute('class', 'crop-scrim');
+            scrim.setAttribute('fill-rule', 'evenodd');
+            scrim.setAttribute('d', `M0,0 H100 V100 H0 Z M${b.x},${b.y} H${b.x + b.w} V${b.y + b.h} H${b.x} Z`);
+            svg.appendChild(scrim);
+
+            const outline = document.createElementNS(SVG_NS, 'rect');
+            outline.setAttribute('class', 'crop-box-outline');
+            outline.setAttribute('x', b.x);
+            outline.setAttribute('y', b.y);
+            outline.setAttribute('width', b.w);
+            outline.setAttribute('height', b.h);
+            svg.appendChild(outline);
+
+            const panArea = document.createElementNS(SVG_NS, 'rect');
+            panArea.setAttribute('class', 'crop-pan-area');
+            panArea.setAttribute('x', b.x);
+            panArea.setAttribute('y', b.y);
+            panArea.setAttribute('width', b.w);
+            panArea.setAttribute('height', b.h);
+            panArea.addEventListener('mousedown', (e) => startCropPan(e, photo));
+            svg.appendChild(panArea);
+
+            [
+                { cls: 'horizontal', x: b.x, y: b.y - 1, w: b.w, h: 2, edge: 'top' },
+                { cls: 'horizontal', x: b.x, y: b.y + b.h - 1, w: b.w, h: 2, edge: 'bottom' },
+                { cls: 'vertical', x: b.x - 1, y: b.y, w: 2, h: b.h, edge: 'left' },
+                { cls: 'vertical', x: b.x + b.w - 1, y: b.y, w: 2, h: b.h, edge: 'right' }
+            ].forEach(spec => {
+                const handle = document.createElementNS(SVG_NS, 'rect');
+                handle.setAttribute('class', `crop-edge-handle ${spec.cls}`);
+                handle.setAttribute('x', spec.x);
+                handle.setAttribute('y', spec.y);
+                handle.setAttribute('width', spec.w);
+                handle.setAttribute('height', spec.h);
+                handle.addEventListener('mousedown', (e) => startCropEdgeResize(e, spec.edge, photo));
+                svg.appendChild(handle);
+            });
+        }
+
+        function startCropPan(e, photo) {
             e.preventDefault();
             e.stopPropagation();
+            const startX = e.clientX, startY = e.clientY;
+            const startPan = { ...state.cropPan };
 
             const onMove = (moveEvent) => {
-                const pt = svgPointFromEvent(moveEvent);
-                photo.viewerRegion.width = Math.max(10, pt[0] - photo.viewerRegion.x);
-                photo.viewerRegion.height = Math.max(10, pt[1] - photo.viewerRegion.y);
-                renderViewerRegion(photo);
+                state.cropPan.x = startPan.x + (moveEvent.clientX - startX);
+                state.cropPan.y = startPan.y + (moveEvent.clientY - startY);
+                applyCropTransform();
             };
             const onUp = () => {
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
+                computeViewerRegionFromCropBox(photo);
             };
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup', onUp);
         }
 
-        function startRegionDraw(e) {
-            const photo = findPhotoById(state.detailPhotoId);
-            if (!photo) return;
+        function startCropEdgeResize(e, edge, photo) {
             e.preventDefault();
-            const startPt = svgPointFromEvent(e);
-            photo.viewerRegion = { x: startPt[0], y: startPt[1], width: 1, height: 1 };
+            e.stopPropagation();
+            const frame = elements['marker-detail-frame'];
+            const minSize = 5;
 
             const onMove = (moveEvent) => {
-                const pt = svgPointFromEvent(moveEvent);
-                const x = Math.min(startPt[0], pt[0]);
-                const y = Math.min(startPt[1], pt[1]);
-                const w = Math.abs(pt[0] - startPt[0]);
-                const h = Math.abs(pt[1] - startPt[1]);
-                photo.viewerRegion = { x, y, width: w, height: h };
-                renderViewerRegion(photo);
+                const rect = frame.getBoundingClientRect();
+                const xPct = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+                const yPct = ((moveEvent.clientY - rect.top) / rect.height) * 100;
+                const b = state.cropBoxPct;
+
+                if (edge === 'left') {
+                    const right = b.x + b.w;
+                    b.x = Math.max(0, Math.min(xPct, right - minSize));
+                    b.w = right - b.x;
+                } else if (edge === 'right') {
+                    b.w = Math.max(minSize, xPct - b.x);
+                } else if (edge === 'top') {
+                    const bottom = b.y + b.h;
+                    b.y = Math.max(0, Math.min(yPct, bottom - minSize));
+                    b.h = bottom - b.y;
+                } else if (edge === 'bottom') {
+                    b.h = Math.max(minSize, yPct - b.y);
+                }
+                renderCropOverlay(photo);
             };
             const onUp = () => {
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
+                computeViewerRegionFromCropBox(photo);
             };
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup', onUp);
+        }
+
+        function enterRegionTool(photo) {
+            state.cropZoom = 1;
+            state.cropPan = { x: 0, y: 0 };
+            state.cropBoxPct = { x: 20, y: 20, w: 60, h: 60 };
+            applyCropTransform();
+            elements['region-crop-svg'].classList.add('visible');
+            renderCropOverlay(photo);
+            computeViewerRegionFromCropBox(photo);
+        }
+
+        function exitRegionTool() {
+            elements['region-crop-svg'].classList.remove('visible');
+            state.cropZoom = 1;
+            state.cropPan = { x: 0, y: 0 };
+            applyCropTransform();
         }
 
         // A single path covering the whole image with each domain shape
@@ -3057,7 +3155,7 @@
 
         function setupEditZoom() {
             elements['marker-detail-svg'].addEventListener('wheel', (e) => {
-                if (!state.editingOverlay) return;
+                if (!state.editingOverlay || state.overlayTool === 'region') return;
                 e.preventDefault();
                 const rect = elements['marker-detail-frame'].getBoundingClientRect();
                 const xPct = ((e.clientX - rect.left) / rect.width) * 100;
@@ -3065,6 +3163,16 @@
                 const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
                 state.editZoom = Math.min(6, Math.max(1, state.editZoom * factor));
                 applyEditZoom(xPct, yPct);
+            }, { passive: false });
+
+            elements['marker-detail-frame'].addEventListener('wheel', (e) => {
+                if (!state.editingOverlay || state.overlayTool !== 'region') return;
+                e.preventDefault();
+                const photo = findPhotoById(state.detailPhotoId);
+                const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+                state.cropZoom = Math.min(6, Math.max(0.3, state.cropZoom * factor));
+                applyCropTransform();
+                if (photo) computeViewerRegionFromCropBox(photo);
             }, { passive: false });
         }
 
@@ -3229,6 +3337,8 @@
             state.overlayTool = 'domain';
             state.drawColor = RED;
             state.editZoom = 1;
+            state.cropBoxPct = null;
+            elements['region-crop-svg'].classList.remove('visible');
             resetTextBuilder();
             showMarkerDetailImage(photo, { hideOverlayInitially: false });
             applyEditZoom(50, 50);
@@ -3244,6 +3354,8 @@
             state.editingOverlay = false;
             state.activeStroke = null;
             state.editZoom = 1;
+            state.cropBoxPct = null;
+            elements['region-crop-svg'].classList.remove('visible');
             elements['marker-detail-svg'].classList.remove('drawable');
             elements['marker-detail-frame'].classList.remove('editing');
             elements['marker-detail'].classList.remove('visible');
@@ -3391,12 +3503,7 @@
         function setupOverlayDrawing() {
             elements['marker-detail-svg'].addEventListener('mousedown', (e) => {
                 if (!state.editingOverlay) return;
-                if (e.target.closest('.viewer-region-ui')) return; // handled by its own listeners
-
-                if (state.overlayTool === 'region') {
-                    startRegionDraw(e);
-                    return;
-                }
+                if (state.overlayTool === 'region') return; // handled by #region-crop-svg's own listeners
 
                 e.preventDefault();
                 const pt = svgPointFromEvent(e);
@@ -3470,7 +3577,15 @@
         function setupAnnotationEditorControls() {
             document.querySelectorAll('#marker-edit-panel [data-tool]').forEach(btn => {
                 btn.addEventListener('click', () => {
+                    const photo = findPhotoById(state.detailPhotoId);
+                    const wasRegion = state.overlayTool === 'region';
                     state.overlayTool = btn.dataset.tool;
+
+                    if (state.overlayTool === 'region' && photo) {
+                        enterRegionTool(photo);
+                    } else if (wasRegion) {
+                        exitRegionTool();
+                    }
                     updateToolButtonStates();
                 });
             });
