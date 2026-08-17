@@ -4616,8 +4616,20 @@
             frame.style.maxWidth = 'none';
             frame.style.maxHeight = 'none';
 
-            const width = baseWidth * state.editZoom;
-            const height = baseHeight * state.editZoom;
+            // Re-clamp to a bound close to the full window (not maxW/maxH
+            // themselves, which the baseline already saturates — see the
+            // identical reasoning in applyCropZoomSize) so editZoom's up to
+            // 6x range can't grow the frame past the viewport and carry the
+            // corner-anchored dismiss/edit buttons off-screen with it.
+            const zoomCapW = window.innerWidth * 0.98;
+            const zoomCapH = window.innerHeight * 0.9;
+            let width = baseWidth * state.editZoom;
+            let height = baseHeight * state.editZoom;
+            if (width > zoomCapW || height > zoomCapH) {
+                const clamp = Math.min(zoomCapW / width, zoomCapH / height);
+                width *= clamp;
+                height *= clamp;
+            }
 
             // Measure where the image would sit untransformed at the new
             // size (clearing transform first — resizing may itself shift
