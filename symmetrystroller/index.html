@@ -410,6 +410,12 @@
             border-color: var(--accent-hover);
         }
 
+        #connect-folder.active {
+            background-color: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
         button.danger {
             background-color: var(--surface);
             color: var(--danger);
@@ -634,11 +640,6 @@
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
             line-height: 0;
-            cursor: zoom-out;
-        }
-
-        .maker-mode #marker-detail-frame.editing {
-            cursor: default;
         }
 
         #marker-detail-img {
@@ -726,10 +727,10 @@
             cursor: ew-resize;
         }
 
-        #marker-info-toggle {
+        #marker-info-toggle,
+        #marker-dismiss {
             position: absolute;
             top: 10px;
-            right: 10px;
             width: 34px;
             height: 34px;
             border-radius: 50%;
@@ -743,6 +744,15 @@
             align-items: center;
             justify-content: center;
             z-index: 2;
+        }
+
+        #marker-info-toggle {
+            right: 10px;
+        }
+
+        #marker-dismiss {
+            left: 10px;
+            font-size: 22px;
         }
 
         #marker-info-toggle.hidden {
@@ -909,6 +919,9 @@
 
             <h3 class="maker-only">Save & Load</h3>
             <div class="map-controls maker-only">
+                <button id="connect-folder" class="load">Connect local folder…</button>
+            </div>
+            <div class="map-controls maker-only">
                 <button id="save-state" class="save">Export walk.json + photos</button>
                 <button id="load-state" class="load">Load Saved State</button>
                 <input type="file" id="load-input" accept="application/json">
@@ -934,6 +947,7 @@
                 <img id="marker-detail-img" alt="">
                 <svg id="marker-detail-svg" xmlns="http://www.w3.org/2000/svg"></svg>
                 <svg id="region-crop-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+                <button id="marker-dismiss" class="viewer-only" title="Close">×</button>
                 <button id="marker-info-toggle" class="viewer-only hidden" title="Show symmetry info">Ω</button>
             </div>
             <div id="marker-info-panel" class="viewer-only"></div>
@@ -1107,7 +1121,11 @@
             // underneath a box that's fixed to the frame.
             cropZoom: 1,
             cropPan: { x: 0, y: 0 },
-            cropBoxPct: null
+            cropBoxPct: null,
+            // File System Access API: a connected local project folder lets
+            // saves write straight to disk instead of downloading a zip.
+            projectDirHandle: null,
+            projectDirHandlePending: null
         };
 
         // DOM Elements
@@ -1181,6 +1199,7 @@
 
             if (CONFIG.IS_MAKER_MODE) {
                 initTourManagement();
+                tryRestoreProjectFolder();
             }
         }
 
@@ -1195,7 +1214,7 @@
                         'symmetry-class-controls', 'symmetry-add-type', 'overlay-undo', 'overlay-clear',
                         'marker-edit-done', 'color-options', 'text-options',
                         'text-run-input', 'text-run-add', 'text-run-reset', 'text-run-preview', 'text-run-hint',
-                        'region-crop-svg'];
+                        'region-crop-svg', 'marker-dismiss', 'connect-folder'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -1232,16 +1251,6 @@
 
                     // Add zoom event listeners
                     state.map.on('zoom zoomend', handleZoomChange);
-
-                    // Stroller mode: clicking the map background closes an
-                    // enlarged photo.
-                    if (!CONFIG.IS_MAKER_MODE) {
-                        state.map.on('click', () => {
-                            if (state.enlargedMarker) {
-                                resetEnlargedMarker();
-                            }
-                        });
-                    }
 
                     elements.status.textContent = 'Map loaded successfully. Ready for photos.';
 
@@ -2177,23 +2186,152 @@
             });
         }
 
-        function deleteTour(slug) {
+        // ---- File System Access: direct disk read/write for a connected
+        // local project folder (Chrome/Edge only). The handle is persisted
+        // in IndexedDB (handles aren't structured-cloneable into
+        // localStorage) so the connection survives reloads; the browser
+        // still requires a fresh permission grant each session, which
+        // needs a user gesture, so reconnecting is a click, not automatic.
+        const FS_DB_NAME = 'symmetry-stroller-fs';
+        const FS_STORE_NAME = 'handles';
+
+        function openHandleDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(FS_DB_NAME, 1);
+                req.onupgradeneeded = () => req.result.createObjectStore(FS_STORE_NAME);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function persistDirHandle(handle) {
+            const db = await openHandleDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(FS_STORE_NAME, 'readwrite');
+                tx.objectStore(FS_STORE_NAME).put(handle, 'projectDir');
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function restoreDirHandle() {
+            const db = await openHandleDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(FS_STORE_NAME, 'readonly');
+                const req = tx.objectStore(FS_STORE_NAME).get('projectDir');
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function getFileHandleForPath(dirHandle, relPath, { create = false } = {}) {
+            const parts = relPath.split('/');
+            let dir = dirHandle;
+            for (let i = 0; i < parts.length - 1; i++) {
+                dir = await dir.getDirectoryHandle(parts[i], { create });
+            }
+            return dir.getFileHandle(parts[parts.length - 1], { create });
+        }
+
+        async function writeFileToProject(relPath, contents) {
+            const fileHandle = await getFileHandleForPath(state.projectDirHandle, relPath, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(contents);
+            await writable.close();
+        }
+
+        function updateConnectFolderButton() {
+            const btn = elements['connect-folder'];
+            if (!btn) return;
+            if (state.projectDirHandle) {
+                btn.textContent = `Connected: ${state.projectDirHandle.name}`;
+                btn.classList.add('active');
+            } else {
+                btn.textContent = state.projectDirHandlePending ? 'Reconnect local folder…' : 'Connect local folder…';
+                btn.classList.remove('active');
+            }
+        }
+
+        async function connectProjectFolder() {
+            if (state.projectDirHandlePending) {
+                try {
+                    const perm = await state.projectDirHandlePending.requestPermission({ mode: 'readwrite' });
+                    if (perm === 'granted') {
+                        state.projectDirHandle = state.projectDirHandlePending;
+                        state.projectDirHandlePending = null;
+                        updateConnectFolderButton();
+                        elements.status.textContent = 'Connected — saves will write directly to disk.';
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Could not reconnect to previously granted folder', error);
+                }
+            }
+
+            if (!window.showDirectoryPicker) {
+                alert("Direct disk save needs a Chromium browser (Chrome, Edge) — Safari and Firefox don't support it yet.");
+                return;
+            }
+            try {
+                const handle = await window.showDirectoryPicker();
+                state.projectDirHandle = handle;
+                state.projectDirHandlePending = null;
+                await persistDirHandle(handle);
+                updateConnectFolderButton();
+                elements.status.textContent = 'Connected — saves will write directly to disk.';
+            } catch (error) {
+                if (error.name !== 'AbortError') console.error(error);
+            }
+        }
+
+        async function tryRestoreProjectFolder() {
+            if (!window.showDirectoryPicker || !window.indexedDB) return;
+            try {
+                const handle = await restoreDirHandle();
+                if (!handle) return;
+                const perm = await handle.queryPermission({ mode: 'readwrite' });
+                if (perm === 'granted') {
+                    state.projectDirHandle = handle;
+                } else {
+                    state.projectDirHandlePending = handle;
+                }
+                updateConnectFolderButton();
+            } catch (error) {
+                console.error('Could not restore previously connected folder', error);
+            }
+        }
+
+        async function deleteTour(slug) {
             const entry = state.tourManifest.find(w => w.slug === slug);
             if (!entry) return;
 
+            const connected = Boolean(state.projectDirHandle);
             const confirmed = confirm(
                 `Remove "${entry.title || slug}" from walks.json?\n\n` +
-                `This downloads an updated walks.json for you to drop into the project ` +
-                `(replacing the current one). It won't delete walks/${slug}/ itself — ` +
-                `remove that folder yourself if you want its files gone too.`
+                (connected
+                    ? `This writes the updated walks.json straight to disk.`
+                    : `This downloads an updated walks.json for you to drop into the project (replacing the current one).`) +
+                ` It won't delete walks/${slug}/ itself — remove that folder yourself if you want its files gone too.`
             );
             if (!confirmed) return;
 
             state.tourManifest = state.tourManifest.filter(w => w.slug !== slug);
-            downloadJsonFile(state.tourManifest, 'walks.json');
-            elements.status.textContent =
-                `Downloaded walks.json without "${slug}". Replace the project's walks.json ` +
-                `to finish removing it (and delete walks/${slug}/ if you want its files gone too).`;
+
+            if (connected) {
+                try {
+                    await writeFileToProject('walks.json', JSON.stringify(state.tourManifest, null, 2));
+                    elements.status.textContent = `Removed "${slug}" and saved walks.json to disk.`;
+                } catch (error) {
+                    console.error('Direct write of walks.json failed', error);
+                    downloadJsonFile(state.tourManifest, 'walks.json');
+                    elements.status.textContent = `Direct save failed — downloaded walks.json instead. Replace the project's copy.`;
+                }
+            } else {
+                downloadJsonFile(state.tourManifest, 'walks.json');
+                elements.status.textContent =
+                    `Downloaded walks.json without "${slug}". Replace the project's walks.json ` +
+                    `to finish removing it (and delete walks/${slug}/ if you want its files gone too).`;
+            }
             renderTourList();
         }
 
@@ -2219,16 +2357,15 @@
                 return;
             }
 
-            elements.status.textContent = 'Preparing export...';
+            elements.status.textContent = state.projectDirHandle ? 'Saving...' : 'Preparing export...';
 
             const slug = state.walkSlug || currentWalk?.slug || slugify(state.walkName) || `walk-${Date.now()}`;
             state.walkSlug = slug;
             const jsonFilename = `${slug}.json`;
             const dataFile = `walks/${slug}/${jsonFilename}`;
 
-            const zip = new JSZip();
-            const photosFolder = zip.folder('photos');
             const usedNames = new Set();
+            const photoFiles = []; // {name, blob} — same bytes feed either the zip or a direct write
 
             const leanPhotos = await Promise.all(state.photoData.map(async (photo, index) => {
                 const marker = state.markers[index];
@@ -2251,22 +2388,25 @@
                     const mime = dataUrlMatch[1];
                     const ext = mime === 'image/png' ? 'png' : 'jpg';
                     const name = reserveName(ext);
-                    photosFolder.file(name, dataUrlMatch[2], { base64: true });
+                    const byteString = atob(dataUrlMatch[2]);
+                    const bytes = new Uint8Array(byteString.length);
+                    for (let i = 0; i < byteString.length; i++) bytes[i] = byteString.charCodeAt(i);
+                    photoFiles.push({ name, blob: new Blob([bytes], { type: mime }) });
                     relPath = `photos/${name}`;
                 } else if (photo.src) {
                     // Loaded from an existing lean walk.json (or elsewhere)
                     // by URL, not embedded — fetch the actual bytes so a
-                    // re-export stays self-contained instead of pointing at
-                    // photos that aren't in this zip.
+                    // re-save stays self-contained instead of pointing at
+                    // photos that aren't actually there.
                     try {
                         const res = await fetch(photo.src);
                         const blob = await res.blob();
                         const ext = (photo.photo || photo.src).split('.').pop().split(/[?#]/)[0] || 'jpg';
                         const name = reserveName(ext);
-                        photosFolder.file(name, blob);
+                        photoFiles.push({ name, blob });
                         relPath = `photos/${name}`;
                     } catch (error) {
-                        console.error(`Failed to fetch photo for export: ${photo.filename}`, error);
+                        console.error(`Failed to fetch photo for save: ${photo.filename}`, error);
                     }
                 }
 
@@ -2295,11 +2435,7 @@
                 savedAt: new Date().toISOString()
             };
 
-            zip.file(jsonFilename, JSON.stringify(walkData, null, 2));
-
-            // Upsert this walk's entry into the manifest and bundle the
-            // updated walks.json in the same download, so saving doesn't
-            // require a separate manual edit to register/update the walk.
+            // Upsert this walk's entry into the manifest.
             let manifest = [];
             try {
                 const res = await fetch('walks.json', { cache: 'no-store' });
@@ -2307,7 +2443,6 @@
             } catch (error) {
                 console.warn('Could not load existing walks.json, starting a new manifest.', error);
             }
-
             const entry = { slug, title: state.walkName || slug, dataFile };
             const existingIndex = manifest.findIndex(w => w.slug === slug);
             if (existingIndex >= 0) {
@@ -2315,10 +2450,33 @@
             } else {
                 manifest.push(entry);
             }
-
-            zip.file('walks.json', JSON.stringify(manifest, null, 2));
             state.tourManifest = manifest;
             renderTourList();
+
+            if (state.projectDirHandle) {
+                try {
+                    await writeFileToProject(dataFile, JSON.stringify(walkData, null, 2));
+                    await writeFileToProject('walks.json', JSON.stringify(manifest, null, 2));
+                    for (const pf of photoFiles) {
+                        await writeFileToProject(`walks/${slug}/photos/${pf.name}`, pf.blob);
+                    }
+                    elements.status.textContent = `Saved directly to walks/${slug}/.`;
+                    return;
+                } catch (error) {
+                    console.error('Direct save failed, falling back to download', error);
+                    elements.status.textContent = 'Direct save failed (see console) — downloading a zip instead.';
+                }
+            }
+
+            await downloadWalkZip(slug, jsonFilename, walkData, manifest, photoFiles);
+        }
+
+        async function downloadWalkZip(slug, jsonFilename, walkData, manifest, photoFiles) {
+            const zip = new JSZip();
+            const photosFolder = zip.folder('photos');
+            photoFiles.forEach(pf => photosFolder.file(pf.name, pf.blob));
+            zip.file(jsonFilename, JSON.stringify(walkData, null, 2));
+            zip.file('walks.json', JSON.stringify(manifest, null, 2));
 
             const blob = await zip.generateAsync({ type: 'blob' });
             const url = URL.createObjectURL(blob);
@@ -2706,13 +2864,6 @@
             elements['marker-info-toggle'].classList.toggle('hidden', !hasInfo);
             elements['marker-info-panel'].classList.remove('visible');
             renderInfoPanel(photo);
-
-            // Auto-collapse once the mouse leaves the whole detail view
-            // (image + toggle + info panel), not just the image, so
-            // moving down into the info panel doesn't count as leaving.
-            elements['marker-detail'].addEventListener('mouseleave', () => {
-                if (state.enlargedMarker === marker) resetEnlargedMarker();
-            }, { once: true });
         }
 
         function resetEnlargedMarker() {
@@ -3085,13 +3236,35 @@
                 el.setAttribute('x', stroke.point[0]);
                 el.setAttribute('y', stroke.point[1]);
                 el.setAttribute('font-family', "'EB Garamond', 'Georgia', serif");
-                el.setAttribute('font-size', '48');
+                // A fixed viewBox-unit size would be tiny on some photos and
+                // huge on others (viewBox units track image resolution, not
+                // screen pixels) — size it relative to the frame's actual
+                // on-screen dimensions instead, so it reads at roughly the
+                // same physical size (~50px tall) everywhere.
+                el.setAttribute('font-size', 50 * getViewBoxUnitsPerScreenPixel());
                 el.setAttribute('dominant-baseline', 'middle');
+
+                let pendingDyEm = 0;
                 (stroke.runs || []).forEach(run => {
-                    const tspan = document.createElementNS(SVG_NS, 'tspan');
-                    tspan.setAttribute('fill', run.color);
-                    tspan.textContent = run.text;
-                    el.appendChild(tspan);
+                    Array.from(run.text).forEach(ch => {
+                        const tspan = document.createElementNS(SVG_NS, 'tspan');
+                        tspan.setAttribute('fill', run.color);
+                        let dyEm = pendingDyEm;
+                        if (ch === '*') {
+                            // Most fonts draw * small and high (like a
+                            // superscript) — enlarge it and shift it down so
+                            // its base sits close to the baseline, matching
+                            // how it reads in orbifold notation (e.g. *632).
+                            tspan.setAttribute('font-size', '145%');
+                            dyEm += 0.18;
+                            pendingDyEm = -0.18;
+                        } else {
+                            pendingDyEm = 0;
+                        }
+                        if (dyEm !== 0) tspan.setAttribute('dy', `${dyEm}em`);
+                        tspan.textContent = ch;
+                        el.appendChild(tspan);
+                    });
                 });
                 return el;
             }
@@ -3361,6 +3534,20 @@
             elements['marker-detail'].classList.remove('visible');
             elements['marker-detail-img'].src = '';
             state.detailPhotoId = null;
+        }
+
+        // How many viewBox units correspond to one screen pixel, measured
+        // against the frame's own (untransformed) box rather than the
+        // svg's current transformed rect — so text sized from this stays
+        // consistent through zoom changes instead of getting "corrected"
+        // for whatever zoom happened to be active at render time.
+        function getViewBoxUnitsPerScreenPixel() {
+            const frame = elements['marker-detail-frame'];
+            const svg = elements['marker-detail-svg'];
+            const rect = frame.getBoundingClientRect();
+            const vb = svg.viewBox.baseVal;
+            if (!rect.width || !vb.width) return 1;
+            return vb.width / rect.width;
         }
 
         function svgPointFromEvent(e) {
@@ -3646,6 +3833,14 @@
                     applyRegionZoom(photo);
                 }
             });
+
+            // Viewer-only: the one explicit way to close an enlarged photo.
+            elements['marker-dismiss'].addEventListener('click', (e) => {
+                e.stopPropagation();
+                resetEnlargedMarker();
+            });
+
+            elements['connect-folder'].addEventListener('click', connectProjectFolder);
 
             setupOverlayDrawing();
             setupEditZoom();
