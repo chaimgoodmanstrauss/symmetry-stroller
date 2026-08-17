@@ -672,8 +672,8 @@
            inverse layer and below nothing — the marks themselves render on
            top of their own glow, both inside this same group. */
         #marker-detail-svg .annotation-group {
-            filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9))
-                    drop-shadow(0 0 5px rgba(255, 255, 255, 0.6));
+            filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.9))
+                    drop-shadow(0 0 10px rgba(255, 255, 255, 0.6));
         }
 
         #marker-detail-svg.drawable {
@@ -911,11 +911,19 @@
                     <button type="button" class="color-swatch" data-color="#d0212b" style="background:#d0212b" title="Red"></button>
                     <button type="button" class="color-swatch" data-color="#2883ff" style="background:#2883ff" title="Blue"></button>
                 </div>
-                <div class="tool-row" id="text-options">
-                    <input type="text" id="text-run-input" placeholder="e.g. 4 or *2" style="width:80px;">
-                    <button type="button" id="text-run-add" class="tool-button">+ Add run</button>
-                    <button type="button" id="text-run-reset" class="tool-button">Reset</button>
-                    <span id="text-run-preview" style="font-family:'EB Garamond','Georgia',serif;font-size:16px;"></span>
+                <div class="tool-row" id="text-options" style="flex-direction:column; align-items:flex-start;">
+                    <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">
+                        Pick a color, type a segment, "+ Add run" — repeat for mixed colors — then click the photo to place it.
+                    </div>
+                    <div class="tool-row">
+                        <input type="text" id="text-run-input" placeholder="e.g. 4 or *2" style="width:80px;">
+                        <button type="button" id="text-run-add" class="tool-button">+ Add run</button>
+                        <button type="button" id="text-run-reset" class="tool-button">Reset</button>
+                    </div>
+                    <div style="font-size:12px;">
+                        <span id="text-run-preview" style="font-family:'EB Garamond','Georgia',serif;font-size:20px;"></span>
+                        <span id="text-run-hint" style="color:var(--text-muted);"></span>
+                    </div>
                 </div>
 
                 <h4>Comment</h4>
@@ -1005,7 +1013,9 @@
         // (12)•) since a bare "12" next to the dot notation is ambiguous
         // with "1" followed by "2".
         function formatRosette(n, hasMirror) {
-            const order = n >= 10 ? `(${n})` : String(n);
+            // n may be '∞' (infinite rotational symmetry, e.g. a circle)
+            // rather than a plain integer.
+            const order = (typeof n === 'number' && n >= 10) ? `(${n})` : String(n);
             return (hasMirror ? '*' : '') + order + '•';
         }
 
@@ -1045,7 +1055,8 @@
             activeStroke: null,
             textRuns: [],
             regionDragState: null,
-            viewerRegionOpen: false
+            viewerRegionOpen: false,
+            editZoom: 1
         };
 
         // DOM Elements
@@ -1132,7 +1143,7 @@
                         'symmetry-comment', 'symmetry-type-list', 'symmetry-class-select',
                         'symmetry-class-controls', 'symmetry-add-type', 'overlay-undo', 'overlay-clear',
                         'marker-edit-done', 'color-options', 'text-options',
-                        'text-run-input', 'text-run-add', 'text-run-reset', 'text-run-preview'];
+                        'text-run-input', 'text-run-add', 'text-run-reset', 'text-run-preview', 'text-run-hint'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -2799,16 +2810,11 @@
         function startRegionResize(e, photo) {
             e.preventDefault();
             e.stopPropagation();
-            const naturalW = elements['marker-detail-img'].naturalWidth || 1;
-            const naturalH = elements['marker-detail-img'].naturalHeight || 1;
-            const vb = elements['marker-detail-svg'].viewBox.baseVal;
 
             const onMove = (moveEvent) => {
                 const pt = svgPointFromEvent(moveEvent);
-                const w = clampRegionDimension(Math.max(10, pt[0] - photo.viewerRegion.x), naturalW, vb.width || SVG_UNIT);
-                const h = clampRegionDimension(Math.max(10, pt[1] - photo.viewerRegion.y), naturalH, vb.height || SVG_UNIT);
-                photo.viewerRegion.width = w;
-                photo.viewerRegion.height = h;
+                photo.viewerRegion.width = Math.max(10, pt[0] - photo.viewerRegion.x);
+                photo.viewerRegion.height = Math.max(10, pt[1] - photo.viewerRegion.y);
                 renderViewerRegion(photo);
             };
             const onUp = () => {
@@ -2824,17 +2830,14 @@
             if (!photo) return;
             e.preventDefault();
             const startPt = svgPointFromEvent(e);
-            const naturalW = elements['marker-detail-img'].naturalWidth || 1;
-            const naturalH = elements['marker-detail-img'].naturalHeight || 1;
-            const vb = elements['marker-detail-svg'].viewBox.baseVal;
             photo.viewerRegion = { x: startPt[0], y: startPt[1], width: 1, height: 1 };
 
             const onMove = (moveEvent) => {
                 const pt = svgPointFromEvent(moveEvent);
                 const x = Math.min(startPt[0], pt[0]);
                 const y = Math.min(startPt[1], pt[1]);
-                const w = clampRegionDimension(Math.abs(pt[0] - startPt[0]), naturalW, vb.width || SVG_UNIT);
-                const h = clampRegionDimension(Math.abs(pt[1] - startPt[1]), naturalH, vb.height || SVG_UNIT);
+                const w = Math.abs(pt[0] - startPt[0]);
+                const h = Math.abs(pt[1] - startPt[1]);
                 photo.viewerRegion = { x, y, width: w, height: h };
                 renderViewerRegion(photo);
             };
@@ -3008,13 +3011,6 @@
         // [min(naturalPx, 200), naturalPx] — never smaller than 200px (or
         // the whole photo, if it's already narrower than that), never
         // bigger than the photo itself.
-        function clampRegionDimension(normUnits, naturalPx, svgUnit) {
-            const minPx = Math.min(naturalPx, 200);
-            const px = (normUnits / svgUnit) * naturalPx;
-            const clampedPx = Math.max(minPx, Math.min(naturalPx, px));
-            return (clampedPx / naturalPx) * svgUnit;
-        }
-
         // Zooms the image + overlay 2x, centered on the writer-placed
         // viewer region box. Only active once the viewer opts in (the info
         // toggle) — while editing, the writer sees the full image with the
@@ -3038,6 +3034,38 @@
             svg.style.transformOrigin = origin;
             img.style.transform = 'scale(2)';
             svg.style.transform = 'scale(2)';
+        }
+
+        // Writer-only scroll-to-zoom on the editing surface, so fine detail
+        // is easier to see/draw against — independent of applyRegionZoom
+        // (that one's a fixed 2x for the viewer; this is the writer's own,
+        // freely adjustable working view). Zooms toward the cursor.
+        function applyEditZoom(originXPct, originYPct) {
+            const img = elements['marker-detail-img'];
+            const svg = elements['marker-detail-svg'];
+            if (state.editZoom <= 1) {
+                img.style.transform = '';
+                svg.style.transform = '';
+                return;
+            }
+            const origin = `${originXPct}% ${originYPct}%`;
+            img.style.transformOrigin = origin;
+            svg.style.transformOrigin = origin;
+            img.style.transform = `scale(${state.editZoom})`;
+            svg.style.transform = `scale(${state.editZoom})`;
+        }
+
+        function setupEditZoom() {
+            elements['marker-detail-svg'].addEventListener('wheel', (e) => {
+                if (!state.editingOverlay) return;
+                e.preventDefault();
+                const rect = elements['marker-detail-frame'].getBoundingClientRect();
+                const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+                const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+                const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+                state.editZoom = Math.min(6, Math.max(1, state.editZoom * factor));
+                applyEditZoom(xPct, yPct);
+            }, { passive: false });
         }
 
         function showMarkerDetailImage(photo, { hideOverlayInitially = false } = {}) {
@@ -3112,16 +3140,21 @@
             const container = elements['symmetry-class-controls'];
 
             if (cls === 'rosette') {
+                // Text, not number: ∞ (Option-5 on a Mac keyboard) is a
+                // valid rosette order alongside plain integers.
                 container.innerHTML =
-                    `<input type="number" id="rosette-n" min="1" step="1" value="6" style="width:50px;">` +
+                    `<input type="text" id="rosette-n" value="6" placeholder="6 or ∞" style="width:50px;">` +
                     `<label style="font-size:12px;margin-left:4px;"><input type="checkbox" id="rosette-mirror"> mirror (*)</label>`;
             } else if (cls === 'frieze') {
+                // Frieze options keep their descriptive names (hop, step,
+                // sidle, ...) — those aren't IUC/crystallographic labels.
                 container.innerHTML = `<select id="frieze-select">` +
                     FRIEZE_TYPES.map(t => `<option value="${t.symbol}">${t.symbol} (${t.name})</option>`).join('') +
                     `</select>`;
             } else if (cls === 'planar') {
+                // Orbifold symbol only — no IUC crystallographic names.
                 container.innerHTML = `<select id="planar-select">` +
-                    PLANAR_TYPES.map(t => `<option value="${t.symbol}">${t.symbol} (${t.name})</option>`).join('') +
+                    PLANAR_TYPES.map(t => `<option value="${t.symbol}">${t.symbol}</option>`).join('') +
                     `</select>`;
             } else if (cls === 'other') {
                 container.innerHTML = `<span style="font-size:12px;color:var(--text-muted);">Not yet supported</span>`;
@@ -3140,8 +3173,14 @@
             if (cls === 'mirror') {
                 value = '*';
             } else if (cls === 'rosette') {
-                const n = parseInt(document.getElementById('rosette-n').value, 10);
-                if (!n || n < 1) return;
+                const raw = document.getElementById('rosette-n').value.trim();
+                let n;
+                if (raw === '∞' || raw.toLowerCase() === 'inf' || raw.toLowerCase() === 'infinity') {
+                    n = '∞';
+                } else {
+                    n = parseInt(raw, 10);
+                    if (!n || n < 1) return;
+                }
                 value = formatRosette(n, document.getElementById('rosette-mirror').checked);
             } else if (cls === 'frieze') {
                 value = document.getElementById('frieze-select').value;
@@ -3189,8 +3228,10 @@
             state.editingOverlay = true;
             state.overlayTool = 'domain';
             state.drawColor = RED;
+            state.editZoom = 1;
             resetTextBuilder();
             showMarkerDetailImage(photo, { hideOverlayInitially: false });
+            applyEditZoom(50, 50);
             elements['marker-detail-svg'].classList.add('drawable');
             elements['marker-detail-frame'].classList.add('editing');
             elements['symmetry-comment'].value = photo.comment || '';
@@ -3202,6 +3243,7 @@
         function closeAnnotationEditor() {
             state.editingOverlay = false;
             state.activeStroke = null;
+            state.editZoom = 1;
             elements['marker-detail-svg'].classList.remove('drawable');
             elements['marker-detail-frame'].classList.remove('editing');
             elements['marker-detail'].classList.remove('visible');
@@ -3415,6 +3457,9 @@
                 span.textContent = run.text;
                 preview.appendChild(span);
             });
+            elements['text-run-hint'].textContent = state.textRuns.length > 0
+                ? ' — click the photo to place it'
+                : '';
         }
 
         function resetTextBuilder() {
@@ -3449,12 +3494,19 @@
                 renderOverlay(photo);
             });
 
-            elements['text-run-add'].addEventListener('click', () => {
+            const addTextRun = () => {
                 const text = elements['text-run-input'].value.trim();
                 if (!text) return;
                 state.textRuns.push({ text, color: state.drawColor });
                 elements['text-run-input'].value = '';
                 updateTextRunPreview();
+            };
+            elements['text-run-add'].addEventListener('click', addTextRun);
+            elements['text-run-input'].addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTextRun();
+                }
             });
             elements['text-run-reset'].addEventListener('click', resetTextBuilder);
 
@@ -3481,6 +3533,7 @@
             });
 
             setupOverlayDrawing();
+            setupEditZoom();
         }
     </script>
 </body>
