@@ -9,16 +9,195 @@
       "lat": 53.278908333333334,
       "lng": -9.058883333333334,
       "originalWidth": 83,
-      "originalHeight": 550
+      "originalHeight": 550,
+      "comment": "",
+      "symmetryTypes": [
+        {
+          "class": "rosette",
+          "value": "*6•"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "dot",
+          "point": [
+            541.7,
+            3479.3
+          ]
+        },
+        {
+          "tool": "dot",
+          "point": [
+            562.5,
+            3905.9
+          ]
+        }
+      ],
+      "viewerRegion": {
+        "x": 199.99999999999977,
+        "y": 3125.4570204617708,
+        "width": 600.0000000000006,
+        "height": 1061.3839374486001
+      }
     },
     {
       "id": "photo_1786575497281_m42snbobq",
       "photo": "photos/IMG_2982.jpg",
       "filename": "IMG_2982.jpg",
-      "lat": 53.281844444444445,
-      "lng": -9.065272222222223,
+      "lat": 53.2803544730526,
+      "lng": -9.066832065582277,
       "originalWidth": 90,
-      "originalHeight": 500
+      "originalHeight": 500,
+      "comment": "An interesting drain.",
+      "symmetryTypes": [
+        {
+          "class": "rosette",
+          "value": "*6•"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "line",
+          "points": [
+            [
+              473.8,
+              3123.9
+            ],
+            [
+              491.3,
+              4572.9
+            ]
+          ]
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              788.1,
+              3883.3
+            ],
+            [
+              168.3,
+              3761.1
+            ]
+          ]
+        },
+        {
+          "tool": "domain",
+          "points": [
+            [
+              119.7,
+              3487.3
+            ],
+            [
+              602.8,
+              3487.3
+            ],
+            [
+              726.1,
+              4186.3
+            ],
+            [
+              150.6,
+              4289
+            ]
+          ],
+          "op": "add"
+        },
+        {
+          "tool": "domain",
+          "points": [
+            [
+              448.6,
+              2408
+            ],
+            [
+              746.7,
+              2572.5
+            ],
+            [
+              777.5,
+              3148.1
+            ],
+            [
+              376.7,
+              3076.2
+            ]
+          ],
+          "op": "add"
+        },
+        {
+          "tool": "text",
+          "point": [
+            232.79999999999995,
+            3651.7
+          ],
+          "runs": [
+            {
+              "text": "3*",
+              "color": "#d0212b"
+            }
+          ]
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              561.1,
+              4821.7
+            ],
+            [
+              587.3,
+              2106.9
+            ]
+          ]
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              150.8,
+              2543.4
+            ],
+            [
+              744.4,
+              2604.5
+            ]
+          ]
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              744.4,
+              2298.9
+            ],
+            [
+              255.6,
+              3285.4
+            ]
+          ]
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              255.6,
+              3285.4
+            ],
+            [
+              770.6,
+              3556
+            ]
+          ]
+        }
+      ],
+      "viewerRegion": {
+        "x": 177.03218767048554,
+        "y": 3480.1978175747827,
+        "width": 562.4195586209943,
+        "height": 628.1951898530642
+      }
     },
     {
       "id": "photo_1786575497287_8jm4r5qrh",
@@ -27,7 +206,11 @@
       "lat": 53.26945555555555,
       "lng": -9.05338888888889,
       "originalWidth": 90,
-      "originalHeight": 97
+      "originalHeight": 97,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497291_m7j8wxvxv",
@@ -36,16 +219,24 @@
       "lat": 53.28348888888889,
       "lng": -9.064066666666667,
       "originalWidth": 90,
-      "originalHeight": 110
+      "originalHeight": 110,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497295_31rbk2inv",
       "photo": "photos/IMG_2891.jpg",
       "filename": "IMG_2891.jpg",
-      "lat": 53.282222222222224,
-      "lng": -9.065441666666667,
+      "lat": 53.282535439655675,
+      "lng": -9.065973758697512,
       "originalWidth": 96,
-      "originalHeight": 90
+      "originalHeight": 90,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497299_a310wqjp4",
@@ -54,7 +245,11 @@
       "lat": 53.27596666666667,
       "lng": -9.053883333333333,
       "originalWidth": 90,
-      "originalHeight": 102
+      "originalHeight": 102,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497303_nq2hl2yex",
@@ -63,7 +258,11 @@
       "lat": 53.27599722222222,
       "lng": -9.059072222222223,
       "originalWidth": 90,
-      "originalHeight": 136
+      "originalHeight": 136,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497306_tf1tq6rf8",
@@ -72,7 +271,11 @@
       "lat": 53.27531111111111,
       "lng": -9.056708333333335,
       "originalWidth": 106,
-      "originalHeight": 90
+      "originalHeight": 90,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497314_ta03byzy8",
@@ -81,7 +284,11 @@
       "lat": 53.269438888888885,
       "lng": -9.053325000000001,
       "originalWidth": 97,
-      "originalHeight": 90
+      "originalHeight": 90,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497319_820f871bg",
@@ -90,16 +297,121 @@
       "lat": 53.27627222222222,
       "lng": -9.06027777777778,
       "originalWidth": 98,
-      "originalHeight": 90
+      "originalHeight": 90,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497334_qtf3twmu0",
       "photo": "photos/IMG_2751.jpg",
       "filename": "IMG_2751.jpg",
-      "lat": 53.27851944444444,
-      "lng": -9.058733333333334,
+      "lat": 53.279854117959346,
+      "lng": -9.059085845947267,
       "originalWidth": 90,
-      "originalHeight": 93
+      "originalHeight": 93,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [
+        {
+          "tool": "domain",
+          "points": [
+            [
+              224.4,
+              517.8
+            ],
+            [
+              496.8,
+              517.8
+            ],
+            [
+              491.9,
+              803.2
+            ],
+            [
+              240.6,
+              803.2
+            ],
+            [
+              206.5,
+              527.5
+            ],
+            [
+              206.5,
+              527.5
+            ],
+            [
+              206.5,
+              527.5
+            ],
+            [
+              243.8,
+              529.2
+            ],
+            [
+              243.8,
+              529.2
+            ],
+            [
+              300.6,
+              692.9
+            ],
+            [
+              300.6,
+              692.9
+            ],
+            [
+              386.5,
+              652.4
+            ],
+            [
+              386.5,
+              652.4
+            ],
+            [
+              654,
+              598.9
+            ],
+            [
+              594,
+              443.2
+            ],
+            [
+              401.1,
+              430.3
+            ],
+            [
+              401.1,
+              430.3
+            ]
+          ],
+          "op": "add"
+        },
+        {
+          "tool": "domain",
+          "points": [
+            [
+              642.7,
+              702.7
+            ],
+            [
+              611.9,
+              342.7
+            ],
+            [
+              346,
+              311.9
+            ],
+            [
+              290.8,
+              937.8
+            ]
+          ],
+          "op": "add"
+        }
+      ],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497348_z1rd86mjj",
@@ -108,7 +420,11 @@
       "lat": 53.28841944444444,
       "lng": -9.068108333333333,
       "originalWidth": 90,
-      "originalHeight": 94
+      "originalHeight": 94,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497356_z47k0x3rn",
@@ -117,7 +433,11 @@
       "lat": 53.27598888888889,
       "lng": -9.054,
       "originalWidth": 90,
-      "originalHeight": 98
+      "originalHeight": 98,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497361_lps06rdki",
@@ -126,7 +446,11 @@
       "lat": 53.428352777777775,
       "lng": -6.242702777777778,
       "originalWidth": 90,
-      "originalHeight": 96
+      "originalHeight": 96,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497364_5pc1dlvau",
@@ -135,7 +459,11 @@
       "lat": 53.274169444444446,
       "lng": -9.047869444444444,
       "originalWidth": 90,
-      "originalHeight": 90
+      "originalHeight": 90,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497369_71daxj95x",
@@ -144,7 +472,11 @@
       "lat": 53.27713055555555,
       "lng": -9.059886111111112,
       "originalWidth": 117,
-      "originalHeight": 90
+      "originalHeight": 90,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497429_bxl7p0pv2",
@@ -153,7 +485,11 @@
       "lat": 53.28341944444444,
       "lng": -9.064136111111111,
       "originalWidth": 90,
-      "originalHeight": 99
+      "originalHeight": 99,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497435_hgvikxz21",
@@ -162,16 +498,104 @@
       "lat": 53.27441388888889,
       "lng": -9.047472222222222,
       "originalWidth": 90,
-      "originalHeight": 126
+      "originalHeight": 126,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497440_ecqvpk2y0",
       "photo": "photos/IMG_2750.jpg",
       "filename": "IMG_2750.jpg",
-      "lat": 53.27809166666667,
-      "lng": -9.058544444444445,
+      "lat": 53.27803226274099,
+      "lng": -9.067111015319826,
       "originalWidth": 90,
-      "originalHeight": 92
+      "originalHeight": 92,
+      "comment": "",
+      "symmetryTypes": [
+        {
+          "class": "rosette",
+          "value": "*6•"
+        },
+        {
+          "class": "planar",
+          "value": "××"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "line",
+          "points": [
+            [
+              379.1,
+              403.6
+            ],
+            [
+              375.9,
+              708.2
+            ]
+          ]
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              226,
+              472.9
+            ],
+            [
+              678.9,
+              479.3
+            ]
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            338.8,
+            662.3
+          ],
+          "runs": [
+            {
+              "text": "4*2",
+              "color": "#d0212b"
+            }
+          ]
+        },
+        {
+          "tool": "domain",
+          "points": [
+            [
+              319.5,
+              435.8
+            ],
+            [
+              558,
+              384.2
+            ],
+            [
+              541.9,
+              621.2
+            ],
+            [
+              277.5,
+              645.4
+            ],
+            [
+              337.2,
+              426.1
+            ]
+          ],
+          "op": "add"
+        }
+      ],
+      "viewerRegion": {
+        "x": 269.4826457105435,
+        "y": 376.1752322969473,
+        "width": 298.22175205279325,
+        "height": 348.1919257631738
+      }
     },
     {
       "id": "photo_1786575497447_q8z6yqit8",
@@ -180,7 +604,11 @@
       "lat": 53.27865555555555,
       "lng": -9.058741666666668,
       "originalWidth": 90,
-      "originalHeight": 104
+      "originalHeight": 104,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497453_nvu4lokhl",
@@ -189,7 +617,11 @@
       "lat": 53.27598611111111,
       "lng": -9.05916388888889,
       "originalWidth": 94,
-      "originalHeight": 90
+      "originalHeight": 90,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
     },
     {
       "id": "photo_1786575497459_vn8326y9g",
@@ -198,14 +630,69 @@
       "lat": 53.28842222222222,
       "lng": -9.068052777777778,
       "originalWidth": 90,
-      "originalHeight": 93
+      "originalHeight": 93,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [
+        {
+          "tool": "dot",
+          "point": [
+            579.4,
+            705.2
+          ]
+        },
+        {
+          "tool": "dot",
+          "point": [
+            603.7,
+            585.3
+          ]
+        },
+        {
+          "tool": "dot",
+          "point": [
+            679.8,
+            621
+          ]
+        },
+        {
+          "tool": "dot",
+          "point": [
+            632.8,
+            520.6
+          ]
+        }
+      ],
+      "viewerRegion": {
+        "x": 199.99999999999991,
+        "y": 206.20000000000005,
+        "width": 600.0000000000001,
+        "height": 618.6000000000001
+      }
+    }
+  ],
+  "route": [
+    {
+      "waypoint": false,
+      "lat": 53.279405076349654,
+      "lng": -9.06925678253174
+    },
+    {
+      "lat": 53.278715467548615,
+      "lng": -9.06850039958954,
+      "waypoint": false
+    },
+    {
+      "waypoint": false,
+      "lat": 53.27894320005761,
+      "lng": -9.06723976135254
     }
   ],
   "mapCenter": {
-    "lat": 53.27894320005761,
-    "lng": -9.05775547027588
+    "lat": 53.27866735489145,
+    "lng": -9.068073928356172
   },
-  "mapZoom": 14,
+  "mapZoom": 18,
   "version": "2.0",
-  "savedAt": "2026-08-12T22:58:31.369Z"
+  "savedAt": "2026-08-17T19:32:40.485Z"
 }

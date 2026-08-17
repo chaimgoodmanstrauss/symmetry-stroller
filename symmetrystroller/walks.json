@@ -13,5 +13,10 @@
     "slug": "galway",
     "title": "Galway Manhole Covers",
     "dataFile": "walks/galway/galway.json"
+  },
+  {
+    "slug": "momath-to-fifth",
+    "title": "MoMath to Fifth",
+    "dataFile": "walks/momath-to-fifth/momath-to-fifth.json"
   }
 ]

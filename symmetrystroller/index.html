@@ -112,6 +112,34 @@
             opacity: 0.85;
         }
 
+        /* Same italic-script styling as .title-walk (the subtitle), just
+           smaller — a credit link at the bottom of the page, right-
+           justified to align with the title above. */
+        #magic-theorem-link {
+            position: fixed;
+            bottom: 16px;
+            right: 20px;
+            z-index: 999;
+            text-align: right;
+            font-family: 'EB Garamond', 'Garamond', 'Georgia', serif;
+            font-style: italic;
+            font-weight: 500;
+            font-size: clamp(16px, 2.4vw, 34px);
+            color: #4a1030;
+            text-decoration: none;
+            opacity: 0.75;
+            text-shadow:
+                0 0 4px #fff,
+                0 0 10px #fff,
+                0 0 20px rgba(255, 255, 255, 0.85);
+            transition: opacity 0.2s ease;
+        }
+
+        #magic-theorem-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
         /* Mode-specific visibility */
         .stroller-mode .maker-only {
             display: none !important;
@@ -291,7 +319,7 @@
             height: 20px;
             border-radius: 50%;
             background-color: var(--surface);
-            color: var(--danger);
+            color: var(--text-muted);
             border: 1.5px solid var(--border);
             cursor: pointer;
             display: flex;
@@ -304,9 +332,9 @@
         }
 
         .tour-delete-button:hover {
-            background-color: var(--danger);
+            background-color: var(--text-muted);
             color: white;
-            border-color: var(--danger);
+            border-color: var(--text-muted);
         }
 
         .dropzone {
@@ -449,14 +477,15 @@
             border-top: 1px solid var(--border);
         }
 
-        /* Delete buttons */
+        /* Delete buttons — gray, consistently anchored to the upper-left
+           corner of whatever they're dismissing. */
         .delete-button, .photo-delete-button {
             position: absolute;
             width: 20px;
             height: 20px;
             border-radius: 50%;
             background-color: var(--surface);
-            color: var(--danger);
+            color: var(--text-muted);
             border: 1.5px solid var(--border);
             cursor: pointer;
             display: flex;
@@ -471,22 +500,22 @@
 
         .delete-button {
             top: -6px;
-            right: -6px;
+            left: -6px;
             z-index: 1000;
         }
 
         .photo-delete-button {
             top: 5px;
-            right: 5px;
+            left: 5px;
             width: 18px;
             height: 18px;
             font-size: 17px;
         }
 
         .delete-button:hover, .photo-delete-button:hover {
-            background-color: var(--danger);
+            background-color: var(--text-muted);
             color: white;
-            border-color: var(--danger);
+            border-color: var(--text-muted);
         }
 
         .photo-annotate-button {
@@ -641,6 +670,13 @@
                shrink below their own natural/max size) — scroll rather
                than silently overflow past the viewport edge. */
             overflow-y: auto;
+            /* Scroll anchoring (on by default) nudges scrollTop to
+               compensate whenever content above the viewport resizes —
+               exactly what happens on every edit-zoom tick as the frame
+               grows. That's invisible to the eye but throws off the
+               fixed-point-under-the-cursor math, which measures real
+               getBoundingClientRect() positions. */
+            overflow-anchor: none;
         }
 
         #marker-detail.visible {
@@ -660,6 +696,11 @@
                therefore the enlarged image) gets squeezed to make room for
                the panel instead of reaching its actual computed size. */
             flex-shrink: 0;
+            /* Viewer region reshapes this box to the region's own aspect
+               ratio (see applyRegionZoom) via explicit width/height —
+               animated so the clip window smoothly morphs to match, the
+               same way the zoom/pan transform already does. */
+            transition: width 0.3s ease, height 0.3s ease;
         }
 
         /* Drawing mode gets a much bigger canvas to work against — the
@@ -700,16 +741,26 @@
             opacity: 0;
         }
 
-        /* Soft 5px white outer glow behind all annotation marks (lines,
-           dots, splines, brush, text), so they read as sitting above the
+        /* Soft white outer glow behind all annotation marks (lines,
+           dots, splines, text), so they read as sitting above the
            photo. Applied once to the whole group (not each mark
            individually) so there's no visible glow seam where marks
            overlap or sit close together. Sits above the fundamental-domain
            inverse layer and below nothing — the marks themselves render on
-           top of their own glow, both inside this same group. */
+           top of their own glow, both inside this same group.
+
+           Three tunable knobs, tell me new values to adjust:
+             --glow-opacity: how solid the white glow is (0-1, both layers)
+             --glow-spread:  blur radius of the tight inner layer (px)
+             --glow-radius:  blur radius of the wide outer layer (px) */
+        :root {
+            --glow-opacity: 1;
+            --glow-spread: 36px;
+            --glow-radius: 90px;
+        }
         #marker-detail-svg .annotation-group {
-            filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.9))
-                    drop-shadow(0 0 10px rgba(255, 255, 255, 0.6));
+            filter: drop-shadow(0 0 var(--glow-spread) rgba(255, 255, 255, var(--glow-opacity)))
+                    drop-shadow(0 0 var(--glow-radius) rgba(255, 255, 255, var(--glow-opacity)));
         }
 
         #marker-detail-svg.drawable {
@@ -739,9 +790,7 @@
 
         #region-crop-svg .crop-box-outline {
             fill: none;
-            stroke: #2883ff;
-            stroke-width: 0.4;
-            stroke-dasharray: 1.5,1;
+            stroke: #888888;
             pointer-events: none;
         }
 
@@ -760,6 +809,10 @@
 
         #region-crop-svg .crop-edge-handle.vertical {
             cursor: ew-resize;
+        }
+
+        #region-crop-svg .crop-corner-handle {
+            fill: #888888;
         }
 
         #marker-info-toggle,
@@ -794,15 +847,22 @@
             display: none;
         }
 
+        /* Sits directly over the bottom of the photo (museum-placard
+           style) rather than as a separate card below it — a gradient
+           scrim keeps the text legible over whatever the photo looks
+           like underneath, fading to nothing so it doesn't cover more
+           of the image than it needs to. */
         #marker-info-panel {
             display: none;
-            max-width: 75vw;
-            max-height: 26vh;
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            max-height: 50%;
             overflow-y: auto;
-            background: rgba(255, 255, 255, 0.97);
-            border-radius: var(--radius);
-            padding: 14px 18px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            padding: 32px 18px 14px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.55) 60%, rgba(0, 0, 0, 0) 100%);
+            color: #fff;
             font-size: 14px;
         }
 
@@ -811,8 +871,16 @@
         }
 
         #marker-info-panel .info-comment {
-            margin: 0 0 8px 0;
+            margin: 10px 0 0 0;
+            padding: 0;
             white-space: pre-wrap;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+        }
+
+        #marker-info-panel .symmetry-chip {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.45);
+            color: #fff;
         }
 
         .symmetry-chip {
@@ -826,7 +894,18 @@
             font-size: 15px;
         }
 
-        /* Writer-mode annotation editor */
+        /* Writer-mode annotation editor — hidden until openAnnotationEditor
+           explicitly shows it, so a plain single-click preview (which
+           reuses #marker-detail without entering full editing) doesn't
+           display a half-initialized tool panel underneath the photo. */
+        #marker-edit-panel {
+            display: none;
+        }
+
+        .maker-mode #marker-edit-panel.visible {
+            display: block;
+        }
+
         #marker-edit-panel {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -876,6 +955,49 @@
             font-weight: 600;
         }
 
+        /* Writer's walking-route line: rendered by Leaflet in the overlay
+           pane, which sits above the tiles but below the marker pane (photo
+           markers) by default, so no custom pane is needed. */
+        .route-line {
+            mix-blend-mode: multiply;
+        }
+
+        .route-arrow {
+            pointer-events: none;
+        }
+
+        .route-arrow svg {
+            display: block;
+        }
+
+        /* Route point markers — styling is the only difference between a
+           plain vertex and a waypoint (see renderRoute/getWaypointIndices).
+           Plain vertices only show while actively editing the route
+           (maker mode, Draw route on); waypoints show always. Drag moves
+           either kind; double-click a plain one to mark it a waypoint,
+           double-click a waypoint to remove it (except start/end). */
+        .route-point-handle {
+            box-sizing: border-box;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #2e7d32;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+            cursor: grab;
+        }
+
+        .route-waypoint-marker {
+            box-sizing: border-box;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            border: 4px solid #2e7d32;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+            cursor: grab;
+        }
+
         .color-swatch {
             width: 20px;
             height: 20px;
@@ -914,6 +1036,7 @@
             <span class="title-main">Symmetry Stroll</span>
             <span class="title-walk" id="title-walk-name"></span>
         </div>
+        <a id="magic-theorem-link" href="https://themagictheorem.com" target="_blank" rel="noopener">The Magic Theorem</a>
         <div class="loading-overlay" id="loading-overlay">Loading Symmetry Walk...</div>
         <div id="sidebar">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -958,6 +1081,15 @@
 
             <div class="divider maker-only"></div>
 
+            <h3 class="maker-only">Route</h3>
+            <div class="map-controls maker-only">
+                <button type="button" id="route-draw-toggle" class="tool-button">Draw route</button>
+                <button type="button" id="route-undo-point" class="tool-button">Undo point</button>
+                <button type="button" id="route-clear" class="tool-button">Clear route</button>
+            </div>
+
+            <div class="divider maker-only"></div>
+
             <h3 class="maker-only">Save & Load</h3>
             <div class="map-controls maker-only">
                 <button id="connect-folder" class="load">Connect local folder…</button>
@@ -993,10 +1125,10 @@
                 <img id="marker-detail-img" alt="">
                 <svg id="marker-detail-svg" xmlns="http://www.w3.org/2000/svg"></svg>
                 <svg id="region-crop-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
-                <button id="marker-dismiss" class="viewer-only" title="Close">×</button>
-                <button id="marker-info-toggle" class="viewer-only hidden" title="Show symmetry info">Ω</button>
+                <button id="marker-dismiss" title="Close">×</button>
+                <button id="marker-info-toggle" class="hidden" title="Show symmetry info">Ω</button>
+                <div id="marker-info-panel" class="viewer-only"></div>
             </div>
-            <div id="marker-info-panel" class="viewer-only"></div>
             <div id="marker-edit-panel" class="maker-only">
                 <h4>Draw</h4>
                 <div class="tool-row">
@@ -1004,7 +1136,6 @@
                     <button type="button" class="tool-button" data-tool="line">Line</button>
                     <button type="button" class="tool-button" data-tool="dot">Dot</button>
                     <button type="button" class="tool-button" data-tool="spline">Spline</button>
-                    <button type="button" class="tool-button" data-tool="brush">Brush</button>
                     <button type="button" class="tool-button" data-tool="text">Text</button>
                     <button type="button" class="tool-button" data-tool="region">Viewer region</button>
                 </div>
@@ -1016,19 +1147,14 @@
                     <span style="font-size:12px;">Color:</span>
                     <button type="button" class="color-swatch" data-color="#d0212b" style="background:#d0212b" title="Red"></button>
                     <button type="button" class="color-swatch" data-color="#2883ff" style="background:#2883ff" title="Blue"></button>
+                    <button type="button" class="color-swatch" data-color="#111111" style="background:#111111" title="Black"></button>
                 </div>
                 <div class="tool-row" id="text-options" style="flex-direction:column; align-items:flex-start;">
                     <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">
-                        Pick a color, type a segment, "+ Add run" — repeat for mixed colors — then click the photo to place it.
-                    </div>
-                    <div class="tool-row">
-                        <input type="text" id="text-run-input" placeholder="e.g. 4 or *2" style="width:80px;">
-                        <button type="button" id="text-run-add" class="tool-button">+ Add run</button>
-                        <button type="button" id="text-run-reset" class="tool-button">Reset</button>
+                        Click the photo, then type. Switch color to start a new colored segment. Enter or Escape to finish.
                     </div>
                     <div style="font-size:12px;">
                         <span id="text-run-preview" style="font-family:'EB Garamond','Georgia',serif;font-size:20px;"></span>
-                        <span id="text-run-hint" style="color:var(--text-muted);"></span>
                     </div>
                 </div>
 
@@ -1146,6 +1272,7 @@
             isDragging: false,
             dragState: null,
             isMarkerDragging: false,
+            lastMarkerChange: null,
             markerDragState: null,
             optionKeyDown: false,
             enlargedMarker: null,
@@ -1160,8 +1287,15 @@
             overlayTool: 'domain',
             drawColor: '#d0212b',
             activeStroke: null,
-            textRuns: [],
+            activeTextPlacement: null,
+            domainPolygon: null,
             regionDragState: null,
+            walkRoute: [],
+            routeMode: false,
+            routeFront: false,
+            routeLayer: null,
+            routeArrowMarkers: [],
+            routePointMarkers: [],
             viewerRegionOpen: false,
             editZoom: 1,
             // Crop-tool state (Viewer region tool): the image pans/zooms
@@ -1260,8 +1394,9 @@
                         'symmetry-comment', 'symmetry-type-list', 'symmetry-class-select',
                         'symmetry-class-controls', 'symmetry-add-type', 'overlay-undo', 'overlay-clear',
                         'marker-edit-done', 'color-options', 'text-options',
-                        'text-run-input', 'text-run-add', 'text-run-reset', 'text-run-preview', 'text-run-hint',
-                        'region-crop-svg', 'marker-dismiss', 'connect-folder', 'checkpoint-list'];
+                        'text-run-preview',
+                        'region-crop-svg', 'marker-dismiss', 'connect-folder', 'checkpoint-list',
+                        'route-draw-toggle', 'route-undo-point', 'route-clear', 'map'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -1291,6 +1426,21 @@
                         maxZoom: CONFIG.MAX_ZOOM
                     }).setView(CONFIG.DEFAULT_CENTER, CONFIG.DEFAULT_ZOOM);
 
+                    // Route's usual home is the default overlayPane (above
+                    // tiles, below photo markers) — this pane is only used
+                    // when the route is actively being drawn (translucent,
+                    // so it's visible over markers while placing points) or
+                    // after being clicked to bring it forward.
+                    state.map.createPane('route-front');
+                    state.map.getPane('route-front').style.zIndex = 650;
+
+                    // Route point drag handles always sit above the route
+                    // line itself (a 20px-wide layer that would otherwise
+                    // intercept clicks meant for a same-position handle),
+                    // regardless of which pane the line is currently in.
+                    state.map.createPane('route-handles');
+                    state.map.getPane('route-handles').style.zIndex = 660;
+
                     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                         maxZoom: CONFIG.MAX_ZOOM,
                         maxNativeZoom: 19
@@ -1298,6 +1448,7 @@
 
                     // Add zoom event listeners
                     state.map.on('zoom zoomend', handleZoomChange);
+                    setupRouteTool();
 
                     elements.status.textContent = 'Map loaded successfully. Ready for photos.';
 
@@ -1454,6 +1605,25 @@
                     showControlPoints();
                     state.map.dragging.disable();
                 }
+
+                // Command+Z (Mac) / Ctrl+Z (Windows) undoes: while a photo's
+                // annotation editor is open, the same action as its "Undo"
+                // button; otherwise, the last marker drag or resize on the
+                // map. Checked via e.code (physical key) rather than e.key
+                // for layout-independence.
+                if (CONFIG.IS_MAKER_MODE && (e.metaKey || e.ctrlKey) && e.code === 'KeyZ' &&
+                    !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+                    e.preventDefault();
+                    if (state.editingOverlay) {
+                        undoLastOverlayAction();
+                    } else {
+                        undoLastMarkerChange();
+                    }
+                }
+
+                if (CONFIG.IS_MAKER_MODE && state.routeMode && e.key === 'Escape') {
+                    setRouteMode(false);
+                }
             });
 
             document.addEventListener('keyup', (e) => {
@@ -1520,6 +1690,40 @@
                     if (photoIndex >= 0) {
                         removePhoto(photoIndex);
                     }
+                    return;
+                }
+
+                if (e.target.classList.contains('control-point')) return;
+
+                // A single click on the photo itself (not a drag, not a
+                // control) just brings it to the top of the stack — same
+                // as viewer mode. Only a double-click enlarges it, with a
+                // dismiss button and an edit button to go into full
+                // drawing tools. Checked via e.detail (the browser's own
+                // consecutive-click counter) rather than a 'dblclick'
+                // listener — more robust against any DOM rebuild between
+                // the two clicks of a real double-click, and against a
+                // drag's release also firing a plain 'click' right after
+                // (mouseup always precedes it, and isMarkerDragging is
+                // already back to false by then) — bringing to front again
+                // is a harmless no-op there, unlike enlarging would be.
+                const markerContainer = e.target.closest('.marker-container');
+                if (!markerContainer) return;
+                const deleteBtn = markerContainer.querySelector('.delete-button');
+                const photoId = deleteBtn?.getAttribute('data-photo-id');
+                const photoIndex = state.photoData.findIndex(p => p.id === photoId);
+                if (photoIndex < 0 || !state.markers[photoIndex]) return;
+                const clickedMarker = state.markers[photoIndex];
+                // Clicking a DIFFERENT icon while one is already enlarged
+                // reverts that one back down to an icon first — only one
+                // photo is ever enlarged at a time.
+                if (state.enlargedMarker && state.enlargedMarker !== clickedMarker) {
+                    closeThumbnailDetail();
+                }
+                if (e.detail >= 2) {
+                    openMakerPreview(clickedMarker, photoIndex);
+                } else {
+                    bringMarkerToFront(clickedMarker);
                 }
             }, true);
         }
@@ -1813,10 +2017,7 @@
                 marker.photoId = photo.id;
                 // Add click handler for stroller mode
                 if (!CONFIG.IS_MAKER_MODE) {
-                    marker.on('click', (e) => {
-                        e.originalEvent.stopPropagation();
-                        handleMarkerClick(marker, index);
-                    });
+                    marker.on('click', (e) => handlePhotoMarkerClick(e, marker, index));
                 }
 
                 refreshPhotoList();
@@ -2150,6 +2351,211 @@
             elements['success-message'].textContent = '';
 
             state.map.setView(CONFIG.DEFAULT_CENTER, CONFIG.DEFAULT_ZOOM, { animate: false });
+            state.walkRoute = [];
+            renderRoute();
+        }
+
+        // Compass bearing (0 = north, clockwise) from a to b, using a flat
+        // approximation that's accurate enough at walking-tour scale.
+        function bearingBetween(a, b) {
+            const dy = b.lat - a.lat;
+            const dx = (b.lng - a.lng) * Math.cos(a.lat * Math.PI / 180);
+            return Math.atan2(dx, dy) * 180 / Math.PI;
+        }
+
+        // Perpendicular distance (in map layer-pixel space) from point p to
+        // the segment a-b, for finding where along the route a double-click
+        // landed. Standard clamped-projection formula.
+        function pointToSegmentDistance(p, a, b) {
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const lenSq = dx * dx + dy * dy;
+            if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+            let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+        }
+
+        // Index to splice a new point into state.walkRoute so it lands on
+        // whichever existing segment is closest to latlng.
+        function nearestRouteSegmentInsertIndex(latlng) {
+            const pt = state.map.latLngToLayerPoint(latlng);
+            let bestDist = Infinity, bestIndex = state.walkRoute.length;
+            for (let i = 0; i < state.walkRoute.length - 1; i++) {
+                const a = state.map.latLngToLayerPoint(state.walkRoute[i]);
+                const b = state.map.latLngToLayerPoint(state.walkRoute[i + 1]);
+                const d = pointToSegmentDistance(pt, a, b);
+                if (d < bestDist) { bestDist = d; bestIndex = i + 1; }
+            }
+            return bestIndex;
+        }
+
+        // The route's "special" points: the start and end (always, deduped
+        // into one if they're at the same spot — a closed loop) plus any
+        // point explicitly marked as a waypoint (double-click).
+        function getWaypointIndices() {
+            const points = state.walkRoute;
+            const indices = new Set();
+            if (points.length > 0) {
+                indices.add(0);
+                indices.add(points.length - 1);
+            }
+            points.forEach((p, i) => { if (p.waypoint) indices.add(i); });
+            return indices;
+        }
+
+        // Draws the walk's directed route: a thick green multiply-blended
+        // line (so it reads as a highlighter stroke over the map rather than
+        // an opaque overlay), small arrowheads along each segment showing
+        // the walking direction, and one marker per point — waypoints
+        // (start/end, always, plus any double-click-marked point) get the
+        // bigger green-stroke/white-fill styling; every other point is a
+        // vertex of the path's shape with no visual marker of its own,
+        // except while actively editing (maker mode, Draw route on), when
+        // it also gets a small plain drag handle. Styling is the only
+        // difference between a waypoint and a plain vertex — both are
+        // draggable, insertable, and deletable the same way.
+        //
+        // Normally lives in the default overlayPane (above tiles, below
+        // photo markers) — while actively being drawn it moves to the
+        // 'route-front' pane and turns translucent so it stays visible
+        // over markers while placing points; clicking the finished route
+        // (either mode) also promotes it to that pane, at full opacity.
+        // While editable, every point marker instead lives in
+        // 'route-handles' (above even that), so the thick line never
+        // intercepts clicks meant for a same-position handle.
+        function renderRoute() {
+            if (!state.map) return;
+            if (state.routeLayer) {
+                state.map.removeLayer(state.routeLayer);
+                state.routeLayer = null;
+            }
+            state.routeArrowMarkers.forEach(m => state.map.removeLayer(m));
+            state.routeArrowMarkers = [];
+            state.routePointMarkers.forEach(m => state.map.removeLayer(m));
+            state.routePointMarkers = [];
+
+            const points = state.walkRoute;
+            if (points.length < 2) return;
+
+            const front = state.routeMode || state.routeFront;
+            const pane = front ? 'route-front' : 'overlayPane';
+            const editable = CONFIG.IS_MAKER_MODE && state.routeMode;
+
+            state.routeLayer = L.polyline(points, {
+                color: '#2e7d32',
+                weight: 20,
+                opacity: state.routeMode ? 0.55 : 1,
+                lineCap: 'round',
+                lineJoin: 'round',
+                className: 'route-line',
+                pane
+            }).addTo(state.map);
+            state.routeLayer.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                // Double-clicking a point on the path (not an existing
+                // vertex) adds a new plain vertex there, draggable like
+                // any other.
+                if (editable && e.originalEvent.detail >= 2) {
+                    const insertIndex = nearestRouteSegmentInsertIndex(e.latlng);
+                    state.walkRoute.splice(insertIndex, 0, { lat: e.latlng.lat, lng: e.latlng.lng, waypoint: false });
+                    renderRoute();
+                    return;
+                }
+                state.routeFront = true;
+                renderRoute();
+            });
+
+            for (let i = 0; i < points.length - 1; i++) {
+                const [a, b] = [points[i], points[i + 1]];
+                const mid = [(a.lat + b.lat) / 2, (a.lng + b.lng) / 2];
+                const bearing = bearingBetween(a, b);
+                const icon = L.divIcon({
+                    className: 'route-arrow',
+                    html: `<svg width="22" height="22" viewBox="0 0 22 22" style="transform:rotate(${bearing}deg)">
+                        <polygon points="11,3 18,17 11,13 4,17" fill="#fff" stroke="#2e7d32" stroke-width="1.5" stroke-linejoin="round"/>
+                    </svg>`,
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11]
+                });
+                const marker = L.marker(mid, {
+                    icon,
+                    interactive: false,
+                    pane,
+                    opacity: state.routeMode ? 0.55 : 1
+                }).addTo(state.map);
+                state.routeArrowMarkers.push(marker);
+            }
+
+            const waypointIndices = getWaypointIndices();
+            points.forEach((p, i) => {
+                const isWaypoint = waypointIndices.has(i);
+                // Plain vertices are invisible except while editing — a
+                // viewer has no use for drag handles on the path's shape
+                // points, only the marked waypoints.
+                if (!editable && !isWaypoint) return;
+
+                const isEndpoint = i === 0 || i === points.length - 1;
+                const icon = isWaypoint
+                    ? L.divIcon({ className: 'route-waypoint-marker', iconSize: [20, 20], iconAnchor: [10, 10] })
+                    : L.divIcon({ className: 'route-point-handle', iconSize: [14, 14], iconAnchor: [7, 7] });
+
+                const marker = L.marker([p.lat, p.lng], {
+                    draggable: editable,
+                    interactive: editable,
+                    pane: editable ? 'route-handles' : pane,
+                    icon
+                }).addTo(state.map);
+
+                if (editable) {
+                    marker.on('drag', () => {
+                        const ll = marker.getLatLng();
+                        state.walkRoute[i].lat = ll.lat;
+                        state.walkRoute[i].lng = ll.lng;
+                        if (state.routeLayer) state.routeLayer.setLatLngs(state.walkRoute);
+                    });
+                    marker.on('dragend', renderRoute);
+                    marker.on('click', (e) => {
+                        L.DomEvent.stopPropagation(e);
+                        if (e.originalEvent.detail < 2) return;
+                        // Double-click: a plain vertex becomes a waypoint;
+                        // a waypoint is removed entirely — except the
+                        // start/end, which always stay.
+                        if (isWaypoint) {
+                            if (!isEndpoint) state.walkRoute.splice(i, 1);
+                        } else {
+                            state.walkRoute[i].waypoint = true;
+                        }
+                        renderRoute();
+                    });
+                }
+                state.routePointMarkers.push(marker);
+            });
+        }
+
+        function setRouteMode(active) {
+            state.routeMode = active;
+            elements['route-draw-toggle'].classList.toggle('active', active);
+            elements.map.style.cursor = active ? 'crosshair' : '';
+            renderRoute();
+        }
+
+        function setupRouteTool() {
+            elements['route-draw-toggle'].addEventListener('click', () => {
+                setRouteMode(!state.routeMode);
+            });
+            elements['route-undo-point'].addEventListener('click', () => {
+                state.walkRoute.pop();
+                renderRoute();
+            });
+            elements['route-clear'].addEventListener('click', () => {
+                state.walkRoute = [];
+                renderRoute();
+            });
+            state.map.on('click', (e) => {
+                if (!state.routeMode) return;
+                state.walkRoute.push({ lat: e.latlng.lat, lng: e.latlng.lng, waypoint: false });
+                renderRoute();
+            });
         }
 
         // Wipes the whole gallery, not just the photos: name and slug reset
@@ -2193,7 +2599,7 @@
         // into the editor via the same loadStateFromData() a file import
         // uses — it doesn't undo anything already written to disk, it just
         // lets you get back to a previous in-editor state and re-save.
-        const CHECKPOINT_LIMIT = 15;
+        const CHECKPOINT_LIMIT = 5;
 
         function checkpointStorageKey(slug) {
             return `symstroll-checkpoints:${slug}`;
@@ -2251,10 +2657,33 @@
                 restoreButton.textContent = 'Restore';
                 restoreButton.addEventListener('click', () => restoreCheckpoint(cp));
 
+                const deleteButton = document.createElement('div');
+                deleteButton.className = 'tour-delete-button';
+                deleteButton.innerHTML = '×';
+                deleteButton.title = 'Dismiss this checkpoint';
+                deleteButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteCheckpoint(i);
+                });
+
                 row.appendChild(info);
                 row.appendChild(restoreButton);
+                row.appendChild(deleteButton);
                 container.appendChild(row);
             });
+        }
+
+        function deleteCheckpoint(index) {
+            const slug = state.walkSlug;
+            const checkpoints = loadCheckpoints(slug);
+            checkpoints.splice(index, 1);
+            try {
+                localStorage.setItem(checkpointStorageKey(slug), JSON.stringify(checkpoints));
+            } catch (error) {
+                console.error('Could not persist checkpoints (storage full?)', error);
+            }
+            state.checkpoints = checkpoints;
+            renderCheckpointList();
         }
 
         function restoreCheckpoint(checkpoint) {
@@ -2590,6 +3019,7 @@
                 slug: slug,
                 title: state.walkName || '',
                 photos: leanPhotos,
+                route: state.walkRoute,
                 mapCenter: state.map.getCenter(),
                 mapZoom: state.map.getZoom(),
                 version: '2.0',
@@ -2693,6 +3123,14 @@
                 state.map.setView([saveData.mapCenter.lat, saveData.mapCenter.lng], saveData.mapZoom);
             }
 
+            // Older saved walks stored route points as plain [lat,lng]
+            // pairs, before waypoints existed — normalize those into the
+            // current {lat,lng,waypoint} shape.
+            state.walkRoute = (Array.isArray(saveData.route) ? saveData.route : []).map(p =>
+                Array.isArray(p) ? { lat: p[0], lng: p[1], waypoint: false } : { waypoint: false, ...p }
+            );
+            renderRoute();
+
             saveData.photos.forEach(photo => {
                 addSavedPhotoToMap({
                     id: photo.id,
@@ -2774,10 +3212,7 @@
                 marker.photoId = photo.id;
                 // Add click handler for stroller mode
                 if (!CONFIG.IS_MAKER_MODE) {
-                    marker.on('click', (e) => {
-                        e.originalEvent.stopPropagation();
-                        handleMarkerClick(marker, index);
-                    });
+                    marker.on('click', (e) => handlePhotoMarkerClick(e, marker, index));
                 }
 
                 refreshPhotoList();
@@ -2884,6 +3319,16 @@
                     L.latLng(state.photoData[photoIndex].lat, state.photoData[photoIndex].lng) :
                     marker.getLatLng();
                 updateMarkerIcon(marker, dimensions, position);
+
+                if (photoIndex >= 0 && (marker.originalWidth !== state.dragState.originalWidth ||
+                    marker.originalHeight !== state.dragState.originalHeight)) {
+                    state.lastMarkerChange = {
+                        type: 'size',
+                        photoIndex,
+                        previousWidth: state.dragState.originalWidth,
+                        previousHeight: state.dragState.originalHeight
+                    };
+                }
             }
 
             state.isDragging = false;
@@ -2963,6 +3408,12 @@
             if (state.markerDragState.photoIndex >= 0 && state.markerDragState.photoIndex < state.photoData.length) {
                 state.photoData[state.markerDragState.photoIndex].lat = newLatLng.lat;
                 state.photoData[state.markerDragState.photoIndex].lng = newLatLng.lng;
+                state.lastMarkerChange = {
+                    type: 'position',
+                    photoIndex: state.markerDragState.photoIndex,
+                    previousLat: state.markerDragState.startLatLng.lat,
+                    previousLng: state.markerDragState.startLatLng.lng
+                };
                 refreshPhotoList();
             }
 
@@ -2974,10 +3425,63 @@
             state.markerDragState = null;
         }
 
+        // Clicking/interacting with a photo thumbnail brings it to the top
+        // (above every other thumbnail) and, if the route had been brought
+        // forward, sends it back down to its default resting position —
+        // so the route never sits on top of the very photo you just picked.
         function bringMarkerToFront(marker) {
             state.maxZIndex += 1;
             marker.setZIndexOffset(state.maxZIndex);
             marker._currentZIndex = state.maxZIndex;
+            if (state.routeFront) {
+                state.routeFront = false;
+                renderRoute();
+            }
+        }
+
+        // Reverts the single most recent marker drag or resize. One level
+        // deep (not a full history stack) — each new drag/resize replaces
+        // whatever was there before.
+        function undoLastMarkerChange() {
+            const change = state.lastMarkerChange;
+            if (!change) return;
+            state.lastMarkerChange = null;
+            const photo = state.photoData[change.photoIndex];
+            const marker = state.markers[change.photoIndex];
+            if (!photo || !marker) return;
+
+            if (change.type === 'position') {
+                photo.lat = change.previousLat;
+                photo.lng = change.previousLng;
+                marker.setLatLng([change.previousLat, change.previousLng]);
+                refreshPhotoList();
+                elements.status.textContent = 'Move undone.';
+            } else if (change.type === 'size') {
+                marker.originalWidth = change.previousWidth;
+                marker.originalHeight = change.previousHeight;
+                const dimensions = calculateMarkerDimensions(change.previousWidth, change.previousHeight);
+                updateMarkerIcon(marker, dimensions, L.latLng(photo.lat, photo.lng));
+                elements.status.textContent = 'Resize undone.';
+            }
+        }
+
+        // Same action as the "Undo" button in the drawing panel: pops the
+        // last placed vertex of an in-progress fundamental domain, or
+        // (once nothing's in progress) the last finished overlay stroke.
+        function undoLastOverlayAction() {
+            if (state.domainPolygon) {
+                if (state.domainPolygon.points.length > 1) {
+                    state.domainPolygon.points.pop();
+                    renderDomainPolygonPreview();
+                } else {
+                    cancelDomainPolygon();
+                }
+                return;
+            }
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo || photo.overlay.length === 0) return;
+            photo.overlay.pop();
+            renderOverlay(photo);
         }
 
         // Opposite of bringMarkerToFront: used when a marker collapses back
@@ -2995,17 +3499,54 @@
         window.loadStateFromData = loadStateFromData;
         window.clearAllData = clearAllData;
 
+        // Viewer's "see the drawing" mode: the info panel, the drawn
+        // overlay, and the 2x zoom into the writer's placed region, all
+        // together. Idempotent — safe to call whether or not it's already
+        // showing, unlike the Ω button's own click handler which toggles.
+        function enterViewerDrawingMode(photo) {
+            elements['marker-info-panel'].classList.add('visible');
+            elements['marker-detail-svg'].classList.remove('overlay-hidden');
+            state.viewerRegionOpen = true;
+            renderInfoPanel(photo);
+            applyRegionZoom(photo);
+        }
+
+        function exitViewerDrawingMode(photo) {
+            elements['marker-info-panel'].classList.remove('visible');
+            elements['marker-detail-svg'].classList.add('overlay-hidden');
+            state.viewerRegionOpen = false;
+            applyRegionZoom(photo);
+        }
+
+        // Shared by both places a photo marker's Leaflet 'click' handler
+        // gets attached in viewer mode: a single click just brings the
+        // thumbnail to the top of the stack (same as maker mode); only a
+        // double-click enlarges it. Checked via e.detail (the browser's
+        // own consecutive-click counter) for the same DOM-rebuild
+        // robustness reasons as the maker-mode marker handling.
+        function handlePhotoMarkerClick(e, marker, index) {
+            e.originalEvent.stopPropagation();
+            // Clicking a DIFFERENT icon while one is already enlarged (or
+            // showing its drawing) reverts that one back down to an icon
+            // first — only one photo is ever enlarged at a time.
+            if (state.enlargedMarker && state.enlargedMarker !== marker) {
+                closeThumbnailDetail();
+            }
+            if (e.originalEvent.detail >= 2) {
+                handleMarkerClick(marker, index);
+            } else {
+                bringMarkerToFront(marker);
+            }
+        }
+
         function handleMarkerClick(marker, index) {
             // If clicking the already enlarged marker, just reset it
             if (state.enlargedMarker === marker) {
-                resetEnlargedMarker();
+                closeThumbnailDetail();
                 return;
             }
 
-            // Reset any previously enlarged marker
-            if (state.enlargedMarker) {
-                resetEnlargedMarker();
-            }
+            if (state.enlargedMarker) closeThumbnailDetail();
 
             // Show the photo as a floating element centered on the
             // viewport instead of resizing the marker's own icon in place
@@ -3024,17 +3565,66 @@
                 (photo.overlay && photo.overlay.length)
             );
             elements['marker-info-toggle'].classList.toggle('hidden', !hasInfo);
+            elements['marker-info-toggle'].textContent = 'Ω';
+            elements['marker-info-toggle'].title = 'Show symmetry info';
             elements['marker-info-panel'].classList.remove('visible');
             renderInfoPanel(photo);
         }
 
-        function resetEnlargedMarker() {
-            if (!state.enlargedMarker) return;
+        // Maker mode's equivalent of handleMarkerClick: a single click
+        // enlarges the photo for a quick look (overlay shown, not hidden —
+        // it's the maker's own work) with a dismiss button and an edit
+        // button (repurposing the same top-right slot the viewer's Ω info
+        // toggle uses) that opens full drawing tools.
+        function openMakerPreview(marker, index) {
+            if (state.enlargedMarker === marker) return;
+            if (state.enlargedMarker) closeThumbnailDetail();
+
+            state.enlargedMarker = marker;
+            bringMarkerToFront(marker);
+
+            const photo = state.photoData[index];
+            // Just the photo, not the drawing — that only appears once
+            // "edit" (the same button, upper-right on the image) is
+            // clicked and opens the full annotation editor.
+            showMarkerDetailImage(photo, { hideOverlayInitially: true });
+
+            elements['marker-info-toggle'].classList.remove('hidden');
+            elements['marker-info-toggle'].textContent = '✎';
+            elements['marker-info-toggle'].title = 'Edit';
+            renderInfoPanel(photo);
+            elements['marker-info-panel'].classList.add('visible');
+        }
+
+        // Closes whatever's currently shown enlarged — a plain preview or
+        // a full editing session — cleaning up whichever state applies.
+        // Shared by the dismiss button, outside-click, and re-clicking an
+        // already-enlarged marker, in both modes.
+        function closeThumbnailDetail() {
+            if (state.editingOverlay) {
+                commitTextPlacement();
+                state.domainPolygon = null;
+                state.editingOverlay = false;
+                state.activeStroke = null;
+                state.editZoom = 1;
+                state.cropBoxPct = null;
+                elements['region-crop-svg'].classList.remove('visible');
+                elements['marker-detail-svg'].classList.remove('drawable');
+                elements['marker-detail-frame'].classList.remove('editing');
+                elements['marker-edit-panel'].classList.remove('visible');
+                resetImageSize(elements['marker-detail-img']);
+
+                // Auto-save on close when a project folder is connected
+                // (direct disk write, no download prompt) — otherwise
+                // comments/overlay drawn this session would only persist
+                // via an explicit export or a tour switch.
+                if (state.projectDirHandle) saveState();
+            }
 
             elements['marker-detail'].classList.remove('visible');
             elements['marker-detail-img'].src = '';
             elements['marker-info-panel'].classList.remove('visible');
-            sendMarkerToBack(state.enlargedMarker);
+            if (state.enlargedMarker) sendMarkerToBack(state.enlargedMarker);
             state.enlargedMarker = null;
             state.detailPhotoId = null;
         }
@@ -3044,20 +3634,31 @@
         // Follows the orbifold notation of Conway, Burgiel & Goodman-Strauss
         // ("The Symmetries of Things" / "The Magic Theorem"). Each photo can
         // carry: a comment, any number of symmetry types (mirror/rosette/
-        // frieze/planar/other), and a freehand drawing overlay (brush
-        // strokes + filled "fundamental domain" regions), all stored in
-        // normalized 0-1000-wide coordinates so they scale with however big
-        // the photo is displayed, independent of its actual resolution.
+        // frieze/planar/other), and a drawing overlay (lines, dots,
+        // splines, text, and filled "fundamental domain" regions), all
+        // stored in normalized 0-1000-wide coordinates so they scale with
+        // however big the photo is displayed, independent of its actual
+        // resolution.
 
         const SVG_UNIT = 1000;
-        const PAUSE_TO_STRAIGHT_MS = 1000;
         const RED = '#d0212b';
         const BLUE = '#2883ff';
         const LINE_WIDTH = 6;
         const DOT_SIZE = 20;
         const SPLINE_WIDTH = 6;
         const SPLINE_END_DOT = 10;
-        const BRUSH_WIDTH = 6;
+        // Tune these to adjust the '*' glyph in text-tool orbifold labels:
+        // ASTERISK_SIZE_PCT is its font-size as a % of the surrounding
+        // text; ASTERISK_DY_EM shifts it down (in em, relative to its own
+        // enlarged size) — bigger = lower. The next character shifts back
+        // up by the same amount automatically.
+        const ASTERISK_SIZE_PCT = 165;
+        const ASTERISK_DY_EM = 0.32;
+        // Tune these for the viewer-region crop box outline/corner dots —
+        // units are the 0-100 percent-of-frame space region-crop-svg's
+        // viewBox uses, so e.g. 2 is 2% of the frame's width/height.
+        const CROP_LINE_WIDTH = 2;
+        const CROP_DOT_RADIUS = 1.8;
 
         function findPhotoById(id) {
             return state.photoData.find(p => p.id === id);
@@ -3067,7 +3668,7 @@
         // fundamental domain itself stays untouched ("normal") — instead,
         // everything OUTSIDE the union of domain shapes gets a soft
         // translucent white wash, sitting above the photo but below the
-        // brush strokes (which render after it, i.e. on top).
+        // other marks (which render after it, i.e. on top).
         function renderOverlay(photo) {
             const svg = elements['marker-detail-svg'];
             svg.innerHTML = '';
@@ -3082,7 +3683,7 @@
                 svg.appendChild(buildDomainWhiteout(domainStrokes));
             }
 
-            // Top: everything else (lines, dots, splines, brush, text) in
+            // Top: everything else (lines, dots, splines, text) in
             // one shared <g> so the soft glow (applied to the group in CSS)
             // is computed once for their combined silhouette — applying it
             // per-mark instead left a visible glow seam wherever two marks
@@ -3090,23 +3691,139 @@
             const ns = 'http://www.w3.org/2000/svg';
             const group = document.createElementNS(ns, 'g');
             group.setAttribute('class', 'annotation-group');
-            markStrokes.forEach(stroke => group.appendChild(strokeToSvgElement(stroke)));
+            markStrokes.forEach(stroke => {
+                const el = strokeToSvgElement(stroke);
+                // Placed text can be grabbed and dragged to reposition it,
+                // while the text tool is active — the stroke object is
+                // captured directly (not an index) so the drag keeps
+                // mutating the right one even as the array changes shape.
+                if (stroke.tool === 'text' && state.editingOverlay && state.overlayTool === 'text') {
+                    el.style.cursor = 'move';
+                    el.addEventListener('mousedown', (e) => startTextDrag(e, stroke));
+                }
+                group.appendChild(el);
+            });
             svg.appendChild(group);
+            updateAnnotationGlowScale(group);
         }
 
-        // Crop tool (Viewer region): a box fixed to the frame — never
-        // transformed — while the image pans/zooms underneath it. The
-        // excluded area gets a translucent scrim so it's clear what's cut
-        // out; dragging inside the box pans the image, dragging an edge
-        // resizes that side of the box.
+        // The glow's blur radii (--glow-spread/--glow-radius) are declared
+        // in absolute CSS px. That's fine as long as nothing but a CSS
+        // transform ever resizes the frame — a transform scales the whole
+        // rendered output, filter included, so viewer's region-zoom (CSS
+        // transform-based) already grows the glow for free. The crop
+        // tool's wheel-zoom instead grows the frame via explicit pixel
+        // width/height (deliberately, so the frame's own layout box grows
+        // — see applyCropZoomSize), which a filter's absolute blur radius
+        // doesn't respond to on its own, so it'd stay a constant size next
+        // to text that's otherwise getting bigger. Compensate manually so
+        // the glow scales the same way in both cases.
+        function updateAnnotationGlowScale(group) {
+            group = group || document.querySelector('#marker-detail-svg .annotation-group');
+            if (!group) return;
+            let scale = 1;
+            if (state.editingOverlay && state.overlayTool === 'region') {
+                scale = state.cropZoom;
+            } else if (state.editingOverlay) {
+                scale = state.editZoom;
+            }
+            group.style.setProperty('--glow-spread', `${36 * scale}px`);
+            group.style.setProperty('--glow-radius', `${90 * scale}px`);
+        }
+
+        function startTextDrag(e, stroke) {
+            e.preventDefault();
+            e.stopPropagation();
+            commitTextPlacement();
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+            const startPt = svgPointFromEvent(e);
+            const offset = [stroke.point[0] - startPt[0], stroke.point[1] - startPt[1]];
+
+            const onMove = (moveEvent) => {
+                const pt = svgPointFromEvent(moveEvent);
+                stroke.point = [pt[0] + offset[0], pt[1] + offset[1]];
+                renderOverlay(photo);
+            };
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        // Crop tool (Viewer region): a box fixed to the frame (as a
+        // percentage of it — see getCropViewBoxHeight) while the image
+        // pans underneath it. The excluded area gets a translucent scrim
+        // so it's clear what's cut out; dragging inside the box pans the
+        // image, dragging an edge resizes that side of the box.
+        //
+        // Zoom (the wheel) grows the frame itself via explicit pixel
+        // width/height on the image — same reasoning as
+        // applyEditingImageSize: a CSS transform scale() wouldn't grow the
+        // frame's own (overflow:hidden) box, just crop a bigger image
+        // inside the same-size window. Since the box is percentage-based,
+        // it and the image scale together as one unit — zooming makes the
+        // whole thing easier to work with at a bigger size, without
+        // changing what portion of the photo is selected. Pan stays a
+        // plain translate() — that's just repositioning, which transforms
+        // handle fine; only scale() has the clipped-parent problem.
+        function applyCropZoomSize(img) {
+            if (!img.naturalWidth || !img.naturalHeight) return;
+            const maxW = window.innerWidth * 0.95;
+            const maxH = window.innerHeight * 0.78;
+            const fitScale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+            // Same baseline as applyEditingImageSize (2x fit, clamped to
+            // the viewport) so cropZoom=1 looks identical to the plain
+            // editing view — cropZoom then scales up from that baseline,
+            // deliberately allowed to exceed the viewport since that's the
+            // whole point of zooming in here.
+            let baseWidth = img.naturalWidth * fitScale * 2;
+            let baseHeight = img.naturalHeight * fitScale * 2;
+            if (baseWidth > maxW || baseHeight > maxH) {
+                const clamp = Math.min(maxW / baseWidth, maxH / baseHeight);
+                baseWidth *= clamp;
+                baseHeight *= clamp;
+            }
+            // The .editing CSS rules cap width/height at 95vw/78vh — exactly
+            // right for that plain baseline, but zooming past cropZoom=1
+            // means deliberately growing beyond it, so those caps need to
+            // stop applying (restored by exitRegionTool) or width and
+            // height would stop growing at different points and distort.
+            img.style.maxWidth = 'none';
+            img.style.maxHeight = 'none';
+            elements['marker-detail-frame'].style.maxWidth = 'none';
+            elements['marker-detail-frame'].style.maxHeight = 'none';
+            img.style.width = `${baseWidth * state.cropZoom}px`;
+            img.style.height = `${baseHeight * state.cropZoom}px`;
+        }
+
         function applyCropTransform() {
             const img = elements['marker-detail-img'];
             const svg = elements['marker-detail-svg'];
-            const t = `translate(${state.cropPan.x}px, ${state.cropPan.y}px) scale(${state.cropZoom})`;
+            applyCropZoomSize(img);
+            const t = `translate(${state.cropPan.x}px, ${state.cropPan.y}px)`;
             img.style.transformOrigin = 'center center';
             svg.style.transformOrigin = 'center center';
             img.style.transform = t;
             svg.style.transform = t;
+        }
+
+        // The crop SVG's viewBox is kept aspect-correct to the frame (see
+        // updateCropViewBox) so 1 unit is the same real size on both axes
+        // — cropBoxPct.x/w and .y/h are both "percent of frame WIDTH",
+        // not one of width and the other of height. Without this, a
+        // non-square frame (most photos) would stretch the crop box's
+        // circular corner dots into ellipses and its outline's stroke
+        // width unevenly between horizontal and vertical edges.
+        function getCropViewBoxHeight(frameRect) {
+            return frameRect.width ? 100 * (frameRect.height / frameRect.width) : 100;
+        }
+
+        function updateCropViewBox() {
+            const frameRect = elements['marker-detail-frame'].getBoundingClientRect();
+            elements['region-crop-svg'].setAttribute('viewBox', `0 0 100 ${getCropViewBoxHeight(frameRect)}`);
         }
 
         // Reads the box's position against the image's actual on-screen
@@ -3123,9 +3840,9 @@
 
             const b = state.cropBoxPct;
             const boxLeftPx = frameRect.left + (b.x / 100) * frameRect.width;
-            const boxTopPx = frameRect.top + (b.y / 100) * frameRect.height;
+            const boxTopPx = frameRect.top + (b.y / 100) * frameRect.width;
             const boxRightPx = frameRect.left + ((b.x + b.w) / 100) * frameRect.width;
-            const boxBottomPx = frameRect.top + ((b.y + b.h) / 100) * frameRect.height;
+            const boxBottomPx = frameRect.top + ((b.y + b.h) / 100) * frameRect.width;
 
             const fracLeft = (boxLeftPx - imgRect.left) / imgRect.width;
             const fracTop = (boxTopPx - imgRect.top) / imgRect.height;
@@ -3141,16 +3858,23 @@
             };
         }
 
-        function renderCropOverlay(photo) {
+        // interactive=false renders just the shading + thin outline, as a
+        // passive reference for whatever viewer region is already saved —
+        // used while drawing with any other tool, so the maker can see
+        // what the viewer will actually see without it being draggable
+        // (that's only appropriate while the region tool itself is active).
+        function renderCropOverlay(photo, interactive = true) {
+            updateCropViewBox();
             const svg = elements['region-crop-svg'];
             svg.innerHTML = '';
             const b = state.cropBoxPct;
             if (!b) return;
+            const vbH = getCropViewBoxHeight(elements['marker-detail-frame'].getBoundingClientRect());
 
             const scrim = document.createElementNS(SVG_NS, 'path');
             scrim.setAttribute('class', 'crop-scrim');
             scrim.setAttribute('fill-rule', 'evenodd');
-            scrim.setAttribute('d', `M0,0 H100 V100 H0 Z M${b.x},${b.y} H${b.x + b.w} V${b.y + b.h} H${b.x} Z`);
+            scrim.setAttribute('d', `M0,0 H100 V${vbH} H0 Z M${b.x},${b.y} H${b.x + b.w} V${b.y + b.h} H${b.x} Z`);
             svg.appendChild(scrim);
 
             const outline = document.createElementNS(SVG_NS, 'rect');
@@ -3159,7 +3883,10 @@
             outline.setAttribute('y', b.y);
             outline.setAttribute('width', b.w);
             outline.setAttribute('height', b.h);
+            outline.setAttribute('stroke-width', CROP_LINE_WIDTH);
             svg.appendChild(outline);
+
+            if (!interactive) return;
 
             const panArea = document.createElementNS(SVG_NS, 'rect');
             panArea.setAttribute('class', 'crop-pan-area');
@@ -3185,6 +3912,49 @@
                 handle.addEventListener('mousedown', (e) => startCropEdgeResize(e, spec.edge, photo));
                 svg.appendChild(handle);
             });
+
+            // Corners: dragging one moves its two adjacent sides together
+            // (e.g. top-left drags both the left and top edges at once),
+            // so the box stays a rectangle instead of needing two separate
+            // edge drags to reshape a corner.
+            [
+                { x: b.x, y: b.y, vEdge: 'top', hEdge: 'left', cursor: 'nwse-resize' },
+                { x: b.x + b.w, y: b.y, vEdge: 'top', hEdge: 'right', cursor: 'nesw-resize' },
+                { x: b.x, y: b.y + b.h, vEdge: 'bottom', hEdge: 'left', cursor: 'nesw-resize' },
+                { x: b.x + b.w, y: b.y + b.h, vEdge: 'bottom', hEdge: 'right', cursor: 'nwse-resize' }
+            ].forEach(spec => {
+                const handle = document.createElementNS(SVG_NS, 'circle');
+                handle.setAttribute('class', 'crop-corner-handle');
+                handle.setAttribute('cx', spec.x);
+                handle.setAttribute('cy', spec.y);
+                handle.setAttribute('r', CROP_DOT_RADIUS);
+                handle.style.cursor = spec.cursor;
+                handle.addEventListener('mousedown', (e) => startCropCornerResize(e, spec.vEdge, spec.hEdge, photo));
+                svg.appendChild(handle);
+            });
+        }
+
+        // Applies a single edge's resize math against the crop box, given
+        // the cursor's current position (in frame-percent) along that
+        // edge's axis. Shared by both single-edge and corner drags.
+        function applyHorizontalEdge(b, edge, xPct, minSize) {
+            if (edge === 'left') {
+                const right = b.x + b.w;
+                b.x = Math.max(0, Math.min(xPct, right - minSize));
+                b.w = right - b.x;
+            } else if (edge === 'right') {
+                b.w = Math.max(minSize, xPct - b.x);
+            }
+        }
+
+        function applyVerticalEdge(b, edge, yPct, minSize) {
+            if (edge === 'top') {
+                const bottom = b.y + b.h;
+                b.y = Math.max(0, Math.min(yPct, bottom - minSize));
+                b.h = bottom - b.y;
+            } else if (edge === 'bottom') {
+                b.h = Math.max(minSize, yPct - b.y);
+            }
         }
 
         function startCropPan(e, photo) {
@@ -3212,25 +3982,20 @@
             e.stopPropagation();
             const frame = elements['marker-detail-frame'];
             const minSize = 5;
+            const isHorizontal = edge === 'left' || edge === 'right';
 
             const onMove = (moveEvent) => {
                 const rect = frame.getBoundingClientRect();
-                const xPct = ((moveEvent.clientX - rect.left) / rect.width) * 100;
-                const yPct = ((moveEvent.clientY - rect.top) / rect.height) * 100;
                 const b = state.cropBoxPct;
-
-                if (edge === 'left') {
-                    const right = b.x + b.w;
-                    b.x = Math.max(0, Math.min(xPct, right - minSize));
-                    b.w = right - b.x;
-                } else if (edge === 'right') {
-                    b.w = Math.max(minSize, xPct - b.x);
-                } else if (edge === 'top') {
-                    const bottom = b.y + b.h;
-                    b.y = Math.max(0, Math.min(yPct, bottom - minSize));
-                    b.h = bottom - b.y;
-                } else if (edge === 'bottom') {
-                    b.h = Math.max(minSize, yPct - b.y);
+                if (isHorizontal) {
+                    const xPct = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+                    applyHorizontalEdge(b, edge, xPct, minSize);
+                } else {
+                    // Denominator is rect.width (not height) on purpose —
+                    // see getCropViewBoxHeight: y/h share the same "percent
+                    // of width" unit as x/w so the box isn't stretched.
+                    const yPct = ((moveEvent.clientY - rect.top) / rect.width) * 100;
+                    applyVerticalEdge(b, edge, yPct, minSize);
                 }
                 renderCropOverlay(photo);
             };
@@ -3243,21 +4008,118 @@
             document.addEventListener('mouseup', onUp);
         }
 
+        function startCropCornerResize(e, vEdge, hEdge, photo) {
+            e.preventDefault();
+            e.stopPropagation();
+            const frame = elements['marker-detail-frame'];
+            const minSize = 5;
+
+            const onMove = (moveEvent) => {
+                const rect = frame.getBoundingClientRect();
+                const xPct = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+                const yPct = ((moveEvent.clientY - rect.top) / rect.width) * 100;
+                const b = state.cropBoxPct;
+                applyHorizontalEdge(b, hEdge, xPct, minSize);
+                applyVerticalEdge(b, vEdge, yPct, minSize);
+                renderCropOverlay(photo);
+            };
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                computeViewerRegionFromCropBox(photo);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        // Inverse of computeViewerRegionFromCropBox: reconstructs the
+        // frame-percent crop box that reproduces an already-saved
+        // viewerRegion, against the image's current (untransformed) rect.
+        function cropBoxPctFromViewerRegion(region) {
+            const frame = elements['marker-detail-frame'];
+            const img = elements['marker-detail-img'];
+            const frameRect = frame.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            const vb = elements['marker-detail-svg'].viewBox.baseVal;
+            if (!imgRect.width || !imgRect.height || !frameRect.width || !frameRect.height || !vb.width) {
+                return { x: 20, y: 20, w: 60, h: 60 };
+            }
+
+            const fracLeft = region.x / vb.width;
+            const fracTop = region.y / vb.height;
+            const fracRight = (region.x + region.width) / vb.width;
+            const fracBottom = (region.y + region.height) / vb.height;
+
+            const boxLeftPx = imgRect.left + fracLeft * imgRect.width;
+            const boxTopPx = imgRect.top + fracTop * imgRect.height;
+            const boxRightPx = imgRect.left + fracRight * imgRect.width;
+            const boxBottomPx = imgRect.top + fracBottom * imgRect.height;
+
+            return {
+                x: ((boxLeftPx - frameRect.left) / frameRect.width) * 100,
+                y: ((boxTopPx - frameRect.top) / frameRect.width) * 100,
+                w: ((boxRightPx - boxLeftPx) / frameRect.width) * 100,
+                h: ((boxBottomPx - boxTopPx) / frameRect.width) * 100
+            };
+        }
+
         function enterRegionTool(photo) {
             state.cropZoom = 1;
             state.cropPan = { x: 0, y: 0 };
-            state.cropBoxPct = { x: 20, y: 20, w: 60, h: 60 };
             applyCropTransform();
-            elements['region-crop-svg'].classList.add('visible');
-            renderCropOverlay(photo);
-            computeViewerRegionFromCropBox(photo);
+            updateCropViewBox();
+
+            if (photo.viewerRegion) {
+                // Restore the previously saved region instead of clobbering
+                // it with the default box — reopening this tool used to
+                // silently reset any region drawn in an earlier session.
+                state.cropBoxPct = cropBoxPctFromViewerRegion(photo.viewerRegion);
+                elements['region-crop-svg'].classList.add('visible');
+                renderCropOverlay(photo);
+            } else {
+                // y/h are in the same "percent of frame width" unit as
+                // x/w (see getCropViewBoxHeight) — scale the default box's
+                // vertical placement by the frame's real aspect ratio so
+                // it's centered regardless of the photo's shape.
+                const vbH = getCropViewBoxHeight(elements['marker-detail-frame'].getBoundingClientRect());
+                state.cropBoxPct = { x: 20, y: vbH * 0.2, w: 60, h: vbH * 0.6 };
+                elements['region-crop-svg'].classList.add('visible');
+                renderCropOverlay(photo);
+                computeViewerRegionFromCropBox(photo);
+            }
         }
 
         function exitRegionTool() {
-            elements['region-crop-svg'].classList.remove('visible');
             state.cropZoom = 1;
             state.cropPan = { x: 0, y: 0 };
-            applyCropTransform();
+            const img = elements['marker-detail-img'];
+            const svg = elements['marker-detail-svg'];
+            img.style.maxWidth = '';
+            img.style.maxHeight = '';
+            elements['marker-detail-frame'].style.maxWidth = '';
+            elements['marker-detail-frame'].style.maxHeight = '';
+            img.style.transform = '';
+            svg.style.transform = '';
+            applyEditingImageSize(img);
+            updateAnnotationGlowScale();
+
+            const photo = findPhotoById(state.detailPhotoId);
+            if (photo) showPassiveRegionIndicator(photo);
+        }
+
+        // A thin gray outline + shading showing the already-saved viewer
+        // region while any OTHER tool is active, so the maker can see what
+        // the viewer will actually see without it being draggable (only
+        // appropriate while the region tool itself is selected). Hidden
+        // entirely if the photo has no saved region yet.
+        function showPassiveRegionIndicator(photo) {
+            if (!photo.viewerRegion) {
+                elements['region-crop-svg'].classList.remove('visible');
+                return;
+            }
+            state.cropBoxPct = cropBoxPctFromViewerRegion(photo.viewerRegion);
+            elements['region-crop-svg'].classList.add('visible');
+            renderCropOverlay(photo, false);
         }
 
         // A translucent white scrim masked by each domain shape, in the
@@ -3367,16 +4229,17 @@
 
             if (stroke.tool === 'domain') {
                 // Live in-progress preview only (the finished shape renders
-                // via buildDomainWhiteout instead) — an outline so the
-                // drawn-so-far boundary is visible while dragging, colored
-                // by add/subtract (Illustrator-style: Shift adds, Option
-                // subtracts) so the mode is obvious before you release.
+                // via buildDomainWhiteout instead) — a thick translucent
+                // gray outline so the vertices placed so far are easy to
+                // see against any photo.
                 const el = document.createElementNS(SVG_NS, 'polyline');
                 el.setAttribute('points', pointsAttr);
                 el.setAttribute('fill', 'none');
-                el.setAttribute('stroke', stroke.op === 'subtract' ? RED : '#3aa655');
-                el.setAttribute('stroke-width', '2');
-                el.setAttribute('stroke-dasharray', '6,4');
+                el.setAttribute('stroke', '#888888');
+                el.setAttribute('stroke-opacity', '0.6');
+                el.setAttribute('stroke-width', '14');
+                el.setAttribute('stroke-linecap', 'round');
+                el.setAttribute('stroke-linejoin', 'round');
                 el.setAttribute('vector-effect', 'non-scaling-stroke');
                 return el;
             }
@@ -3415,22 +4278,6 @@
                 return g;
             }
 
-            if (stroke.tool === 'brush') {
-                const el = document.createElementNS(SVG_NS, 'polyline');
-                el.setAttribute('points', pointsAttr);
-                el.setAttribute('fill', 'none');
-                el.setAttribute('stroke', stroke.color);
-                el.setAttribute('stroke-width', BRUSH_WIDTH);
-                el.setAttribute('stroke-linecap', 'round');
-                el.setAttribute('stroke-linejoin', 'round');
-                // Point positions live in a normalized 0-1000 space so they
-                // track the image at any display size, but stroke width
-                // should stay literally 6px on screen regardless of that
-                // scaling — non-scaling-stroke decouples the two.
-                el.setAttribute('vector-effect', 'non-scaling-stroke');
-                return el;
-            }
-
             if (stroke.tool === 'text') {
                 const el = document.createElementNS(SVG_NS, 'text');
                 el.setAttribute('x', stroke.point[0]);
@@ -3453,11 +4300,18 @@
                         if (ch === '*') {
                             // Most fonts draw * small and high (like a
                             // superscript) — enlarge it and shift it down so
-                            // its base sits close to the baseline, matching
-                            // how it reads in orbifold notation (e.g. *632).
-                            tspan.setAttribute('font-size', '145%');
-                            dyEm += 0.18;
-                            pendingDyEm = -0.18;
+                            // it reads at the same size/baseline as the
+                            // digits around it in orbifold notation (e.g.
+                            // *632). Tweak ASTERISK_SIZE_PCT/ASTERISK_DY_EM
+                            // below to adjust.
+                            tspan.setAttribute('font-size', `${ASTERISK_SIZE_PCT}%`);
+                            dyEm += ASTERISK_DY_EM;
+                            // dy is relative to each tspan's OWN font-size,
+                            // so the compensating shift on the next
+                            // (normal-size) character must be rescaled by
+                            // how much bigger this tspan's font is, or it
+                            // under-corrects and leaves a residual drift.
+                            pendingDyEm = -ASTERISK_DY_EM * (ASTERISK_SIZE_PCT / 100);
                         } else if (ch === '∞') {
                             // Our self-hosted EB Garamond is subsetted to
                             // the "latin" Unicode range and doesn't include
@@ -3492,60 +4346,190 @@
         // [min(naturalPx, 200), naturalPx] — never smaller than 200px (or
         // the whole photo, if it's already narrower than that), never
         // bigger than the photo itself.
-        // Zooms the image + overlay 2x, centered on the writer-placed
-        // viewer region box. Only active once the viewer opts in (the info
-        // toggle) — while editing, the writer sees the full image with the
-        // box drawn as a plain reference rectangle instead.
+        // Reshapes the frame itself to the region's own aspect ratio and
+        // scales the image so the region exactly fills it — rather than
+        // zooming a fixed 2x inside a frame still shaped like the whole
+        // photo, which left slack space around the region on one axis.
+        // Only active once the viewer opts in (the info toggle) — while
+        // editing, the writer sees the full image with the box drawn as a
+        // plain reference rectangle instead.
         function applyRegionZoom(photo) {
+            const frame = elements['marker-detail-frame'];
             const img = elements['marker-detail-img'];
             const svg = elements['marker-detail-svg'];
             const region = photo.viewerRegion;
 
             if (!state.viewerRegionOpen || !region) {
+                frame.style.width = '';
+                frame.style.height = '';
                 img.style.transform = '';
                 svg.style.transform = '';
+                svg.style.width = '';
+                svg.style.height = '';
+                svg.style.top = '';
+                svg.style.left = '';
                 return;
             }
 
             const vb = svg.viewBox.baseVal;
             const w = vb.width || SVG_UNIT;
             const h = vb.height || SVG_UNIT;
-            const origin = `${((region.x + region.width / 2) / w) * 100}% ${((region.y + region.height / 2) / h) * 100}%`;
-            img.style.transformOrigin = origin;
-            svg.style.transformOrigin = origin;
-            img.style.transform = 'scale(2)';
-            svg.style.transform = 'scale(2)';
+
+            // Measure the image's natural (untransformed) rendered size —
+            // svg is switched from "100% of frame" to this same explicit
+            // size below, so it stays registered with the image once the
+            // frame's own box stops matching the photo's aspect ratio.
+            frame.style.width = '';
+            frame.style.height = '';
+            img.style.transform = '';
+            const baseRect = img.getBoundingClientRect();
+            const baseW = baseRect.width;
+            const baseH = baseRect.height;
+            if (!baseW || !baseH) return;
+
+            svg.style.width = `${baseW}px`;
+            svg.style.height = `${baseH}px`;
+            svg.style.top = '0';
+            svg.style.left = '0';
+
+            const maxW = window.innerWidth * 0.75;
+            const maxH = window.innerHeight * 0.75;
+            const regionAspect = region.width / region.height;
+            let frameW, frameH;
+            if (regionAspect >= maxW / maxH) {
+                frameW = maxW;
+                frameH = maxW / regionAspect;
+            } else {
+                frameH = maxH;
+                frameW = maxH * regionAspect;
+            }
+            frame.style.width = `${frameW}px`;
+            frame.style.height = `${frameH}px`;
+
+            const fracCenterX = (region.x + region.width / 2) / w;
+            const fracCenterY = (region.y + region.height / 2) / h;
+            const fracW = region.width / w;
+            const scale = frameW / (fracW * baseW);
+            const tx = frameW / 2 - fracCenterX * baseW;
+            const ty = frameH / 2 - fracCenterY * baseH;
+
+            img.style.transformOrigin = `${fracCenterX * 100}% ${fracCenterY * 100}%`;
+            svg.style.transformOrigin = `${fracCenterX * 100}% ${fracCenterY * 100}%`;
+            const transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+            img.style.transform = transform;
+            svg.style.transform = transform;
         }
 
         // Writer-only scroll-to-zoom on the editing surface, so fine detail
         // is easier to see/draw against — independent of applyRegionZoom
         // (that one's a fixed 2x for the viewer; this is the writer's own,
-        // freely adjustable working view). Zooms toward the cursor.
-        function applyEditZoom(originXPct, originYPct) {
+        // freely adjustable working view). Zooms toward the cursor: the
+        // point under the mouse is the fixed point of the scaling, exactly
+        // — held there across any number of wheel ticks, not just the
+        // first one (see below).
+        //
+        // Explicit pixel resize, same reasoning as applyCropZoomSize: a
+        // CSS transform: scale() doesn't grow the frame's own
+        // (overflow:hidden) box, so the zoomed-in content was getting
+        // clipped back down to the original, un-zoomed frame size instead
+        // of actually showing more.
+        //
+        // clientX/clientY are the cursor's raw viewport coordinates (not a
+        // percentage of the frame) — a percentage would need to be
+        // recomputed against the frame's CURRENT (already-zoomed) box on
+        // every tick, which doesn't correspond to a fixed point in the
+        // underlying image once any zoom has already been applied. Instead
+        // this measures the cursor's fraction across the image's actual
+        // current on-screen rect (whatever transform is already on it)
+        // fresh each call, then solves for the translate that keeps that
+        // exact fraction under the cursor at the new size — correct
+        // regardless of how many ticks got us here, since it never assumes
+        // anything about prior state beyond what's currently rendered.
+        function applyEditZoom(clientX, clientY) {
             const img = elements['marker-detail-img'];
             const svg = elements['marker-detail-svg'];
+            const frame = elements['marker-detail-frame'];
+
             if (state.editZoom <= 1) {
+                img.style.maxWidth = '';
+                img.style.maxHeight = '';
+                frame.style.maxWidth = '';
+                frame.style.maxHeight = '';
+                img.style.transition = '';
+                svg.style.transition = '';
+                frame.style.transition = '';
                 img.style.transform = '';
                 svg.style.transform = '';
+                applyEditingImageSize(img);
+                updateAnnotationGlowScale();
                 return;
             }
-            const origin = `${originXPct}% ${originYPct}%`;
-            img.style.transformOrigin = origin;
-            svg.style.transformOrigin = origin;
-            img.style.transform = `scale(${state.editZoom})`;
-            svg.style.transform = `scale(${state.editZoom})`;
+            if (!img.naturalWidth || !img.naturalHeight) return;
+
+            // #marker-detail-img/svg have a CSS transition on `transform`
+            // (for the smooth zoom-back-to-normal below) — which means
+            // clearing it further down to measure the "untransformed"
+            // rect wouldn't apply instantly, it'd animate, so
+            // getBoundingClientRect() would catch a mid-transition frame
+            // instead of the true cleared state. Disabling it for this
+            // synchronous measure-then-set sequence keeps the anchor math
+            // exact on every tick, not just the first.
+            img.style.transition = 'none';
+            svg.style.transition = 'none';
+            frame.style.transition = 'none';
+
+            const beforeRect = img.getBoundingClientRect();
+            const fx = beforeRect.width ? (clientX - beforeRect.left) / beforeRect.width : 0.5;
+            const fy = beforeRect.height ? (clientY - beforeRect.top) / beforeRect.height : 0.5;
+
+            const maxW = window.innerWidth * 0.95;
+            const maxH = window.innerHeight * 0.78;
+            const fitScale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+            let baseWidth = img.naturalWidth * fitScale * 2;
+            let baseHeight = img.naturalHeight * fitScale * 2;
+            if (baseWidth > maxW || baseHeight > maxH) {
+                const clamp = Math.min(maxW / baseWidth, maxH / baseHeight);
+                baseWidth *= clamp;
+                baseHeight *= clamp;
+            }
+
+            img.style.maxWidth = 'none';
+            img.style.maxHeight = 'none';
+            frame.style.maxWidth = 'none';
+            frame.style.maxHeight = 'none';
+
+            const width = baseWidth * state.editZoom;
+            const height = baseHeight * state.editZoom;
+
+            // Measure where the image would sit untransformed at the new
+            // size (clearing transform first — resizing may itself shift
+            // the frame, since #marker-detail recenters on its own box).
+            img.style.transform = '';
+            img.style.width = `${width}px`;
+            img.style.height = `${height}px`;
+            const naturalRect = img.getBoundingClientRect();
+
+            // Use the rect's actual rendered width/height here, not the
+            // `width`/`height` values just requested — the browser can
+            // round to a slightly different sub-pixel size than what was
+            // set, and that mismatch compounds a little further every
+            // tick if left uncorrected.
+            const tx = clientX - (naturalRect.left + fx * naturalRect.width);
+            const ty = clientY - (naturalRect.top + fy * naturalRect.height);
+            const t = `translate(${tx}px, ${ty}px)`;
+            img.style.transform = t;
+            svg.style.transform = t;
+
+            updateAnnotationGlowScale();
         }
 
         function setupEditZoom() {
             elements['marker-detail-svg'].addEventListener('wheel', (e) => {
                 if (!state.editingOverlay || state.overlayTool === 'region') return;
                 e.preventDefault();
-                const rect = elements['marker-detail-frame'].getBoundingClientRect();
-                const xPct = ((e.clientX - rect.left) / rect.width) * 100;
-                const yPct = ((e.clientY - rect.top) / rect.height) * 100;
                 const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
                 state.editZoom = Math.min(6, Math.max(1, state.editZoom * factor));
-                applyEditZoom(xPct, yPct);
+                applyEditZoom(e.clientX, e.clientY);
             }, { passive: false });
 
             elements['marker-detail-frame'].addEventListener('wheel', (e) => {
@@ -3555,7 +4539,11 @@
                 const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
                 state.cropZoom = Math.min(6, Math.max(0.3, state.cropZoom * factor));
                 applyCropTransform();
-                if (photo) computeViewerRegionFromCropBox(photo);
+                updateAnnotationGlowScale();
+                // The frame just changed real pixel size — re-render the
+                // crop box UI (and its aspect-correct viewBox) so the
+                // outline/handles track the new size, not just the image.
+                if (photo) renderCropOverlay(photo);
             }, { passive: false });
         }
 
@@ -3603,6 +4591,9 @@
                 renderOverlay(photo);
                 svg.classList.toggle('overlay-hidden', hideOverlayInitially);
                 applyRegionZoom(photo);
+                if (state.editingOverlay && state.overlayTool !== 'region') {
+                    showPassiveRegionIndicator(photo);
+                }
             };
 
             img.src = photo.src;
@@ -3620,19 +4611,19 @@
             const panel = elements['marker-info-panel'];
             panel.innerHTML = '';
 
-            if (photo.comment && photo.comment.trim()) {
-                const p = document.createElement('p');
-                p.className = 'info-comment';
-                p.textContent = photo.comment;
-                panel.appendChild(p);
-            }
-
             (photo.symmetryTypes || []).forEach(type => {
                 const chip = document.createElement('span');
                 chip.className = 'symmetry-chip';
                 setChipText(chip, `${SYMMETRY_CLASS_LABELS[type.class]}: ${type.value}`);
                 panel.appendChild(chip);
             });
+
+            if (photo.comment && photo.comment.trim()) {
+                const box = document.createElement('p');
+                box.className = 'info-comment';
+                box.textContent = photo.comment;
+                panel.appendChild(box);
+            }
         }
 
         // Same EB-Garamond-lacks-∞ issue as the SVG text tool, but for
@@ -3696,7 +4687,7 @@
                     PLANAR_TYPES.map(t => `<option value="${t.symbol}">${t.symbol}</option>`).join('') +
                     `</select>`;
             } else if (cls === 'other') {
-                container.innerHTML = `<span style="font-size:12px;color:var(--text-muted);">Not yet supported</span>`;
+                container.innerHTML = `<input type="text" id="other-value" placeholder="Describe the symmetry" style="width:160px;">`;
             } else {
                 container.innerHTML = '';
             }
@@ -3725,8 +4716,11 @@
                 value = document.getElementById('frieze-select').value;
             } else if (cls === 'planar') {
                 value = document.getElementById('planar-select').value;
+            } else if (cls === 'other') {
+                value = document.getElementById('other-value').value.trim();
+                if (!value) return;
             } else {
-                return; // "other" isn't implemented yet
+                return;
             }
 
             photo.symmetryTypes.push({ class: cls, value });
@@ -3739,31 +4733,30 @@
             document.querySelectorAll('#marker-edit-panel [data-color]').forEach(btn =>
                 btn.classList.toggle('active', btn.dataset.color === state.drawColor));
 
-            const showColor = ['spline', 'brush', 'text'].includes(state.overlayTool);
+            const showColor = ['spline', 'text'].includes(state.overlayTool);
             elements['color-options'].style.display = showColor ? 'flex' : 'none';
             elements['text-options'].style.display = state.overlayTool === 'text' ? 'flex' : 'none';
             updateOverlayCursor();
         }
 
-        // A plain outline circle sized to the brush width (à la
-        // Illustrator's brush-tip cursor) while the brush tool is active,
-        // rather than a picture of a brush — just enough to show where and
-        // how wide it'll draw. Every other tool keeps a plain crosshair.
         function updateOverlayCursor() {
-            const svg = elements['marker-detail-svg'];
-            if (state.overlayTool === 'brush') {
-                const r = BRUSH_WIDTH / 2;
-                const size = Math.ceil(r * 2 + 2);
-                const c = size / 2;
-                const cursorSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>` +
-                    `<circle cx='${c}' cy='${c}' r='${r}' fill='none' stroke='black' stroke-width='1'/></svg>`;
-                svg.style.cursor = `url("data:image/svg+xml,${encodeURIComponent(cursorSvg)}") ${c} ${c}, crosshair`;
-            } else {
-                svg.style.cursor = 'crosshair';
-            }
+            elements['marker-detail-svg'].style.cursor = 'crosshair';
         }
 
         function openAnnotationEditor(photo) {
+            // May be called cold (sidebar "annotate" button, double-click)
+            // or from an already-open plain preview (the edit button) —
+            // either way, make sure the marker's tracked as enlarged and
+            // brought to front, without duplicating that setup if it's
+            // already the one showing.
+            const photoIndex = state.photoData.findIndex(p => p.id === photo.id);
+            const marker = state.markers[photoIndex];
+            if (marker && state.enlargedMarker !== marker) {
+                if (state.enlargedMarker) closeThumbnailDetail();
+                state.enlargedMarker = marker;
+                bringMarkerToFront(marker);
+            }
+
             state.editingOverlay = true;
             state.overlayTool = 'domain';
             state.drawColor = RED;
@@ -3774,29 +4767,18 @@
             state.editZoom = 1;
             state.cropBoxPct = null;
             elements['region-crop-svg'].classList.remove('visible');
-            resetTextBuilder();
+            state.activeTextPlacement = null;
+            state.domainPolygon = null;
+            updateTextRunPreview();
             showMarkerDetailImage(photo, { hideOverlayInitially: false });
             applyEditZoom(50, 50);
             elements['marker-detail-svg'].classList.add('drawable');
             elements['marker-detail-frame'].classList.add('editing');
+            elements['marker-edit-panel'].classList.add('visible');
             elements['symmetry-comment'].value = photo.comment || '';
             renderSymmetryTypeList(photo);
             renderClassControls();
             updateToolButtonStates();
-        }
-
-        function closeAnnotationEditor() {
-            state.editingOverlay = false;
-            state.activeStroke = null;
-            state.editZoom = 1;
-            state.cropBoxPct = null;
-            elements['region-crop-svg'].classList.remove('visible');
-            elements['marker-detail-svg'].classList.remove('drawable');
-            elements['marker-detail-frame'].classList.remove('editing');
-            elements['marker-detail'].classList.remove('visible');
-            resetImageSize(elements['marker-detail-img']);
-            elements['marker-detail-img'].src = '';
-            state.detailPhotoId = null;
         }
 
         // How many viewBox units correspond to one screen pixel, measured
@@ -3822,86 +4804,21 @@
             return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
         }
 
-        function armPauseTimer() {
-            const stroke = state.activeStroke;
-            if (!stroke) return;
-            clearTimeout(stroke.pauseTimer);
-            // Holding the mouse still (without releasing) turns the whole
-            // stroke into a single straight segment from mousedown to
-            // wherever mouseup ends up — not the freehand path plus a
-            // straight tail, the freehand part is discarded entirely.
-            stroke.pauseTimer = setTimeout(() => {
-                stroke.straight = true;
-                const start = stroke.points[0];
-                // The second point starts at wherever the cursor currently
-                // is (the pause point) rather than duplicating start — a
-                // 2-point segment with identical endpoints has zero length
-                // and is invisible, which is why the line was vanishing.
-                const current = stroke.points[stroke.points.length - 1];
-                stroke.points = [start, current];
-                renderActiveStrokePreview();
-            }, PAUSE_TO_STRAIGHT_MS);
-        }
-
         function renderActiveStrokePreview() {
             const photo = findPhotoById(state.detailPhotoId);
             if (!photo) return;
             renderOverlay(photo);
             if (state.activeStroke) {
                 const svg = elements['marker-detail-svg'];
-                const target = state.activeStroke.tool === 'domain'
-                    ? svg
-                    : svg.querySelector('.annotation-group');
-                target.appendChild(strokeToSvgElement(state.activeStroke));
+                svg.querySelector('.annotation-group').appendChild(strokeToSvgElement(state.activeStroke));
             }
         }
 
         // Sub-pixel hardware jitter fires real mousemove events even when a
-        // hand is genuinely held still, which would otherwise keep
-        // re-arming the pause timer forever and prevent it from ever
-        // firing. Movement below this (in the normalized 0-1000 space)
-        // doesn't count as real motion.
+        // hand is genuinely held still — movement below this (in the
+        // normalized 0-1000 space) doesn't count as real motion. Used by
+        // the spline tool's freehand tracking.
         const JITTER_THRESHOLD = 3;
-
-        function onOverlayMouseMove(e) {
-            const stroke = state.activeStroke;
-            if (!stroke) return;
-            const pt = svgPointFromEvent(e);
-
-            if (stroke.straight) {
-                stroke.points[stroke.points.length - 1] = pt;
-                renderActiveStrokePreview();
-                return;
-            }
-
-            const last = stroke.points[stroke.points.length - 1];
-            if (Math.hypot(pt[0] - last[0], pt[1] - last[1]) < JITTER_THRESHOLD) return;
-
-            stroke.points.push(pt);
-            armPauseTimer();
-            renderActiveStrokePreview();
-        }
-
-        // domain and brush share the freehand + hold-to-straighten engine
-        // above; each just tags the finished stroke with its own shape.
-        function onOverlayMouseUp() {
-            const stroke = state.activeStroke;
-            document.removeEventListener('mousemove', onOverlayMouseMove);
-            document.removeEventListener('mouseup', onOverlayMouseUp);
-            if (!stroke) return;
-            clearTimeout(stroke.pauseTimer);
-
-            const photo = findPhotoById(state.detailPhotoId);
-            if (photo && stroke.points.length > 1) {
-                photo.overlay.push(
-                    stroke.tool === 'domain'
-                        ? { tool: 'domain', points: stroke.points, op: stroke.op || 'add' }
-                        : { tool: 'brush', color: stroke.color, points: stroke.points }
-                );
-            }
-            if (photo) renderOverlay(photo);
-            state.activeStroke = null;
-        }
 
         // Line: always a straight segment from mousedown to mouseup, no
         // freehand phase at all.
@@ -3925,8 +4842,7 @@
             renderOverlay(photo);
         }
 
-        // Spline: pure freehand (smoothed at render time), no
-        // hold-to-straighten — that behavior is brush-specific.
+        // Spline: pure freehand (smoothed at render time).
         function onSplineMouseMove(e) {
             const stroke = state.activeStroke;
             if (!stroke) return;
@@ -3950,6 +4866,77 @@
             renderOverlay(photo);
         }
 
+        // Fundamental domain: a click-vertex polygon tool rather than
+        // freehand drag — buildDomainWhiteout already renders domain
+        // strokes as closed <polygon>s, so this just builds that same
+        // points array one click at a time instead of via mouse-drag
+        // sampling. Shift/Option (add/subtract) is decided once, from the
+        // modifier held at the polygon's first click.
+        function handleDomainClick(pt, e) {
+            if (!state.domainPolygon) {
+                state.domainPolygon = { points: [pt], op: e.altKey ? 'subtract' : 'add' };
+                renderDomainPolygonPreview();
+                return;
+            }
+            const poly = state.domainPolygon;
+
+            // Double-click: e.detail is the browser's own consecutive-click
+            // counter, tracked by screen position/timing rather than DOM
+            // node identity — unlike a 'dblclick' listener, it still works
+            // even though every click here rebuilds the SVG (renderOverlay
+            // replaces the element under the cursor between the two
+            // clicks, which stops a real 'dblclick' event from ever firing).
+            // Drop a final point here, then close, per spec.
+            if (e.detail >= 2) {
+                // The first click of this pair (detail 1) already landed
+                // here and pushed a point below — don't push a second,
+                // near-identical one on top of it.
+                const last = poly.points[poly.points.length - 1];
+                const dupThreshold = 20 * getViewBoxUnitsPerScreenPixel();
+                const isDuplicate = last && Math.hypot(pt[0] - last[0], pt[1] - last[1]) < dupThreshold;
+                if (!isDuplicate) poly.points.push(pt);
+                finishDomainPolygon();
+                return;
+            }
+
+            const closeThreshold = 12 * getViewBoxUnitsPerScreenPixel();
+            const first = poly.points[0];
+            if (poly.points.length >= 3 && Math.hypot(pt[0] - first[0], pt[1] - first[1]) < closeThreshold) {
+                finishDomainPolygon();
+                return;
+            }
+            poly.points.push(pt);
+            renderDomainPolygonPreview();
+        }
+
+        function finishDomainPolygon() {
+            const poly = state.domainPolygon;
+            state.domainPolygon = null;
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+            if (poly && poly.points.length >= 3) {
+                photo.overlay.push({ tool: 'domain', points: poly.points, op: poly.op });
+            }
+            renderOverlay(photo);
+        }
+
+        function cancelDomainPolygon() {
+            state.domainPolygon = null;
+            const photo = findPhotoById(state.detailPhotoId);
+            if (photo) renderOverlay(photo);
+        }
+
+        function renderDomainPolygonPreview(cursorPt) {
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+            renderOverlay(photo);
+            const poly = state.domainPolygon;
+            if (!poly) return;
+            const svg = elements['marker-detail-svg'];
+            const previewPoints = cursorPt ? [...poly.points, cursorPt] : poly.points;
+            svg.appendChild(strokeToSvgElement({ tool: 'domain', points: previewPoints, op: poly.op }));
+        }
+
         function setupOverlayDrawing() {
             elements['marker-detail-svg'].addEventListener('mousedown', (e) => {
                 if (!state.editingOverlay) return;
@@ -3967,10 +4954,7 @@
                 }
 
                 if (state.overlayTool === 'text') {
-                    if (state.textRuns.length === 0) return;
-                    photo.overlay.push({ tool: 'text', point: pt, runs: state.textRuns.slice() });
-                    renderOverlay(photo);
-                    resetTextBuilder();
+                    startTextPlacement(pt);
                     return;
                 }
 
@@ -3990,72 +4974,126 @@
                     return;
                 }
 
-                // domain, brush: freehand + hold-to-straighten. For domain
-                // specifically: Shift adds (the default anyway), Option
-                // subtracts — matching Illustrator's shape-mode modifiers.
-                state.activeStroke = {
-                    tool: state.overlayTool,
-                    color: state.drawColor,
-                    points: [pt],
-                    straight: false,
-                    pauseTimer: null,
-                    op: state.overlayTool === 'domain' && e.altKey ? 'subtract' : 'add'
-                };
-                armPauseTimer();
-                renderActiveStrokePreview();
-                document.addEventListener('mousemove', onOverlayMouseMove);
-                document.addEventListener('mouseup', onOverlayMouseUp);
+                if (state.overlayTool === 'domain') {
+                    handleDomainClick(pt, e);
+                    return;
+                }
             });
 
-            // Text tool: show where the built-up runs would land as the
-            // cursor moves over the photo, rather than placing blind.
+            // Fundamental domain: click to place polygon vertices, rubber-
+            // banding a line to the cursor between clicks; click near the
+            // first vertex, press Enter, or double-click to close the shape.
             elements['marker-detail-svg'].addEventListener('mousemove', (e) => {
-                if (!state.editingOverlay || state.overlayTool !== 'text') return;
-                updateTextPlacementPreview(svgPointFromEvent(e));
+                if (!state.editingOverlay || state.overlayTool !== 'domain' || !state.domainPolygon) return;
+                renderDomainPolygonPreview(svgPointFromEvent(e));
             });
-            elements['marker-detail-svg'].addEventListener('mouseleave', () => {
-                updateTextPlacementPreview(null);
+
+            document.addEventListener('keydown', (e) => {
+                if (state.editingOverlay && state.overlayTool === 'domain' && state.domainPolygon) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        finishDomainPolygon();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        cancelDomainPolygon();
+                    }
+                    return;
+                }
+                if (state.editingOverlay && state.overlayTool === 'text' && state.activeTextPlacement) {
+                    if (e.metaKey || e.ctrlKey) return;
+                    if (e.key === 'Enter' || e.key === 'Escape') {
+                        e.preventDefault();
+                        commitTextPlacement();
+                    } else if (e.key === 'Backspace') {
+                        e.preventDefault();
+                        backspaceTextPlacement();
+                    } else if (e.key.length === 1) {
+                        e.preventDefault();
+                        typeIntoTextPlacement(e.key);
+                    }
+                    return;
+                }
+
+                // Nothing more specific in progress (no domain polygon, no
+                // active text placement) — Escape just closes the editor.
+                if (state.editingOverlay && e.key === 'Escape') {
+                    e.preventDefault();
+                    closeThumbnailDetail();
+                }
             });
         }
 
-        function updateTextPlacementPreview(pt) {
-            const svg = elements['marker-detail-svg'];
-            const existing = svg.querySelector('.text-preview');
+        // Text tool: click places an insertion point and starts capturing
+        // keystrokes directly, rendering each character on the photo as
+        // it's typed rather than composing off to the side and placing
+        // blind. Switching color mid-typing starts a new colored run
+        // (e.g. blue "4" + red "*2" -> "4*2") without recoloring what's
+        // already been typed.
+        function startTextPlacement(pt) {
+            commitTextPlacement();
+            state.activeTextPlacement = { point: pt, runs: [] };
+            renderActiveTextPlacement();
+        }
 
-            if (!pt || state.overlayTool !== 'text' || state.textRuns.length === 0) {
-                if (existing) existing.remove();
-                return;
+        function commitTextPlacement() {
+            const placement = state.activeTextPlacement;
+            state.activeTextPlacement = null;
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+            const runs = (placement ? placement.runs : []).filter(r => r.text.length > 0);
+            if (runs.length > 0) {
+                photo.overlay.push({ tool: 'text', point: placement.point, runs });
             }
+            renderOverlay(photo);
+            updateTextRunPreview();
+        }
 
-            const el = strokeToSvgElement({ tool: 'text', point: pt, runs: state.textRuns });
-            el.classList.add('text-preview');
-            el.style.opacity = '0.55';
-            el.style.pointerEvents = 'none';
+        function typeIntoTextPlacement(ch) {
+            const placement = state.activeTextPlacement;
+            if (!placement) return;
+            let lastRun = placement.runs[placement.runs.length - 1];
+            if (!lastRun || lastRun.color !== state.drawColor) {
+                lastRun = { text: '', color: state.drawColor };
+                placement.runs.push(lastRun);
+            }
+            lastRun.text += ch;
+            renderActiveTextPlacement();
+        }
 
-            if (existing) {
-                existing.replaceWith(el);
-            } else {
+        function backspaceTextPlacement() {
+            const placement = state.activeTextPlacement;
+            if (!placement || placement.runs.length === 0) return;
+            const lastRun = placement.runs[placement.runs.length - 1];
+            lastRun.text = lastRun.text.slice(0, -1);
+            if (lastRun.text.length === 0) placement.runs.pop();
+            renderActiveTextPlacement();
+        }
+
+        function renderActiveTextPlacement() {
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+            renderOverlay(photo);
+            const placement = state.activeTextPlacement;
+            if (placement) {
+                const svg = elements['marker-detail-svg'];
+                const el = strokeToSvgElement({ tool: 'text', point: placement.point, runs: placement.runs });
+                el.classList.add('text-preview');
                 (svg.querySelector('.annotation-group') || svg).appendChild(el);
             }
+            updateTextRunPreview();
         }
 
         function updateTextRunPreview() {
             const preview = elements['text-run-preview'];
             preview.innerHTML = '';
-            state.textRuns.forEach(run => {
+            const placement = state.activeTextPlacement;
+            if (!placement) return;
+            placement.runs.forEach(run => {
                 const span = document.createElement('span');
                 span.style.color = run.color;
                 span.textContent = run.text;
                 preview.appendChild(span);
             });
-            elements['text-run-hint'].textContent = state.textRuns.length > 0
-                ? ' — click the photo to place it'
-                : '';
-        }
-
-        function resetTextBuilder() {
-            state.textRuns = [];
-            updateTextRunPreview();
         }
 
         function setupAnnotationEditorControls() {
@@ -4071,7 +5109,10 @@
                         exitRegionTool();
                     }
                     if (state.overlayTool !== 'text') {
-                        updateTextPlacementPreview(null);
+                        commitTextPlacement();
+                    }
+                    if (state.overlayTool !== 'domain') {
+                        cancelDomainPolygon();
                     }
                     updateToolButtonStates();
                 });
@@ -4083,34 +5124,14 @@
                 });
             });
 
-            elements['overlay-undo'].addEventListener('click', () => {
-                const photo = findPhotoById(state.detailPhotoId);
-                if (!photo || photo.overlay.length === 0) return;
-                photo.overlay.pop();
-                renderOverlay(photo);
-            });
+            elements['overlay-undo'].addEventListener('click', undoLastOverlayAction);
             elements['overlay-clear'].addEventListener('click', () => {
+                state.domainPolygon = null;
                 const photo = findPhotoById(state.detailPhotoId);
                 if (!photo) return;
                 photo.overlay = [];
                 renderOverlay(photo);
             });
-
-            const addTextRun = () => {
-                const text = elements['text-run-input'].value.trim();
-                if (!text) return;
-                state.textRuns.push({ text, color: state.drawColor });
-                elements['text-run-input'].value = '';
-                updateTextRunPreview();
-            };
-            elements['text-run-add'].addEventListener('click', addTextRun);
-            elements['text-run-input'].addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTextRun();
-                }
-            });
-            elements['text-run-reset'].addEventListener('click', resetTextBuilder);
 
             elements['symmetry-comment'].addEventListener('input', (e) => {
                 const photo = findPhotoById(state.detailPhotoId);
@@ -4118,26 +5139,62 @@
             });
             elements['symmetry-class-select'].addEventListener('change', renderClassControls);
             elements['symmetry-add-type'].addEventListener('click', addSymmetryType);
-            elements['marker-edit-done'].addEventListener('click', closeAnnotationEditor);
+            elements['marker-edit-done'].addEventListener('click', closeThumbnailDetail);
 
-            // Viewer-only: toggles the info panel, the drawn overlay, and
-            // the 2x zoom into the writer's placed region, all together.
+            // Top-right button: in maker mode this is "edit" (opens full
+            // drawing tools on the currently-previewed photo); in viewer
+            // mode it's the Ω info toggle (shows the info panel, the drawn
+            // overlay, and the 2x zoom into the writer's placed region,
+            // all together).
             elements['marker-info-toggle'].addEventListener('click', (e) => {
                 e.stopPropagation();
                 const photo = findPhotoById(state.detailPhotoId);
-                const nowVisible = elements['marker-info-panel'].classList.toggle('visible');
-                elements['marker-detail-svg'].classList.toggle('overlay-hidden', !nowVisible);
-                state.viewerRegionOpen = nowVisible;
-                if (photo) {
-                    renderInfoPanel(photo);
-                    applyRegionZoom(photo);
+                if (!photo) return;
+                if (CONFIG.IS_MAKER_MODE) {
+                    openAnnotationEditor(photo);
+                    return;
+                }
+                if (state.viewerRegionOpen) {
+                    exitViewerDrawingMode(photo);
+                } else {
+                    enterViewerDrawingMode(photo);
                 }
             });
 
-            // Viewer-only: the one explicit way to close an enlarged photo.
+            // Double-clicking the enlarged image itself — not the map
+            // thumbnail, the big photo already showing — is the other way
+            // in to the "full" mode (draw mode / see-the-drawing mode),
+            // same destination as the edit/Ω button. Only acts while
+            // there's an enlarged photo that isn't already in that mode;
+            // ignored once maker's editingOverlay is on, since double-
+            // click means specific things to each drawing tool there.
+            elements['marker-detail-frame'].addEventListener('click', (e) => {
+                if (!state.enlargedMarker || e.detail < 2) return;
+                const photo = findPhotoById(state.detailPhotoId);
+                if (!photo) return;
+                if (CONFIG.IS_MAKER_MODE) {
+                    if (!state.editingOverlay) openAnnotationEditor(photo);
+                } else if (!state.viewerRegionOpen) {
+                    enterViewerDrawingMode(photo);
+                }
+            });
+
+            // Close the enlarged photo/annotation editor via the × button,
+            // or by clicking anywhere outside it — the frame, panels, and
+            // dismiss/edit buttons are all inside #marker-detail, so a
+            // click that reaches here is "outside" by definition. Clicks
+            // on a map marker are excluded: that's how you switch which
+            // photo is shown, and it already opens the new one itself —
+            // treating it as an outside-click too would immediately close
+            // what it just opened.
             elements['marker-dismiss'].addEventListener('click', (e) => {
                 e.stopPropagation();
-                resetEnlargedMarker();
+                closeThumbnailDetail();
+            });
+            document.addEventListener('click', (e) => {
+                if (elements['marker-detail'].contains(e.target)) return;
+                if (e.target.closest('.marker-container')) return;
+                if (state.enlargedMarker) closeThumbnailDetail();
             });
 
             elements['connect-folder'].addEventListener('click', connectProjectFolder);

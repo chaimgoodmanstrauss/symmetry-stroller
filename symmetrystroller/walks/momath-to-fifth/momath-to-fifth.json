@@ -1,0 +1,1049 @@
+{
+  "slug": "momath-to-fifth",
+  "title": "MoMath to Fifth",
+  "photos": [
+    {
+      "id": "photo_1786985805447_7wiv8inba",
+      "photo": "photos/IMG_3114.jpg",
+      "filename": "IMG_3114.JPG",
+      "lat": 40.739303116117725,
+      "lng": -73.99494767189027,
+      "originalWidth": 59,
+      "originalHeight": 550,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805454_vjuzrfqfb",
+      "photo": "photos/IMG_3105.jpg",
+      "filename": "IMG_3105.JPG",
+      "lat": 40.74129722222222,
+      "lng": -73.99314166666667,
+      "originalWidth": 327,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805460_csa2fgom6",
+      "photo": "photos/IMG_3101.jpg",
+      "filename": "IMG_3101.JPG",
+      "lat": 40.740975,
+      "lng": -73.99221944444444,
+      "originalWidth": 500,
+      "originalHeight": 70,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805464_qheix628y",
+      "photo": "photos/IMG_3107.jpg",
+      "filename": "IMG_3107.JPG",
+      "lat": 40.74068888888889,
+      "lng": -73.99426944444444,
+      "originalWidth": 500,
+      "originalHeight": 68,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805469_r2q6iimi5",
+      "photo": "photos/IMG_3099.jpg",
+      "filename": "IMG_3099.JPG",
+      "lat": 40.74078888888889,
+      "lng": -73.99157777777778,
+      "originalWidth": 393,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805476_hxx56pojq",
+      "photo": "photos/IMG_3044.jpg",
+      "filename": "IMG_3044.JPG",
+      "lat": 40.74064444444445,
+      "lng": -73.99456111111111,
+      "originalWidth": 500,
+      "originalHeight": 44,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805657_49oa2oksg",
+      "photo": "photos/IMG_3088.jpg",
+      "filename": "IMG_3088.JPG",
+      "lat": 40.74013888888889,
+      "lng": -73.99072222222222,
+      "originalWidth": 500,
+      "originalHeight": 50,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805670_qq4hcneq3",
+      "photo": "photos/IMG_3058.jpg",
+      "filename": "IMG_3058.JPG",
+      "lat": 40.73985277777778,
+      "lng": -73.99485833333334,
+      "originalWidth": 500,
+      "originalHeight": 61,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805698_whoids0rd",
+      "photo": "photos/IMG_3071.jpg",
+      "filename": "IMG_3071.JPG",
+      "lat": 40.73861388888889,
+      "lng": -73.99191388888889,
+      "originalWidth": 367,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805699_zfkuesulj",
+      "photo": "photos/IMG_3102.jpg",
+      "filename": "IMG_3102.JPG",
+      "lat": 40.74133055555556,
+      "lng": -73.99305555555556,
+      "originalWidth": 335,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805701_y2knvvlv2",
+      "photo": "photos/IMG_3064.jpg",
+      "filename": "IMG_3064.JPG",
+      "lat": 40.73932222222222,
+      "lng": -73.99347777777778,
+      "originalWidth": 500,
+      "originalHeight": 54,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805702_kvx8oab2d",
+      "photo": "photos/IMG_3041.jpg",
+      "filename": "IMG_3041.JPG",
+      "lat": 40.740605555555554,
+      "lng": -73.99460555555555,
+      "originalWidth": 500,
+      "originalHeight": 54,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805704_gfml1gb4y",
+      "photo": "photos/IMG_3069.jpg",
+      "filename": "IMG_3069.JPG",
+      "lat": 40.738819444444445,
+      "lng": -73.99244722222222,
+      "originalWidth": 83,
+      "originalHeight": 101,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805704_xznpanp5o",
+      "photo": "photos/IMG_3060.jpg",
+      "filename": "IMG_3060.JPG",
+      "lat": 40.73968055555556,
+      "lng": -73.99455277777778,
+      "originalWidth": 500,
+      "originalHeight": 40,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805705_73clcp7jl",
+      "photo": "photos/IMG_3043.jpg",
+      "filename": "IMG_3043.JPG",
+      "lat": 40.740586111111114,
+      "lng": -73.99453055555556,
+      "originalWidth": 500,
+      "originalHeight": 78,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805707_fphwn5a5l",
+      "photo": "photos/IMG_3042.jpg",
+      "filename": "IMG_3042.JPG",
+      "lat": 40.74057777777778,
+      "lng": -73.99451388888889,
+      "originalWidth": 500,
+      "originalHeight": 66,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805708_qgjgu8p5f",
+      "photo": "photos/IMG_3104.jpg",
+      "filename": "IMG_3104.JPG",
+      "lat": 40.741302777777776,
+      "lng": -73.99305,
+      "originalWidth": 261,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805709_4ml7x66hb",
+      "photo": "photos/IMG_3070.jpg",
+      "filename": "IMG_3070.JPG",
+      "lat": 40.73867777777778,
+      "lng": -73.99219444444445,
+      "originalWidth": 500,
+      "originalHeight": 82,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805711_q129qwhug",
+      "photo": "photos/IMG_3087.jpg",
+      "filename": "IMG_3087.JPG",
+      "lat": 40.74018888888889,
+      "lng": -73.99073055555556,
+      "originalWidth": 189,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805712_nv7hunmr8",
+      "photo": "photos/IMG_3053.jpg",
+      "filename": "IMG_3053.JPG",
+      "lat": 40.74042777777778,
+      "lng": -73.99476666666666,
+      "originalWidth": 83,
+      "originalHeight": 243,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805713_x9i6z0mn4",
+      "photo": "photos/IMG_3081.jpg",
+      "filename": "IMG_3081.JPG",
+      "lat": 40.73985555555556,
+      "lng": -73.99100555555556,
+      "originalWidth": 226,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805714_vdkwum353",
+      "photo": "photos/IMG_3100.jpg",
+      "filename": "IMG_3100.JPG",
+      "lat": 40.74093888888889,
+      "lng": -73.99190555555556,
+      "originalWidth": 168,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805716_qh9k4hmwo",
+      "photo": "photos/IMG_3046.jpg",
+      "filename": "IMG_3046.JPG",
+      "lat": 40.74061666666667,
+      "lng": -73.99459722222223,
+      "originalWidth": 83,
+      "originalHeight": 106,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805717_cl2iau2xp",
+      "photo": "photos/IMG_3063.jpg",
+      "filename": "IMG_3063.JPG",
+      "lat": 40.739272222222226,
+      "lng": -73.993775,
+      "originalWidth": 203,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805718_4nol9dxc0",
+      "photo": "photos/IMG_3076.jpg",
+      "filename": "IMG_3076.JPG",
+      "lat": 40.73908888888889,
+      "lng": -73.99121944444444,
+      "originalWidth": 136,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805719_u8s7k52mc",
+      "photo": "photos/IMG_3077.jpg",
+      "filename": "IMG_3077.JPG",
+      "lat": 40.73925,
+      "lng": -73.99117222222222,
+      "originalWidth": 83,
+      "originalHeight": 327,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805721_zwep5zt0i",
+      "photo": "photos/IMG_3096.jpg",
+      "filename": "IMG_3096.JPG",
+      "lat": 40.74035555555556,
+      "lng": -73.99063055555555,
+      "originalWidth": 111,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805722_vlwt9nf09",
+      "photo": "photos/IMG_3084.jpg",
+      "filename": "IMG_3084.JPG",
+      "lat": 40.740122222222226,
+      "lng": -73.9906388888889,
+      "originalWidth": 203,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805724_s3cjbspe6",
+      "photo": "photos/IMG_3062.jpg",
+      "filename": "IMG_3062.JPG",
+      "lat": 40.73932777777778,
+      "lng": -73.99383611111111,
+      "originalWidth": 181,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805725_nbhdxttul",
+      "photo": "photos/IMG_3049.jpg",
+      "filename": "IMG_3049.JPG",
+      "lat": 40.740697222222224,
+      "lng": -73.99459722222223,
+      "originalWidth": 83,
+      "originalHeight": 251,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805727_78tmowi30",
+      "photo": "photos/IMG_3039.jpg",
+      "filename": "IMG_3039.JPG",
+      "lat": 40.7406,
+      "lng": -73.9946361111111,
+      "originalWidth": 83,
+      "originalHeight": 112,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805729_pppnek6f8",
+      "photo": "photos/IMG_3080.jpg",
+      "filename": "IMG_3080.JPG",
+      "lat": 40.73978888888889,
+      "lng": -73.99096666666667,
+      "originalWidth": 121,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805732_pgtxkg6yk",
+      "photo": "photos/IMG_3103.jpg",
+      "filename": "IMG_3103.JPG",
+      "lat": 40.74131111111111,
+      "lng": -73.99304166666667,
+      "originalWidth": 118,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805734_kusiftydk",
+      "photo": "photos/IMG_3109.jpg",
+      "filename": "IMG_3109.JPG",
+      "lat": 40.74066944444444,
+      "lng": -73.99462777777778,
+      "originalWidth": 83,
+      "originalHeight": 85,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805736_urv98pjc0",
+      "photo": "photos/IMG_3082.jpg",
+      "filename": "IMG_3082.JPG",
+      "lat": 40.73990555555556,
+      "lng": -73.99091388888888,
+      "originalWidth": 83,
+      "originalHeight": 111,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805737_6ux8jw3pp",
+      "photo": "photos/IMG_3057.jpg",
+      "filename": "IMG_3057.JPG",
+      "lat": 40.73988333333333,
+      "lng": -73.9948888888889,
+      "originalWidth": 269,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805739_1bt8itn6i",
+      "photo": "photos/IMG_3050.jpg",
+      "filename": "IMG_3050.JPG",
+      "lat": 40.740605555555554,
+      "lng": -73.99494166666666,
+      "originalWidth": 114,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805741_oolliuetf",
+      "photo": "photos/IMG_3085.jpg",
+      "filename": "IMG_3085.JPG",
+      "lat": 40.740294444444444,
+      "lng": -73.99076944444444,
+      "originalWidth": 117,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805743_3n3m8ydj6",
+      "photo": "photos/IMG_3052.jpg",
+      "filename": "IMG_3052.JPG",
+      "lat": 40.740425,
+      "lng": -73.99475833333334,
+      "originalWidth": 86,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805746_2jjn8k1h8",
+      "photo": "photos/IMG_3079.jpg",
+      "filename": "IMG_3079.JPG",
+      "lat": 40.739441666666664,
+      "lng": -73.99103611111111,
+      "originalWidth": 83,
+      "originalHeight": 88,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805748_rme45k51x",
+      "photo": "photos/IMG_3091.jpg",
+      "filename": "IMG_3091.jpg",
+      "lat": 40.739158333333336,
+      "lng": -73.99336944444444,
+      "originalWidth": 111,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805751_2vnnhzusw",
+      "photo": "photos/IMG_3090.jpg",
+      "filename": "IMG_3090.JPG",
+      "lat": 40.73890277777778,
+      "lng": -73.99298888888889,
+      "originalWidth": 83,
+      "originalHeight": 151,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805753_y2k73eoul",
+      "photo": "photos/IMG_3093.jpg",
+      "filename": "IMG_3093.JPG",
+      "lat": 40.738844444444446,
+      "lng": -73.9925138888889,
+      "originalWidth": 92,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805755_u5nduq849",
+      "photo": "photos/IMG_2359.jpg",
+      "filename": "IMG_2359.jpg",
+      "lat": 40.74061944444445,
+      "lng": -73.99446944444445,
+      "originalWidth": 83,
+      "originalHeight": 216,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805757_xjn7948d5",
+      "photo": "photos/IMG_3045.jpg",
+      "filename": "IMG_3045.JPG",
+      "lat": 40.740741666666665,
+      "lng": -73.994675,
+      "originalWidth": 83,
+      "originalHeight": 100,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805759_8hvkq6wv8",
+      "photo": "photos/IMG_3048.jpg",
+      "filename": "IMG_3048.JPG",
+      "lat": 40.74066111111111,
+      "lng": -73.99464444444445,
+      "originalWidth": 83,
+      "originalHeight": 111,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805762_ccjctttst",
+      "photo": "photos/IMG_3092.jpg",
+      "filename": "IMG_3092.JPG",
+      "lat": 40.738933333333335,
+      "lng": -73.99291111111111,
+      "originalWidth": 83,
+      "originalHeight": 102,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805764_7e5piw67n",
+      "photo": "photos/IMG_3097.jpg",
+      "filename": "IMG_3097.JPG",
+      "lat": 40.74042222222222,
+      "lng": -73.99085277777777,
+      "originalWidth": 83,
+      "originalHeight": 94,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805768_j3fx8lvpj",
+      "photo": "photos/IMG_3078.jpg",
+      "filename": "IMG_3078.JPG",
+      "lat": 40.739422222222224,
+      "lng": -73.99105,
+      "originalWidth": 105,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805771_19j9xz2ni",
+      "photo": "photos/IMG_3095.jpg",
+      "filename": "IMG_3095.JPG",
+      "lat": 40.73872222222222,
+      "lng": -73.99238611111112,
+      "originalWidth": 110,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805774_ndedh69aj",
+      "photo": "photos/IMG_3072.jpg",
+      "filename": "IMG_3072.JPG",
+      "lat": 40.73889166666667,
+      "lng": -73.99163055555556,
+      "originalWidth": 83,
+      "originalHeight": 219,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805777_j3d94ka40",
+      "photo": "photos/IMG_3086.jpg",
+      "filename": "IMG_3086.JPG",
+      "lat": 40.740380555555554,
+      "lng": -73.99086944444444,
+      "originalWidth": 102,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805780_1m1ec039w",
+      "photo": "photos/IMG_2365.jpg",
+      "filename": "IMG_2365.JPG",
+      "lat": 40.7417,
+      "lng": -73.9971861111111,
+      "originalWidth": 83,
+      "originalHeight": 111,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805784_o4ro1929t",
+      "photo": "photos/IMG_3068.jpg",
+      "filename": "IMG_3068.JPG",
+      "lat": 40.73886111111111,
+      "lng": -73.9925,
+      "originalWidth": 83,
+      "originalHeight": 89,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805786_8dbiif1va",
+      "photo": "photos/IMG_3055.jpg",
+      "filename": "IMG_3055.JPG",
+      "lat": 40.73983055555556,
+      "lng": -73.99514722222223,
+      "originalWidth": 83,
+      "originalHeight": 91,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805795_7u7183jkm",
+      "photo": "photos/IMG_3051.jpg",
+      "filename": "IMG_3051.JPG",
+      "lat": 40.74047222222222,
+      "lng": -73.99470555555556,
+      "originalWidth": 90,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805809_sc5nwaxre",
+      "photo": "photos/IMG_3065.jpg",
+      "filename": "IMG_3065.JPG",
+      "lat": 40.73911388888889,
+      "lng": -73.99311944444445,
+      "originalWidth": 83,
+      "originalHeight": 87,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805814_jj1yzo2e8",
+      "photo": "photos/IMG_3110.jpg",
+      "filename": "IMG_3110.JPG",
+      "lat": 40.740544444444446,
+      "lng": -73.9947138888889,
+      "originalWidth": 83,
+      "originalHeight": 89,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805817_bt6m7k5ns",
+      "photo": "photos/IMG_3089.jpg",
+      "filename": "IMG_3089.JPG",
+      "lat": 40.738841666666666,
+      "lng": -73.9929361111111,
+      "originalWidth": 114,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805823_435pam85o",
+      "photo": "photos/IMG_3074.jpg",
+      "filename": "IMG_3074.JPG",
+      "lat": 40.739022222222225,
+      "lng": -73.99128611111111,
+      "originalWidth": 84,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805827_gmv2b4s2x",
+      "photo": "photos/IMG_3067.jpg",
+      "filename": "IMG_3067.JPG",
+      "lat": 40.73886944444445,
+      "lng": -73.9925138888889,
+      "originalWidth": 83,
+      "originalHeight": 89,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805830_fiymfdonl",
+      "photo": "photos/IMG_3075.jpg",
+      "filename": "IMG_3075.JPG",
+      "lat": 40.73909444444445,
+      "lng": -73.99122777777778,
+      "originalWidth": 83,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805833_n4j31yniu",
+      "photo": "photos/IMG_3038.jpg",
+      "filename": "IMG_3038.JPG",
+      "lat": 40.74059444444445,
+      "lng": -73.99455277777778,
+      "originalWidth": 105,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805838_8ijredbwm",
+      "photo": "photos/IMG_3073.jpg",
+      "filename": "IMG_3073.JPG",
+      "lat": 40.73901388888889,
+      "lng": -73.991325,
+      "originalWidth": 85,
+      "originalHeight": 83,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    },
+    {
+      "id": "photo_1786985805850_ghhihsxrr",
+      "photo": "photos/IMG_3054.jpg",
+      "filename": "IMG_3054.JPG",
+      "lat": 40.74026111111111,
+      "lng": -73.99483611111111,
+      "originalWidth": 83,
+      "originalHeight": 119,
+      "comment": "This lamppost has a cylindrical symmetry, 88.",
+      "symmetryTypes": [],
+      "overlay": [
+        {
+          "tool": "dot",
+          "point": [
+            246.2,
+            979.6
+          ]
+        },
+        {
+          "tool": "dot",
+          "point": [
+            479.7,
+            1030.3
+          ]
+        },
+        {
+          "tool": "spline",
+          "color": "#2883ff",
+          "points": [
+            [
+              243.7,
+              979.6
+            ],
+            [
+              256.4,
+              966.9
+            ],
+            [
+              271.6,
+              954.2
+            ],
+            [
+              291.9,
+              939
+            ],
+            [
+              309.7,
+              931.4
+            ],
+            [
+              327.4,
+              926.3
+            ],
+            [
+              340.1,
+              923.8
+            ],
+            [
+              352.8,
+              923.8
+            ],
+            [
+              370.6,
+              923.8
+            ],
+            [
+              380.7,
+              923.8
+            ],
+            [
+              398.5,
+              926.3
+            ],
+            [
+              408.6,
+              931.4
+            ],
+            [
+              416.3,
+              939
+            ],
+            [
+              426.4,
+              946.6
+            ],
+            [
+              434,
+              951.7
+            ],
+            [
+              441.6,
+              959.3
+            ],
+            [
+              451.8,
+              966.9
+            ],
+            [
+              459.4,
+              974.5
+            ],
+            [
+              464.5,
+              982.1
+            ],
+            [
+              469.5,
+              989.7
+            ],
+            [
+              472.1,
+              994.8
+            ],
+            [
+              474.6,
+              1002.4
+            ],
+            [
+              477.2,
+              1005
+            ],
+            [
+              477.2,
+              1010
+            ],
+            [
+              477.2,
+              1017.7
+            ],
+            [
+              477.2,
+              1027.8
+            ]
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            360.4,
+            857.8
+          ],
+          "runs": [
+            {
+              "text": "8",
+              "color": "#2883ff"
+            }
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            370.6,
+            1207.8999999999999
+          ],
+          "runs": [
+            {
+              "text": "8",
+              "color": "#2883ff"
+            }
+          ]
+        }
+      ],
+      "viewerRegion": {
+        "x": 111.97138557501472,
+        "y": 728.6466551010469,
+        "width": 540.0710998669605,
+        "height": 655.0315149309758
+      }
+    },
+    {
+      "id": "photo_1786985805867_qv8uyrf7u",
+      "photo": "photos/IMG_3083.jpg",
+      "filename": "IMG_3083.JPG",
+      "lat": 40.739844444444444,
+      "lng": -73.990525,
+      "originalWidth": 83,
+      "originalHeight": 119,
+      "comment": "",
+      "symmetryTypes": [],
+      "overlay": [],
+      "viewerRegion": null
+    }
+  ],
+  "route": [
+    {
+      "waypoint": false,
+      "lat": 40.741380068199945,
+      "lng": -73.9951515197754
+    },
+    {
+      "waypoint": false,
+      "lat": 40.73970144072111,
+      "lng": -73.99532318115236
+    },
+    {
+      "waypoint": false,
+      "lat": 40.74009163393828,
+      "lng": -73.99498522281648
+    },
+    {
+      "waypoint": false,
+      "lat": 40.74035989044738,
+      "lng": -73.99628877639772
+    }
+  ],
+  "mapCenter": {
+    "lat": 40.740350745356906,
+    "lng": -73.99468246847391
+  },
+  "mapZoom": 21,
+  "version": "2.0",
+  "savedAt": "2026-08-17T21:42:39.041Z"
+}
