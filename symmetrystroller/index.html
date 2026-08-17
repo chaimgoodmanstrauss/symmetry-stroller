@@ -664,7 +664,14 @@
             flex-direction: column;
             align-items: center;
             gap: 10px;
-            max-width: 90vw;
+            /* Must be >= the frame's own max-width (95vw, see
+               applyEditingImageSize/computeBaselineSize) — narrower than
+               that clipped the frame's outer edge via overflow-y:auto's
+               side effect of also making overflow-x non-visible, which
+               silently ate mouse targeting on anything placed right at the
+               frame's edge (e.g. the region tool's resize handles once its
+               default box covers the whole photo). */
+            max-width: 96vw;
             max-height: 92vh;
             /* frame + panel can together exceed 92vh (both now refuse to
                shrink below their own natural/max size) — scroll rather
@@ -776,6 +783,15 @@
             width: 100%;
             height: 100%;
             display: none;
+            /* The scrim/outline children are already pointer-events:none,
+               but that alone wasn't enough — this svg still intercepted
+               clicks meant for the drawing layer beneath it (confirmed via
+               elementFromPoint) whenever it was shown passively (any tool
+               other than the region tool itself, once a photo has a saved
+               viewer region), silently swallowing every other tool's
+               clicks. Blocking pointer events here by default and opting
+               only the actual drag handles back in below is the fix. */
+            pointer-events: none;
         }
 
         #region-crop-svg.visible {
@@ -788,6 +804,12 @@
             pointer-events: none;
         }
 
+        #region-crop-svg .crop-box-outline-halo {
+            fill: none;
+            stroke: #fff;
+            pointer-events: none;
+        }
+
         #region-crop-svg .crop-box-outline {
             fill: none;
             stroke: #888888;
@@ -797,10 +819,12 @@
         #region-crop-svg .crop-pan-area {
             fill: transparent;
             cursor: move;
+            pointer-events: auto;
         }
 
         #region-crop-svg .crop-edge-handle {
             fill: transparent;
+            pointer-events: auto;
         }
 
         #region-crop-svg .crop-edge-handle.horizontal {
@@ -813,6 +837,7 @@
 
         #region-crop-svg .crop-corner-handle {
             fill: #888888;
+            pointer-events: auto;
         }
 
         #marker-info-toggle,
@@ -3511,6 +3536,19 @@
         // last placed vertex of an in-progress fundamental domain, or
         // (once nothing's in progress) the last finished overlay stroke.
         function undoLastOverlayAction() {
+            if (state.overlayTool === 'region') {
+                const snapshot = state.cropBoxUndoSnapshot;
+                if (!snapshot) return;
+                state.cropBoxUndoSnapshot = null;
+                state.cropBoxPct = snapshot.cropBoxPct;
+                state.cropPan = snapshot.cropPan;
+                applyCropTransform();
+                const photo = findPhotoById(state.detailPhotoId);
+                if (!photo) return;
+                renderCropOverlay(photo);
+                computeViewerRegionFromCropBox(photo);
+                return;
+            }
             if (state.domainPolygon) {
                 if (state.domainPolygon.points.length > 1) {
                     state.domainPolygon.points.pop();
@@ -3700,10 +3738,15 @@
         // up by the same amount automatically.
         const ASTERISK_SIZE_PCT = 165;
         const ASTERISK_DY_EM = 0.32;
-        // Tune these for the viewer-region crop box outline/corner dots —
-        // units are the 0-100 percent-of-frame space region-crop-svg's
-        // viewBox uses, so e.g. 2 is 2% of the frame's width/height.
-        const CROP_LINE_WIDTH = 2;
+        // CROP_DOT_RADIUS is in the 0-100 percent-of-frame space
+        // region-crop-svg's viewBox uses (so it grows with zoom, which
+        // helps the corner handles stay easy to grab at high zoom).
+        // CROP_LINE_WIDTH/CROP_LINE_HALO_WIDTH are literal screen px
+        // (applied via vector-effect="non-scaling-stroke") — a
+        // percent-of-frame outline got visibly thick once the crop tool's
+        // zoom grew the frame well past its baseline size.
+        const CROP_LINE_WIDTH = 2.5;
+        const CROP_LINE_HALO_WIDTH = 1;
         const CROP_DOT_RADIUS = 1.8;
 
         function findPhotoById(id) {
@@ -3832,9 +3875,7 @@
             const maxH = window.innerHeight * 0.78;
             // Same baseline as applyEditingImageSize (2x fit, clamped to
             // the viewport) so cropZoom=1 looks identical to the plain
-            // editing view — cropZoom then scales up from that baseline,
-            // deliberately allowed to exceed the viewport since that's the
-            // whole point of zooming in here.
+            // editing view — cropZoom then scales up from that baseline.
             const { width: baseWidth, height: baseHeight } = computeBaselineSize(img, maxW, maxH, 2);
             // The .editing CSS rules cap width/height at 95vw/78vh — exactly
             // right for that plain baseline, but zooming past cropZoom=1
@@ -3845,8 +3886,28 @@
             img.style.maxHeight = 'none';
             elements['marker-detail-frame'].style.maxWidth = 'none';
             elements['marker-detail-frame'].style.maxHeight = 'none';
-            img.style.width = `${baseWidth * state.cropZoom}px`;
-            img.style.height = `${baseHeight * state.cropZoom}px`;
+            // Re-clamp the zoomed size — but NOT to maxW/maxH themselves,
+            // since the baseline is already clamped to fit inside those
+            // (that's what "2x fit" means), so re-applying the same bound
+            // here would cancel zoom out entirely, back to baseline, every
+            // time. Cap to a bound close to the full window instead —
+            // generous enough for zoom to keep doing its job, while still
+            // stopping cropZoom's up-to-6x range from growing the frame
+            // far past the window (most of it unreachable/offscreen even
+            // with the edit panel now sticky). state.cropZoom keeps
+            // climbing as a number past this point, it just stops visibly
+            // growing the frame once it hits the cap.
+            const zoomCapW = window.innerWidth * 0.98;
+            const zoomCapH = window.innerHeight * 0.9;
+            let width = baseWidth * state.cropZoom;
+            let height = baseHeight * state.cropZoom;
+            if (width > zoomCapW || height > zoomCapH) {
+                const clamp = Math.min(zoomCapW / width, zoomCapH / height);
+                width *= clamp;
+                height *= clamp;
+            }
+            img.style.width = `${width}px`;
+            img.style.height = `${height}px`;
         }
 
         function applyCropTransform() {
@@ -3927,6 +3988,19 @@
             scrim.setAttribute('d', `M0,0 H100 V${vbH} H0 Z M${b.x},${b.y} H${b.x + b.w} V${b.y + b.h} H${b.x} Z`);
             svg.appendChild(scrim);
 
+            // A white halo rect drawn behind the main outline, wider by
+            // CROP_LINE_HALO_WIDTH on each side, so the thin gray line
+            // stays visible against both light and dark photos.
+            const outlineHalo = document.createElementNS(SVG_NS, 'rect');
+            outlineHalo.setAttribute('class', 'crop-box-outline-halo');
+            outlineHalo.setAttribute('x', b.x);
+            outlineHalo.setAttribute('y', b.y);
+            outlineHalo.setAttribute('width', b.w);
+            outlineHalo.setAttribute('height', b.h);
+            outlineHalo.setAttribute('stroke-width', CROP_LINE_WIDTH + CROP_LINE_HALO_WIDTH * 2);
+            outlineHalo.setAttribute('vector-effect', 'non-scaling-stroke');
+            svg.appendChild(outlineHalo);
+
             const outline = document.createElementNS(SVG_NS, 'rect');
             outline.setAttribute('class', 'crop-box-outline');
             outline.setAttribute('x', b.x);
@@ -3934,6 +4008,7 @@
             outline.setAttribute('width', b.w);
             outline.setAttribute('height', b.h);
             outline.setAttribute('stroke-width', CROP_LINE_WIDTH);
+            outline.setAttribute('vector-effect', 'non-scaling-stroke');
             svg.appendChild(outline);
 
             if (!interactive) return;
@@ -4007,9 +4082,21 @@
             }
         }
 
+        // One-level undo for the region tool's box, same "single most
+        // recent change" depth as undoLastMarkerChange — snapshotted at the
+        // start of every drag (pan, edge-resize, corner-resize) so Undo can
+        // revert whichever one just happened.
+        function snapshotCropBoxForUndo() {
+            state.cropBoxUndoSnapshot = {
+                cropBoxPct: { ...state.cropBoxPct },
+                cropPan: { ...state.cropPan }
+            };
+        }
+
         function startCropPan(e, photo) {
             e.preventDefault();
             e.stopPropagation();
+            snapshotCropBoxForUndo();
             const startX = e.clientX, startY = e.clientY;
             const startPan = { ...state.cropPan };
 
@@ -4030,6 +4117,7 @@
         function startCropEdgeResize(e, edge, photo) {
             e.preventDefault();
             e.stopPropagation();
+            snapshotCropBoxForUndo();
             const frame = elements['marker-detail-frame'];
             const minSize = 5;
             const isHorizontal = edge === 'left' || edge === 'right';
@@ -4061,6 +4149,7 @@
         function startCropCornerResize(e, vEdge, hEdge, photo) {
             e.preventDefault();
             e.stopPropagation();
+            snapshotCropBoxForUndo();
             const frame = elements['marker-detail-frame'];
             const minSize = 5;
 
@@ -4116,6 +4205,7 @@
         function enterRegionTool(photo) {
             state.cropZoom = 1;
             state.cropPan = { x: 0, y: 0 };
+            state.cropBoxUndoSnapshot = null;
             applyCropTransform();
             updateCropViewBox();
 
@@ -4127,16 +4217,13 @@
                 elements['region-crop-svg'].classList.add('visible');
                 renderCropOverlay(photo);
             } else {
-                // Default to the entire photo (nothing cropped out) rather
-                // than a smaller pre-selected box — a maker with no opinion
-                // yet about a viewer region shouldn't have to first expand
-                // it back out to cover everything; shrinking down from the
-                // full picture to crop something is the more common case.
-                // y/h are in the same "percent of frame width" unit as x/w
-                // (see getCropViewBoxHeight), so the full-height value has
-                // to be scaled by the frame's real aspect ratio too.
+                // Default box: 60% of the frame, centered. y/h are in the
+                // same "percent of frame width" unit as x/w (see
+                // getCropViewBoxHeight), so the vertical placement is
+                // scaled by the frame's real aspect ratio to stay centered
+                // regardless of the photo's shape.
                 const vbH = getCropViewBoxHeight(elements['marker-detail-frame'].getBoundingClientRect());
-                state.cropBoxPct = { x: 0, y: 0, w: 100, h: vbH };
+                state.cropBoxPct = { x: 20, y: vbH * 0.2, w: 60, h: vbH * 0.6 };
                 elements['region-crop-svg'].classList.add('visible');
                 renderCropOverlay(photo);
                 computeViewerRegionFromCropBox(photo);
@@ -5189,9 +5276,20 @@
 
             elements['overlay-undo'].addEventListener('click', undoLastOverlayAction);
             elements['overlay-clear'].addEventListener('click', () => {
-                state.domainPolygon = null;
                 const photo = findPhotoById(state.detailPhotoId);
                 if (!photo) return;
+                if (state.overlayTool === 'region') {
+                    // Clearing the region means "no viewer region selected"
+                    // (viewer sees the whole photo) — reopening the tool
+                    // from scratch gives back its normal default box
+                    // instead of leaving cropBoxPct in a stale/undefined
+                    // state.
+                    photo.viewerRegion = null;
+                    state.cropBoxUndoSnapshot = null;
+                    enterRegionTool(photo);
+                    return;
+                }
+                state.domainPolygon = null;
                 photo.overlay = [];
                 renderOverlay(photo);
             });
