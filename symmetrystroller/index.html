@@ -651,6 +651,26 @@
             overflow: hidden;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
             line-height: 0;
+            /* #marker-detail is a flex column and the edit panel is a
+               sibling below this — without flex-shrink:0 the frame (and
+               therefore the enlarged image) gets squeezed to make room for
+               the panel instead of reaching its actual computed size. */
+            flex-shrink: 0;
+        }
+
+        /* Drawing mode gets a much bigger canvas to work against — the
+           viewer's 75vw/75vh cap is sized for looking at a photo, not for
+           precise annotation. Capped below 90vh (rather than matching
+           applyEditingImageSize's viewport-based ceiling exactly) to leave
+           room for the tool panel underneath it. */
+        .maker-mode #marker-detail-frame.editing {
+            max-width: 95vw;
+            max-height: 78vh;
+        }
+
+        .maker-mode #marker-detail-frame.editing #marker-detail-img {
+            max-width: 95vw;
+            max-height: 78vh;
         }
 
         #marker-detail-img {
@@ -942,6 +962,11 @@
 
             <div class="divider maker-only"></div>
 
+            <h3 class="maker-only">Checkpoints</h3>
+            <div id="checkpoint-list" class="maker-only"></div>
+
+            <div class="divider maker-only"></div>
+
             <h3 class="maker-only">Manage Tours</h3>
             <div id="tour-list" class="maker-only"></div>
 
@@ -1118,6 +1143,7 @@
             walkSlug: '',
             walkSlugManuallySet: false,
             tourManifest: [],
+            checkpoints: [],
             // Marker detail view (enlarged photo + symmetry info/editor)
             detailPhotoId: null,
             editingOverlay: false,
@@ -1225,7 +1251,7 @@
                         'symmetry-class-controls', 'symmetry-add-type', 'overlay-undo', 'overlay-clear',
                         'marker-edit-done', 'color-options', 'text-options',
                         'text-run-input', 'text-run-add', 'text-run-reset', 'text-run-preview', 'text-run-hint',
-                        'region-crop-svg', 'marker-dismiss', 'connect-folder'];
+                        'region-crop-svg', 'marker-dismiss', 'connect-folder', 'checkpoint-list'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -2150,6 +2176,90 @@
             URL.revokeObjectURL(url);
         }
 
+        // ---- Checkpoints: every successful save (direct-to-disk or zip
+        // download) also snapshots the walk's saved data into localStorage
+        // (keyed per-slug), so a mistake can be reverted without needing an
+        // external version control system. Restoring re-loads that snapshot
+        // into the editor via the same loadStateFromData() a file import
+        // uses — it doesn't undo anything already written to disk, it just
+        // lets you get back to a previous in-editor state and re-save.
+        const CHECKPOINT_LIMIT = 15;
+
+        function checkpointStorageKey(slug) {
+            return `symstroll-checkpoints:${slug}`;
+        }
+
+        function loadCheckpoints(slug) {
+            try {
+                const raw = localStorage.getItem(checkpointStorageKey(slug));
+                return raw ? JSON.parse(raw) : [];
+            } catch (error) {
+                console.error('Could not load checkpoints', error);
+                return [];
+            }
+        }
+
+        function addCheckpoint(slug, walkData) {
+            const checkpoints = loadCheckpoints(slug);
+            checkpoints.unshift({ savedAt: walkData.savedAt, walkData });
+            while (checkpoints.length > CHECKPOINT_LIMIT) checkpoints.pop();
+            try {
+                localStorage.setItem(checkpointStorageKey(slug), JSON.stringify(checkpoints));
+            } catch (error) {
+                console.error('Could not persist checkpoints (storage full?)', error);
+            }
+            state.checkpoints = checkpoints;
+            renderCheckpointList();
+        }
+
+        function renderCheckpointList() {
+            const container = elements['checkpoint-list'];
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (state.checkpoints.length === 0) {
+                container.textContent = 'No checkpoints yet — Save creates one.';
+                return;
+            }
+
+            state.checkpoints.forEach((cp, i) => {
+                const row = document.createElement('div');
+                row.className = 'tour-item';
+
+                const info = document.createElement('div');
+                info.className = 'tour-info';
+                const label = document.createElement('p');
+                const when = new Date(cp.savedAt);
+                label.textContent = (i === 0 ? 'Last save — ' : '') + when.toLocaleString();
+                const meta = document.createElement('small');
+                meta.textContent = `${cp.walkData.photos.length} photos`;
+                info.appendChild(label);
+                info.appendChild(meta);
+
+                const restoreButton = document.createElement('button');
+                restoreButton.className = 'tool-button';
+                restoreButton.textContent = 'Restore';
+                restoreButton.addEventListener('click', () => restoreCheckpoint(cp));
+
+                row.appendChild(info);
+                row.appendChild(restoreButton);
+                container.appendChild(row);
+            });
+        }
+
+        function restoreCheckpoint(checkpoint) {
+            const when = new Date(checkpoint.savedAt).toLocaleString();
+            const confirmed = confirm(
+                `Restore the checkpoint from ${when}?\n\n` +
+                `Any changes in the editor since then that haven't been saved will be lost. ` +
+                `This doesn't undo anything already written to disk — you'll need to Save again ` +
+                `after restoring if you want the restored state to replace what's currently saved.`
+            );
+            if (!confirmed) return;
+            loadStateFromData(JSON.parse(JSON.stringify(checkpoint.walkData)));
+            elements.status.textContent = `Restored checkpoint from ${when}.`;
+        }
+
         async function initTourManagement() {
             try {
                 const res = await fetch('walks.json', { cache: 'no-store' });
@@ -2159,6 +2269,11 @@
                 state.tourManifest = [];
             }
             renderTourList();
+
+            if (state.walkSlug) {
+                state.checkpoints = loadCheckpoints(state.walkSlug);
+                renderCheckpointList();
+            }
         }
 
         function renderTourList() {
@@ -2488,6 +2603,7 @@
             }
             state.tourManifest = manifest;
             renderTourList();
+            addCheckpoint(slug, walkData);
 
             if (state.projectDirHandle) {
                 try {
@@ -3385,6 +3501,32 @@
             }, { passive: false });
         }
 
+        // Drawing mode shows the image at ~2x its normal fitted size (clamped
+        // to the viewport) via explicit pixel dimensions — a CSS transform
+        // would scale the image without growing the frame's own layout box,
+        // and since the frame clips (overflow:hidden), that just cropped
+        // the enlarged image instead of actually showing more of it.
+        function applyEditingImageSize(img) {
+            if (!img.naturalWidth || !img.naturalHeight) return;
+            const maxW = window.innerWidth * 0.95;
+            const maxH = window.innerHeight * 0.78;
+            const fitScale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+            let width = img.naturalWidth * fitScale * 2;
+            let height = img.naturalHeight * fitScale * 2;
+            if (width > maxW || height > maxH) {
+                const clamp = Math.min(maxW / width, maxH / height);
+                width *= clamp;
+                height *= clamp;
+            }
+            img.style.width = `${width}px`;
+            img.style.height = `${height}px`;
+        }
+
+        function resetImageSize(img) {
+            img.style.width = '';
+            img.style.height = '';
+        }
+
         function showMarkerDetailImage(photo, { hideOverlayInitially = false } = {}) {
             const img = elements['marker-detail-img'];
             const svg = elements['marker-detail-svg'];
@@ -3395,6 +3537,11 @@
                 const w = img.naturalWidth || 1;
                 const h = img.naturalHeight || 1;
                 svg.setAttribute('viewBox', `0 0 ${SVG_UNIT} ${Math.round(SVG_UNIT * h / w)}`);
+                if (state.editingOverlay) {
+                    applyEditingImageSize(img);
+                } else {
+                    resetImageSize(img);
+                }
                 renderOverlay(photo);
                 svg.classList.toggle('overlay-hidden', hideOverlayInitially);
                 applyRegionZoom(photo);
@@ -3545,6 +3692,10 @@
             state.editingOverlay = true;
             state.overlayTool = 'domain';
             state.drawColor = RED;
+            // The 2x-bigger default display comes from applyEditingImageSize
+            // (explicit pixel size, so the frame actually grows instead of
+            // the image just scaling and getting clipped) — editZoom is the
+            // separate, further, scroll-wheel-adjustable zoom on top of that.
             state.editZoom = 1;
             state.cropBoxPct = null;
             elements['region-crop-svg'].classList.remove('visible');
@@ -3568,6 +3719,7 @@
             elements['marker-detail-svg'].classList.remove('drawable');
             elements['marker-detail-frame'].classList.remove('editing');
             elements['marker-detail'].classList.remove('visible');
+            resetImageSize(elements['marker-detail-img']);
             elements['marker-detail-img'].src = '';
             state.detailPhotoId = null;
         }
@@ -3776,6 +3928,37 @@
                 document.addEventListener('mousemove', onOverlayMouseMove);
                 document.addEventListener('mouseup', onOverlayMouseUp);
             });
+
+            // Text tool: show where the built-up runs would land as the
+            // cursor moves over the photo, rather than placing blind.
+            elements['marker-detail-svg'].addEventListener('mousemove', (e) => {
+                if (!state.editingOverlay || state.overlayTool !== 'text') return;
+                updateTextPlacementPreview(svgPointFromEvent(e));
+            });
+            elements['marker-detail-svg'].addEventListener('mouseleave', () => {
+                updateTextPlacementPreview(null);
+            });
+        }
+
+        function updateTextPlacementPreview(pt) {
+            const svg = elements['marker-detail-svg'];
+            const existing = svg.querySelector('.text-preview');
+
+            if (!pt || state.overlayTool !== 'text' || state.textRuns.length === 0) {
+                if (existing) existing.remove();
+                return;
+            }
+
+            const el = strokeToSvgElement({ tool: 'text', point: pt, runs: state.textRuns });
+            el.classList.add('text-preview');
+            el.style.opacity = '0.55';
+            el.style.pointerEvents = 'none';
+
+            if (existing) {
+                existing.replaceWith(el);
+            } else {
+                (svg.querySelector('.annotation-group') || svg).appendChild(el);
+            }
         }
 
         function updateTextRunPreview() {
@@ -3808,6 +3991,9 @@
                         enterRegionTool(photo);
                     } else if (wasRegion) {
                         exitRegionTool();
+                    }
+                    if (state.overlayTool !== 'text') {
+                        updateTextPlacementPreview(null);
                     }
                     updateToolButtonStates();
                 });
