@@ -261,6 +261,17 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             background-color: var(--surface);
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .tour-item:not(.active):hover {
+            background-color: var(--bg);
+            border-color: var(--border-strong);
+        }
+
+        .tour-item.active {
+            border-color: var(--accent);
+            background-color: #eeecff;
         }
 
         .tour-item .tour-info p {
@@ -2164,6 +2175,14 @@
             state.tourManifest.forEach(entry => {
                 const row = document.createElement('div');
                 row.className = 'tour-item';
+                if (entry.slug === state.walkSlug) {
+                    row.classList.add('active');
+                    row.title = 'Currently editing';
+                } else {
+                    row.style.cursor = 'pointer';
+                    row.title = `Save the current walk and switch to "${entry.slug}"`;
+                    row.addEventListener('click', () => switchToTour(entry.slug));
+                }
 
                 const info = document.createElement('div');
                 info.className = 'tour-info';
@@ -2178,12 +2197,29 @@
                 deleteButton.className = 'tour-delete-button';
                 deleteButton.innerHTML = '×';
                 deleteButton.title = `Remove "${entry.slug}" from walks.json`;
-                deleteButton.addEventListener('click', () => deleteTour(entry.slug));
+                deleteButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteTour(entry.slug);
+                });
 
                 row.appendChild(info);
                 row.appendChild(deleteButton);
                 container.appendChild(row);
             });
+        }
+
+        // Pressing another walk in the list saves whatever's currently
+        // being edited first (so nothing's silently lost), then navigates
+        // to the pressed one.
+        async function switchToTour(slug) {
+            if (state.photoData.length > 0) {
+                elements.status.textContent = `Saving "${state.walkSlug}" before switching...`;
+                await saveState();
+            }
+            const params = new URLSearchParams(location.search);
+            params.set('walk', slug);
+            params.set('mode', 'writer');
+            location.search = params.toString();
         }
 
         // ---- File System Access: direct disk read/write for a connected
