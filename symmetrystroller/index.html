@@ -990,7 +990,7 @@
             <div id="marker-edit-panel" class="maker-only">
                 <h4>Draw</h4>
                 <div class="tool-row">
-                    <button type="button" class="tool-button" data-tool="domain">Fundamental domain</button>
+                    <button type="button" class="tool-button" data-tool="domain" title="Shift: add, Option: subtract">Fundamental domain</button>
                     <button type="button" class="tool-button" data-tool="line">Line</button>
                     <button type="button" class="tool-button" data-tool="dot">Dot</button>
                     <button type="button" class="tool-button" data-tool="spline">Spline</button>
@@ -3250,29 +3250,65 @@
             applyCropTransform();
         }
 
-        // A single path covering the whole image with each domain shape
-        // cut out of it (evenodd fill rule), so the domain areas show the
-        // photo unmodified while the rest gets a translucent white veil.
+        // A translucent white scrim masked by each domain shape, in the
+        // order they were drawn — 'add' shapes cut a hole (reveal the
+        // photo), 'subtract' shapes re-cover part of that hole (Shift/
+        // Option while drawing, matching Illustrator's shape-mode
+        // modifiers). A single evenodd path can't express subtract
+        // correctly once shapes overlap in complex ways — parity just
+        // toggles regardless of draw order — so this uses an SVG <mask>
+        // instead, which composites strictly in document order like any
+        // other layered drawing.
         function buildDomainWhiteout(domainStrokes) {
             const ns = 'http://www.w3.org/2000/svg';
             const vb = elements['marker-detail-svg'].viewBox.baseVal;
             const w = vb.width || SVG_UNIT;
             const h = vb.height || SVG_UNIT;
 
-            let d = `M0,0 H${w} V${h} H0 Z `;
+            const maskId = 'domain-mask-' + Math.random().toString(36).slice(2);
+            const mask = document.createElementNS(ns, 'mask');
+            mask.setAttribute('id', maskId);
+            mask.setAttribute('maskUnits', 'userSpaceOnUse');
+            mask.setAttribute('x', 0);
+            mask.setAttribute('y', 0);
+            mask.setAttribute('width', w);
+            mask.setAttribute('height', h);
+
+            // White = scrim visible (outside the domain). Everything
+            // starts scrimmed until an 'add' shape reveals it.
+            const base = document.createElementNS(ns, 'rect');
+            base.setAttribute('x', 0);
+            base.setAttribute('y', 0);
+            base.setAttribute('width', w);
+            base.setAttribute('height', h);
+            base.setAttribute('fill', 'white');
+            mask.appendChild(base);
+
             domainStrokes.forEach(stroke => {
-                const pts = stroke.points;
-                if (pts.length < 3) return;
-                d += `M${pts[0][0]},${pts[0][1]} ` +
-                    pts.slice(1).map(p => `L${p[0]},${p[1]}`).join(' ') + ' Z ';
+                if (stroke.points.length < 3) return;
+                const poly = document.createElementNS(ns, 'polygon');
+                poly.setAttribute('points', stroke.points.map(p => p.join(',')).join(' '));
+                // add -> black (reveal photo); subtract -> white (re-scrim)
+                poly.setAttribute('fill', stroke.op === 'subtract' ? 'white' : 'black');
+                mask.appendChild(poly);
             });
 
-            const el = document.createElementNS(ns, 'path');
-            el.setAttribute('d', d);
-            el.setAttribute('fill-rule', 'evenodd');
-            el.setAttribute('fill', 'white');
-            el.setAttribute('fill-opacity', '0.5');
-            return el;
+            const defs = document.createElementNS(ns, 'defs');
+            defs.appendChild(mask);
+
+            const scrim = document.createElementNS(ns, 'rect');
+            scrim.setAttribute('x', 0);
+            scrim.setAttribute('y', 0);
+            scrim.setAttribute('width', w);
+            scrim.setAttribute('height', h);
+            scrim.setAttribute('fill', 'white');
+            scrim.setAttribute('fill-opacity', '0.5');
+            scrim.setAttribute('mask', `url(#${maskId})`);
+
+            const g = document.createElementNS(ns, 'g');
+            g.appendChild(defs);
+            g.appendChild(scrim);
+            return g;
         }
 
         const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -3321,12 +3357,14 @@
 
             if (stroke.tool === 'domain') {
                 // Live in-progress preview only (the finished shape renders
-                // via buildDomainWhiteout instead) — just an outline so the
-                // drawn-so-far boundary is visible while dragging.
+                // via buildDomainWhiteout instead) — an outline so the
+                // drawn-so-far boundary is visible while dragging, colored
+                // by add/subtract (Illustrator-style: Shift adds, Option
+                // subtracts) so the mode is obvious before you release.
                 const el = document.createElementNS(SVG_NS, 'polyline');
                 el.setAttribute('points', pointsAttr);
                 el.setAttribute('fill', 'none');
-                el.setAttribute('stroke', '#999999');
+                el.setAttribute('stroke', stroke.op === 'subtract' ? RED : '#3aa655');
                 el.setAttribute('stroke-width', '2');
                 el.setAttribute('stroke-dasharray', '6,4');
                 el.setAttribute('vector-effect', 'non-scaling-stroke');
@@ -3820,7 +3858,7 @@
             if (photo && stroke.points.length > 1) {
                 photo.overlay.push(
                     stroke.tool === 'domain'
-                        ? { tool: 'domain', points: stroke.points }
+                        ? { tool: 'domain', points: stroke.points, op: stroke.op || 'add' }
                         : { tool: 'brush', color: stroke.color, points: stroke.points }
                 );
             }
@@ -3915,13 +3953,16 @@
                     return;
                 }
 
-                // domain, brush: freehand + hold-to-straighten
+                // domain, brush: freehand + hold-to-straighten. For domain
+                // specifically: Shift adds (the default anyway), Option
+                // subtracts — matching Illustrator's shape-mode modifiers.
                 state.activeStroke = {
                     tool: state.overlayTool,
                     color: state.drawColor,
                     points: [pt],
                     straight: false,
-                    pauseTimer: null
+                    pauseTimer: null,
+                    op: state.overlayTool === 'domain' && e.altKey ? 'subtract' : 'add'
                 };
                 armPauseTimer();
                 renderActiveStrokePreview();
