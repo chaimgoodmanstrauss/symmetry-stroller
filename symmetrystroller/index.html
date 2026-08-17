@@ -3447,13 +3447,6 @@
             state.maxZIndex += 1000000;
             marker.setZIndexOffset(state.maxZIndex);
             marker._currentZIndex = state.maxZIndex;
-            // Belt-and-suspenders on top of the z-index offset above:
-            // moving the icon to be the last child of its pane guarantees
-            // it paints above every sibling even in the (should now be
-            // impossible, but cheap to also just rule out) case of a tie.
-            if (marker._icon && marker._icon.parentNode) {
-                marker._icon.parentNode.appendChild(marker._icon);
-            }
             if (state.routeFront) {
                 state.routeFront = false;
                 renderRoute();
