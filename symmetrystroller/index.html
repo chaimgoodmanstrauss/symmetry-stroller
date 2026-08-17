@@ -637,6 +637,10 @@
             gap: 10px;
             max-width: 90vw;
             max-height: 92vh;
+            /* frame + panel can together exceed 92vh (both now refuse to
+               shrink below their own natural/max size) — scroll rather
+               than silently overflow past the viewport edge. */
+            overflow-y: auto;
         }
 
         #marker-detail.visible {
@@ -830,9 +834,15 @@
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
             padding: 12px 14px;
             width: min(75vw, 480px);
-            max-height: 30vh;
+            max-height: 40vh;
             overflow-y: auto;
             font-size: 13px;
+            /* Without this the flex column (frame + this panel, sharing
+               #marker-detail's own max-height) crushes the panel down to
+               almost nothing to make room for the image instead of
+               scrolling — its own max-height/overflow above already
+               handles the "too much content" case correctly on its own. */
+            flex-shrink: 0;
         }
 
         #marker-edit-panel h4 {
@@ -3448,6 +3458,16 @@
                             tspan.setAttribute('font-size', '145%');
                             dyEm += 0.18;
                             pendingDyEm = -0.18;
+                        } else if (ch === '∞') {
+                            // Our self-hosted EB Garamond is subsetted to
+                            // the "latin" Unicode range and doesn't include
+                            // this glyph — rather than trust the browser's
+                            // fallback into that subset (garbled glyphs,
+                            // e.g. rendering as an "fi" ligature instead of
+                            // falling through cleanly), skip it entirely
+                            // and use a system serif that actually has it.
+                            tspan.setAttribute('font-family', "Georgia, 'Times New Roman', serif");
+                            pendingDyEm = 0;
                         } else {
                             pendingDyEm = 0;
                         }
@@ -3610,8 +3630,25 @@
             (photo.symmetryTypes || []).forEach(type => {
                 const chip = document.createElement('span');
                 chip.className = 'symmetry-chip';
-                chip.textContent = `${SYMMETRY_CLASS_LABELS[type.class]}: ${type.value}`;
+                setChipText(chip, `${SYMMETRY_CLASS_LABELS[type.class]}: ${type.value}`);
                 panel.appendChild(chip);
+            });
+        }
+
+        // Same EB-Garamond-lacks-∞ issue as the SVG text tool, but for
+        // plain HTML chip labels — wrap ∞ in a system-serif span instead of
+        // trusting the browser's fallback within our subsetted webfont.
+        function setChipText(el, text) {
+            el.textContent = '';
+            Array.from(text).forEach(ch => {
+                if (ch === '∞') {
+                    const span = document.createElement('span');
+                    span.style.fontFamily = "Georgia, 'Times New Roman', serif";
+                    span.textContent = ch;
+                    el.appendChild(span);
+                } else {
+                    el.appendChild(document.createTextNode(ch));
+                }
             });
         }
 
@@ -3622,7 +3659,7 @@
             photo.symmetryTypes.forEach((type, i) => {
                 const chip = document.createElement('span');
                 chip.className = 'symmetry-chip';
-                chip.textContent = `${SYMMETRY_CLASS_LABELS[type.class]}: ${type.value} `;
+                setChipText(chip, `${SYMMETRY_CLASS_LABELS[type.class]}: ${type.value} `);
 
                 const remove = document.createElement('span');
                 remove.textContent = '×';
