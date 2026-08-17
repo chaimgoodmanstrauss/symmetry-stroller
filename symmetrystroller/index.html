@@ -922,6 +922,14 @@
                scrolling — its own max-height/overflow above already
                handles the "too much content" case correctly on its own. */
             flex-shrink: 0;
+            /* Zooming (crop tool or general edit zoom) can grow the frame
+               well past the viewport, turning #marker-detail into a tall
+               scrollable column — sticking the panel to the bottom of that
+               scroll area keeps the tools reachable near whatever part of
+               the frame is currently in view, instead of leaving them
+               scrolled far below it. */
+            position: sticky;
+            bottom: 0;
         }
 
         #marker-edit-panel h4 {
@@ -1251,6 +1259,18 @@
             return (hasMirror ? '*' : '') + order + '•';
         }
 
+        // Frieze types are stored as their bare orbifold symbol (e.g.
+        // "22∞") but read better with the descriptive name (hop, sidle,
+        // ...) leading and the symbol following in parens — other classes
+        // don't have a name/symbol split like this, so they're shown as-is.
+        function formatSymmetryValue(type) {
+            if (type.class === 'frieze') {
+                const match = FRIEZE_TYPES.find(t => t.symbol === type.value);
+                if (match) return `${match.name} (${match.symbol})`;
+            }
+            return type.value;
+        }
+
         const SYMMETRY_CLASS_LABELS = {
             mirror: 'Mirror',
             rosette: 'Rosette',
@@ -1452,8 +1472,16 @@
                         maxNativeZoom: 19
                     }).addTo(state.map);
 
-                    // Add zoom event listeners
-                    state.map.on('zoom zoomend', handleZoomChange);
+                    // Recalculate marker sizing once the zoom level has
+                    // settled, not on every frame of the zoom animation
+                    // ('zoom' fires continuously while it's in progress) —
+                    // handleZoomChange rebuilds each marker's icon from
+                    // scratch (removeLayer + new icon + re-add), and doing
+                    // that dozens of times mid-animation is what made every
+                    // photo (and, by extension, the whole map) visibly
+                    // wobble/flicker during a zoom instead of animating
+                    // smoothly.
+                    state.map.on('zoomend', handleZoomChange);
                     setupRouteTool();
 
                     elements.status.textContent = 'Map loaded successfully. Ready for photos.';
@@ -4099,12 +4127,16 @@
                 elements['region-crop-svg'].classList.add('visible');
                 renderCropOverlay(photo);
             } else {
-                // y/h are in the same "percent of frame width" unit as
-                // x/w (see getCropViewBoxHeight) — scale the default box's
-                // vertical placement by the frame's real aspect ratio so
-                // it's centered regardless of the photo's shape.
+                // Default to the entire photo (nothing cropped out) rather
+                // than a smaller pre-selected box — a maker with no opinion
+                // yet about a viewer region shouldn't have to first expand
+                // it back out to cover everything; shrinking down from the
+                // full picture to crop something is the more common case.
+                // y/h are in the same "percent of frame width" unit as x/w
+                // (see getCropViewBoxHeight), so the full-height value has
+                // to be scaled by the frame's real aspect ratio too.
                 const vbH = getCropViewBoxHeight(elements['marker-detail-frame'].getBoundingClientRect());
-                state.cropBoxPct = { x: 20, y: vbH * 0.2, w: 60, h: vbH * 0.6 };
+                state.cropBoxPct = { x: 0, y: 0, w: 100, h: vbH };
                 elements['region-crop-svg'].classList.add('visible');
                 renderCropOverlay(photo);
                 computeViewerRegionFromCropBox(photo);
@@ -4640,7 +4672,7 @@
             (photo.symmetryTypes || []).forEach(type => {
                 const chip = document.createElement('span');
                 chip.className = 'symmetry-chip';
-                setChipText(chip, `${SYMMETRY_CLASS_LABELS[type.class]}: ${type.value}`);
+                setChipText(chip, `${SYMMETRY_CLASS_LABELS[type.class]}: ${formatSymmetryValue(type)}`);
                 panel.appendChild(chip);
             });
 
@@ -4676,17 +4708,21 @@
             photo.symmetryTypes.forEach((type, i) => {
                 const chip = document.createElement('span');
                 chip.className = 'symmetry-chip';
-                setChipText(chip, `${SYMMETRY_CLASS_LABELS[type.class]}: ${type.value} `);
 
                 const remove = document.createElement('span');
                 remove.textContent = '×';
                 remove.style.cursor = 'pointer';
+                remove.style.marginRight = '5px';
                 remove.addEventListener('click', () => {
                     photo.symmetryTypes.splice(i, 1);
                     renderSymmetryTypeList(photo);
                 });
-
                 chip.appendChild(remove);
+
+                const label = document.createElement('span');
+                setChipText(label, `${SYMMETRY_CLASS_LABELS[type.class]}: ${formatSymmetryValue(type)}`);
+                chip.appendChild(label);
+
                 container.appendChild(chip);
             });
         }
