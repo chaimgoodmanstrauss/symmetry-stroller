@@ -279,6 +279,15 @@
             border-color: var(--border-strong);
         }
 
+        /* Marks whichever photo is currently enlarged or being drawn on
+           in the sidebar list (see highlightActivePhotoInList) — a
+           translucent blue trim rather than a solid border/background so
+           it reads as a highlight, not as another interactive state. */
+        .photo-item.active-thumb {
+            border-color: rgba(66, 133, 244, 0.8);
+            box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.25);
+        }
+
         .tour-item {
             display: flex;
             align-items: center;
@@ -1231,6 +1240,14 @@
             <div class="divider"></div>
 
             <h3>Uploaded Photos</h3>
+            <div class="maker-only" id="thumb-size-options" style="margin-bottom: 10px; font-size: 13px;" title="Saved with the walk — sets how big the round photo markers appear to viewers">
+                <label style="margin-right: 12px; cursor: pointer;">
+                    <input type="radio" name="thumb-size" id="thumb-size-normal" value="normal" checked> Normal thumbnails
+                </label>
+                <label style="cursor: pointer;">
+                    <input type="radio" name="thumb-size" id="thumb-size-reduced" value="reduced"> Reduced thumbnails
+                </label>
+            </div>
             <div id="photo-list"></div>
         </div>
         <div id="map-container">
@@ -1432,6 +1449,13 @@
             routeLayer: null,
             routeArrowMarkers: [],
             routePointMarkers: [],
+            // Maker-authored, saved with the walk (see saveState/
+            // loadStateFromData) — the sidebar only exists in maker mode
+            // (.stroller-mode #sidebar is display:none), so this can't be
+            // a live viewer-side toggle; it's a choice baked into the walk
+            // when saved. See the "Normal"/"Reduced" radio group above
+            // #photo-list.
+            reducedMarkers: false,
             viewerRegionOpen: false,
             editZoom: 1,
             // Crop-tool state (Viewer region tool): the image pans/zooms
@@ -1532,7 +1556,8 @@
                         'marker-edit-done', 'color-options', 'text-options',
                         'text-run-preview',
                         'region-crop-svg', 'marker-dismiss', 'connect-folder', 'checkpoint-list',
-                        'route-draw-toggle', 'route-undo-point', 'route-clear', 'map'];
+                        'route-draw-toggle', 'route-undo-point', 'route-clear', 'map',
+                        'thumb-size-normal', 'thumb-size-reduced'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -1603,6 +1628,7 @@
                     // smoothly.
                     state.map.on('zoomend', handleZoomChange);
                     setupRouteTool();
+                    setupThumbSizeToggle();
 
                     elements.status.textContent = 'Map loaded successfully. Ready for photos.';
 
@@ -2181,9 +2207,13 @@
 
         // Marker functions with responsive sizing
         function calculateMarkerDimensions(originalWidth, originalHeight, zoomLevel) {
-            // Always square in stroller mode
+            // Always square in stroller mode. "Reduced" shrinks the photo
+            // itself (a straight 60% size cut) while the marker's border —
+            // a fixed 3px in CSS, not computed from this width/height —
+            // stays exactly as it was.
             if (!CONFIG.IS_MAKER_MODE) {
-                return { width: CONFIG.SQUARE_SIZE, height: CONFIG.SQUARE_SIZE, mode: 'square' };
+                const size = state.reducedMarkers ? Math.round(CONFIG.SQUARE_SIZE * 0.4) : CONFIG.SQUARE_SIZE;
+                return { width: size, height: size, mode: 'square' };
             }
 
             // Get max dimensions based on device and state
@@ -2283,6 +2313,24 @@
             });
         }
 
+        // "Normal"/"Reduced" thumbnail-size radio group above the photo
+        // list (maker-only — see state.reducedMarkers). Changing it here
+        // has no visible effect in maker mode itself (calculateMarkerDimensions
+        // only applies it in stroller mode), it just records the maker's
+        // choice for saveState to persist; handleZoomChange is called
+        // anyway so a maker who switches to Stroller mode mid-session sees
+        // it take effect immediately rather than needing a reload.
+        function setupThumbSizeToggle() {
+            elements['thumb-size-normal'].addEventListener('change', () => {
+                state.reducedMarkers = false;
+                handleZoomChange();
+            });
+            elements['thumb-size-reduced'].addEventListener('change', () => {
+                state.reducedMarkers = true;
+                handleZoomChange();
+            });
+        }
+
         function updateMarkerIcon(marker, dimensions, position) {
             const currentZIndex = marker._currentZIndex || marker.options.zIndexOffset;
             const wasOnMap = state.map.hasLayer(marker);
@@ -2340,6 +2388,7 @@
             state.photoData.forEach((photo, index) => {
                 const photoItem = document.createElement('div');
                 photoItem.className = 'photo-item';
+                photoItem.dataset.photoId = photo.id;
 
                 const thumbnail = document.createElement('img');
                 thumbnail.src = photo.src;
@@ -3177,6 +3226,7 @@
                 route: state.walkRoute,
                 mapCenter: state.map.getCenter(),
                 mapZoom: state.map.getZoom(),
+                reducedMarkers: state.reducedMarkers,
                 version: '2.0',
                 savedAt: new Date().toISOString()
             };
@@ -3276,6 +3326,14 @@
 
             if (saveData.mapCenter && saveData.mapZoom) {
                 state.map.setView([saveData.mapCenter.lat, saveData.mapCenter.lng], saveData.mapZoom);
+            }
+
+            // Must be set before the photos loop below creates markers —
+            // calculateMarkerDimensions reads this at marker-creation time.
+            state.reducedMarkers = Boolean(saveData.reducedMarkers);
+            if (elements['thumb-size-normal']) {
+                elements['thumb-size-normal'].checked = !state.reducedMarkers;
+                elements['thumb-size-reduced'].checked = state.reducedMarkers;
             }
 
             // Older saved walks stored route points as plain [lat,lng]
@@ -3745,6 +3803,22 @@
         // it's the maker's own work) with a dismiss button and an edit
         // button (repurposing the same top-right slot the viewer's Ω info
         // toggle uses) that opens full drawing tools.
+        // Scrolls the sidebar's photo list to `photoId`'s entry and marks
+        // it with the blue translucent trim (see .active-thumb), or clears
+        // the trim entirely if photoId is null. Maker-only — the photo
+        // list's markup/behavior differs in viewer mode and this is purely
+        // an editing aid.
+        function highlightActivePhotoInList(photoId) {
+            if (!CONFIG.IS_MAKER_MODE) return;
+            const prev = elements['photo-list'].querySelector('.photo-item.active-thumb');
+            if (prev) prev.classList.remove('active-thumb');
+            if (!photoId) return;
+            const item = elements['photo-list'].querySelector(`.photo-item[data-photo-id="${photoId}"]`);
+            if (!item) return;
+            item.classList.add('active-thumb');
+            item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
         function openMakerPreview(marker, index) {
             if (state.enlargedMarker === marker) return;
             if (state.enlargedMarker) closeThumbnailDetail();
@@ -3763,6 +3837,7 @@
             elements['marker-info-toggle'].title = 'Edit';
             renderInfoPanel(photo);
             elements['marker-info-panel'].classList.add('visible');
+            highlightActivePhotoInList(photo.id);
         }
 
         // Closes whatever's currently shown enlarged — a plain preview or
@@ -3797,6 +3872,7 @@
             if (state.enlargedMarker) sendMarkerToBack(state.enlargedMarker);
             state.enlargedMarker = null;
             state.detailPhotoId = null;
+            highlightActivePhotoInList(null);
         }
 
         // ---- Symmetry type & drawing-overlay engine ----------------------
@@ -5101,6 +5177,7 @@
             renderSymmetryTypeList(photo);
             renderClassControls();
             updateToolButtonStates();
+            highlightActivePhotoInList(photo.id);
         }
 
         // How many viewBox units correspond to one screen pixel, measured
