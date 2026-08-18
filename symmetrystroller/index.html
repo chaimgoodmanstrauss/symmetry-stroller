@@ -567,6 +567,15 @@
         /* Marker styles */
         .custom-marker {
             position: relative;
+            /* Without this, mobile browsers hold a tap for ~300ms before
+               committing to "click" (waiting to see if it's the start of a
+               double-tap-to-zoom gesture) — which made the single-click
+               vs double-click(-to-enlarge) distinction this app relies on
+               unreliable on touch. This tells the browser "there's no
+               native zoom gesture to wait for here," so taps register
+               immediately and consistently, the same way clicks do on
+               desktop. */
+            touch-action: manipulation;
         }
 
         .marker-container {
@@ -740,6 +749,10 @@
                animated so the clip window smoothly morphs to match, the
                same way the zoom/pan transform already does. */
             transition: width 0.3s ease, height 0.3s ease;
+            /* Same reasoning as .custom-marker: this is where the SECOND
+               double-tap (enlarged image -> drawing view) happens, and
+               needs the native tap-delay suppressed the same way. */
+            touch-action: manipulation;
         }
 
         #marker-detail-frame .photo-clip {
@@ -1546,7 +1559,17 @@
                     state.map = L.map('map', {
                         zoomControl: true,
                         attributionControl: false,
-                        maxZoom: CONFIG.MAX_ZOOM
+                        maxZoom: CONFIG.MAX_ZOOM,
+                        // Leaflet's own double-click/double-tap zooms the
+                        // map by default — on touch devices that competes
+                        // with a double-tap on a MARKER (our own
+                        // enlarge/drawing-view gesture), since both are
+                        // driven by tap tracking on essentially the same
+                        // gesture. Markers already stopPropagation on their
+                        // own clicks, but that doesn't reliably prevent
+                        // Leaflet's separate internal double-tap zoom
+                        // handler from also firing on mobile.
+                        doubleClickZoom: false
                     }).setView(CONFIG.DEFAULT_CENTER, CONFIG.DEFAULT_ZOOM);
 
                     // Route's usual home is the default overlayPane (above
@@ -5469,10 +5492,12 @@
             // Double-clicking the enlarged image itself — not the map
             // thumbnail, the big photo already showing — is the other way
             // in to the "full" mode (draw mode / see-the-drawing mode),
-            // same destination as the edit button in maker mode. Only acts
-            // while there's an enlarged photo that isn't already in that mode;
-            // ignored once maker's editingOverlay is on, since double-
-            // click means specific things to each drawing tool there.
+            // same destination as the edit button in maker mode. Ignored
+            // once maker's editingOverlay is on, since double-click means
+            // specific things to each drawing tool there — but in viewer
+            // mode, a THIRD double-click/double-tap (already viewing the
+            // drawing) cycles all the way back to the thumbnail, same as
+            // the dismiss button or tapping anywhere else.
             elements['marker-detail-frame'].addEventListener('click', (e) => {
                 if (!state.enlargedMarker || e.detail < 2) return;
                 const photo = findPhotoById(state.detailPhotoId);
@@ -5481,6 +5506,8 @@
                     if (!state.editingOverlay) openAnnotationEditor(photo);
                 } else if (!state.viewerRegionOpen) {
                     enterViewerDrawingMode(photo);
+                } else {
+                    closeThumbnailDetail();
                 }
             });
 
