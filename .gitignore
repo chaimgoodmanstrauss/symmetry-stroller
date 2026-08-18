@@ -1,0 +1,9 @@
+# Defense-in-depth: the real credentials belong at
+# ~/.symmetrystroller_deploy.env, outside this repo entirely. These
+# patterns just make sure nothing resembling them ever gets committed if
+# one ends up inside the repo tree by mistake.
+*.env
+!deploy.example.env
+.deploy_credentials
+symmetrystroller.zip
+.DS_Store
