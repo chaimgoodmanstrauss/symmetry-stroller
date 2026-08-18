@@ -5221,6 +5221,17 @@
                     width *= clamp;
                     height *= clamp;
                 }
+                // Still a real ceiling, though — an extreme enough crop
+                // (some of this app's own photos are 15:1+) would otherwise
+                // demand a lot of horizontal scrolling just to see the
+                // whole thing. Capped relative to the screen, not some
+                // fixed pixel count, so it scales sensibly across devices.
+                const maxRelaxedWidth = window.innerWidth * 2;
+                if (width > maxRelaxedWidth) {
+                    const clamp = maxRelaxedWidth / width;
+                    width *= clamp;
+                    height *= clamp;
+                }
             } else if (width > maxW || height > maxH) {
                 // Normal case: the multiplier can overshoot BOTH maxW and
                 // maxH even though fitScale alone (multiplier 1) always
