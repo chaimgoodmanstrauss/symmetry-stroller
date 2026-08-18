@@ -936,18 +936,18 @@
             pointer-events: auto;
         }
 
-        #marker-info-toggle,
         #marker-dismiss {
             /* Fixed to the viewport, not absolute within the frame — a
                long-but-not-tall image can now make the frame many times
                wider than the screen (see computeBaselineSize), scrolled
                horizontally within #marker-detail. Anchoring to the
-               frame's own corners would put these buttons wherever that
+               frame's own corner would put this button wherever that
                scroll happened to leave the frame's edge, often off-screen
                and unreachable. Viewport corners are always reachable
                regardless of the frame's size or current scroll position. */
             position: fixed;
             top: 10px;
+            left: 10px;
             width: 34px;
             height: 34px;
             border-radius: 50%;
@@ -955,14 +955,14 @@
             color: #fff;
             border: 1.5px solid rgba(255, 255, 255, 0.65);
             font-family: 'EB Garamond', 'Georgia', serif;
-            font-size: 17px;
+            font-size: 22px;
             cursor: pointer;
             align-items: center;
             justify-content: center;
             z-index: 3600;
             /* No longer a descendant of #marker-detail (see the HTML
-               comment above these two elements), so its own display:none/
-               .visible toggle can't hide these for free anymore —
+               comment above this element), so its own display:none/
+               .visible toggle can't hide it for free anymore —
                .detail-visible is toggled alongside it, at the same two
                call sites, to do the same job independently. */
             display: none;
@@ -970,23 +970,6 @@
 
         #marker-dismiss.detail-visible {
             display: flex;
-        }
-
-        #marker-info-toggle.detail-visible:not(.hidden) {
-            display: flex;
-        }
-
-        #marker-info-toggle {
-            right: 10px;
-        }
-
-        #marker-dismiss {
-            left: 10px;
-            font-size: 22px;
-        }
-
-        #marker-info-toggle.hidden {
-            display: none;
         }
 
         /* Sits directly over the bottom of the photo (museum-placard
@@ -1313,7 +1296,6 @@
              the frame many times wider than the viewport (see
              computeBaselineSize) and horizontally scrolled. -->
         <button id="marker-dismiss" title="Close">×</button>
-        <button id="marker-info-toggle" class="hidden" title="Show symmetry info">Ω</button>
         <div id="marker-detail">
             <div id="marker-detail-frame">
                 <div class="photo-clip">
@@ -1609,7 +1591,7 @@
                         'status', 'app-title', 'app-description', 'walk-name-input', 'walk-slug-input',
                         'title-walk-name', 'tour-list',
                         'marker-detail', 'marker-detail-frame', 'marker-detail-img', 'marker-detail-svg',
-                        'marker-info-toggle', 'marker-info-panel', 'marker-edit-panel',
+                        'marker-info-panel', 'marker-edit-panel',
                         'symmetry-comment', 'symmetry-type-list', 'symmetry-class-select',
                         'symmetry-class-controls', 'symmetry-add-type', 'overlay-undo', 'overlay-clear',
                         'marker-edit-done', 'color-options', 'text-options',
@@ -3937,20 +3919,18 @@
             const photo = state.photoData[index];
             showMarkerDetailImage(photo, { hideOverlayInitially: true });
 
-            // No Ω toggle in viewer mode — double-clicking the enlarged
-            // image is the only way in to the drawing view (see the
-            // #marker-detail-frame click listener), so there's nothing for
-            // this button to do here.
-            elements['marker-info-toggle'].classList.add('hidden');
+            // Double-clicking the enlarged image is the only way in to
+            // the drawing view (see the #marker-detail-frame click
+            // listener) — there's no separate edit button in either mode.
             elements['marker-info-panel'].classList.remove('visible');
             renderInfoPanel(photo);
         }
 
         // Maker mode's equivalent of handleMarkerClick: a single click
         // enlarges the photo for a quick look (overlay shown, not hidden —
-        // it's the maker's own work) with a dismiss button and an edit
-        // button (repurposing the same top-right slot the viewer's Ω info
-        // toggle uses) that opens full drawing tools.
+        // it's the maker's own work); double-clicking the enlarged image
+        // (see the #marker-detail-frame click listener, shared with
+        // viewer mode) opens full drawing tools from there.
         // Scrolls the sidebar's photo list to `photoId`'s entry and marks
         // it with the blue translucent trim (see .active-thumb), or clears
         // the trim entirely if photoId is null. Maker-only — the photo
@@ -3976,13 +3956,10 @@
 
             const photo = state.photoData[index];
             // Just the photo, not the drawing — that only appears once
-            // "edit" (the same button, upper-right on the image) is
-            // clicked and opens the full annotation editor.
+            // the enlarged image itself is double-clicked, opening the
+            // full annotation editor.
             showMarkerDetailImage(photo, { hideOverlayInitially: true });
 
-            elements['marker-info-toggle'].classList.remove('hidden');
-            elements['marker-info-toggle'].textContent = '✎';
-            elements['marker-info-toggle'].title = 'Edit';
             renderInfoPanel(photo);
             elements['marker-info-panel'].classList.add('visible');
             highlightActivePhotoInList(photo.id);
@@ -4016,7 +3993,6 @@
 
             elements['marker-detail'].classList.remove('visible');
             elements['marker-dismiss'].classList.remove('detail-visible');
-            elements['marker-info-toggle'].classList.remove('detail-visible');
             elements['marker-detail-img'].src = '';
             elements['marker-info-panel'].classList.remove('visible');
             if (state.enlargedMarker) sendMarkerToBack(state.enlargedMarker);
@@ -5304,7 +5280,6 @@
 
             elements['marker-detail'].classList.add('visible');
             elements['marker-dismiss'].classList.add('detail-visible');
-            elements['marker-info-toggle'].classList.add('detail-visible');
         }
 
         function renderInfoPanel(photo) {
@@ -5877,20 +5852,6 @@
             elements['symmetry-class-select'].addEventListener('change', renderClassControls);
             elements['symmetry-add-type'].addEventListener('click', addSymmetryType);
             elements['marker-edit-done'].addEventListener('click', closeThumbnailDetail);
-
-            // Top-right button: maker-only now — opens full drawing tools
-            // on the currently-previewed photo. Viewer mode has no such
-            // button; double-clicking the enlarged image is the only way
-            // into the drawing view there (see the frame's own click
-            // listener below), so this button stays permanently hidden in
-            // viewer mode (see handleMarkerClick).
-            elements['marker-info-toggle'].addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (!CONFIG.IS_MAKER_MODE) return;
-                const photo = findPhotoById(state.detailPhotoId);
-                if (!photo) return;
-                openAnnotationEditor(photo);
-            });
 
             // Double-clicking the enlarged image itself — not the map
             // thumbnail, the big photo already showing — is the other way
