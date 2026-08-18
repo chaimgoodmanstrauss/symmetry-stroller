@@ -653,7 +653,38 @@
            it's always fully visible regardless of where its marker sits
            on screen (edge of the map, behind the sidebar, etc.). Holds the
            image, an SVG symmetry-overlay layer, an info toggle (Viewer),
-           and an annotation editor (Writer). */
+           and an annotation editor (Writer).
+
+           ---- Clipping/sizing layering model (read this before touching
+           any of #marker-detail/-frame/.photo-clip/-svg) ----
+
+           Four nested layers, each with ONE job:
+             #marker-detail   — never clips. Just a scroll container (for
+                                 content that outgrows the viewport) with
+                                 enough padding to let the glow (below)
+                                 bleed without hitting ITS edge too.
+             #marker-detail-frame — the visible window. Clips only while
+                                 .region-clipped is set (viewer's region
+                                 view — see setDetailClipped); otherwise
+                                 open, so the annotation glow can bleed past
+                                 it during normal editing.
+             .photo-clip       — always clips. The photo's own edges are
+                                 never allowed to spill, in any mode.
+             #marker-detail-svg — never self-clips (overrides its own
+                                 overflow:hidden default); always inherits
+                                 whichever clip state the frame is
+                                 currently in.
+
+           Every zoom mechanism (applyEditZoom, applyCropZoomSize,
+           applyRegionZoom) sets sizing/transform on img + svg + .photo-clip
+           together via the shared setDetailBoxSize helper — before that
+           existed, .photo-clip's size silently went stale relative to the
+           frame's in one call site and broke "image fills the region."
+           Frame clip-state changes go through setDetailClipped; "is this
+           click inside the detail UI" goes through isInsideDetailUI. All
+           three exist specifically because every one of these concerns
+           has, at least once, been handled correctly in one call site and
+           forgotten in another. */
         #marker-detail {
             position: fixed;
             top: 50%;
@@ -669,15 +700,11 @@
             /* This is a flex container that shrink-wraps to its content
                (the frame) — max-width above only caps growth, it never
                actually forces extra room, since the frame is normally
-               already narrower than the viewport. Without real padding
-               here, this box hugs the frame with zero slack, which
-               (overflow-y:auto's side effect of also clipping the X axis)
-               silently ate mouse targeting on anything placed right at the
-               frame's edge (e.g. the region tool's resize handles), and
-               clips the annotation glow's blur radius (see .photo-clip)
-               now that it deliberately bleeds past the frame itself — only
-               needs to clear GLOW_RADIUS_PX (35px), not the much larger
-               figure from when the glow's own default was more diffuse. */
+               already narrower than the viewport. Padding is what
+               actually reserves the glow-bleed margin (see the layering
+               note above); it also means a click can land in that margin
+               without landing on the frame or panel, which is exactly what
+               isInsideDetailUI/setupOutsideClickHandler account for. */
             padding: 50px;
             box-sizing: border-box;
             /* frame + panel can together exceed 92vh (both now refuse to
@@ -715,31 +742,13 @@
             transition: width 0.3s ease, height 0.3s ease;
         }
 
-        /* The photo itself stays clipped to the frame's rounded-corner box
-           (panning/zooming shouldn't spill the image past its edges), but
-           the annotation svg (a sibling of this, both children of
-           #marker-detail-frame) does NOT — its glow filter needs to bleed
-           beyond the visible photo, and clipping it at the frame's own
-           edge silently ate almost all of it on any photo whose frame is
-           short relative to the glow's blur radius (common here: many of
-           this app's photos are wide, short symmetry strips). Confirmed
-           via pixel sampling: with the old single overflow:hidden frame,
-           no detectable glow gradient near the mark; with the clip moved
-           to just this wrapper, a clearly visible white halo. */
         #marker-detail-frame .photo-clip {
             overflow: hidden;
             border-radius: var(--radius);
             line-height: 0;
         }
 
-        /* Viewer's "see the drawing" region view is the one case where the
-           svg's glow-bleed freedom above needs to be given back: the
-           viewer is looking at a cropped window into the photo, and marks
-           (or their glow) drawn nearer the photo's actual edges shouldn't
-           spill into that window from outside the region they picked.
-           Toggled by applyRegionZoom for exactly the span that region view
-           is open — the maker's editing view (the whole photo, never just
-           a cropped region) never gets this class. */
+        /* Set/cleared by setDetailClipped — see the layering note above. */
         #marker-detail-frame.region-clipped {
             overflow: hidden;
         }
@@ -776,13 +785,8 @@
             height: 100%;
             pointer-events: none;
             transition: opacity 0.15s ease, transform 0.2s ease;
-            /* SVG's own default is overflow:hidden — override it so the
-               annotation glow (see .annotation-group below) isn't clipped
-               at this element's own edge, now that the frame itself no
-               longer clips (see .photo-clip). Drawn strokes staying within
-               the visible photo is still the normal case since they're
-               placed by clicking within the frame; this only affects
-               filter bleed, not where marks can be drawn. */
+            /* SVG's own default is overflow:hidden — see the layering note
+               on #marker-detail above for why this is overridden. */
             overflow: visible;
         }
 
@@ -4568,21 +4572,19 @@
             const frame = elements['marker-detail-frame'];
             const img = elements['marker-detail-img'];
             const svg = elements['marker-detail-svg'];
-            const clip = frame.querySelector('.photo-clip');
             const region = photo.viewerRegion;
 
             if (!state.viewerRegionOpen || !region) {
                 frame.style.width = '';
                 frame.style.height = '';
-                clip.style.width = '';
-                clip.style.height = '';
+                setPhotoClipSize(null, null);
                 img.style.transform = '';
                 svg.style.transform = '';
                 svg.style.width = '';
                 svg.style.height = '';
                 svg.style.top = '';
                 svg.style.left = '';
-                frame.classList.remove('region-clipped');
+                setDetailClipped(false);
                 return;
             }
 
@@ -4620,15 +4622,7 @@
             }
             frame.style.width = `${frameW}px`;
             frame.style.height = `${frameH}px`;
-            // .photo-clip normally hugs the img's own (untransformed) size
-            // in the default view, which is exactly wrong here — the
-            // reshaped frame is a DIFFERENT size than the image's natural
-            // box, so without this the clip window stayed stuck at the old
-            // size while the frame (and the transformed image inside it)
-            // moved on, cutting the image off well short of the frame's
-            // actual edges instead of filling it.
-            clip.style.width = `${frameW}px`;
-            clip.style.height = `${frameH}px`;
+            setPhotoClipSize(frameW, frameH);
 
             const fracCenterX = (region.x + region.width / 2) / w;
             const fracCenterY = (region.y + region.height / 2) / h;
@@ -4649,11 +4643,9 @@
             // baseH, positioned via the transform above), not to the
             // frame's smaller reshaped window — so clipping the svg itself
             // wouldn't constrain to what's actually visible. Clipping the
-            // frame instead (its own overflow:visible is only meant for
-            // the maker's editing view, where the whole photo — not just a
-            // cropped region — is always in frame) clips both the svg and
-            // the image to frame's real, current bounds.
-            frame.classList.add('region-clipped');
+            // frame instead clips both the svg and the image to frame's
+            // real, current bounds.
+            setDetailClipped(true);
         }
 
         // Writer-only scroll-to-zoom on the editing surface, so fine detail
@@ -4796,6 +4788,45 @@
                 height *= clamp;
             }
             return { width, height };
+        }
+
+        // ---- Shared detail-UI clip/size/hit-testing helpers --------------
+        // See the layering note on #marker-detail's CSS for the model these
+        // implement. Only applyRegionZoom needs setPhotoClipSize — edit-zoom
+        // and crop-zoom explicitly resize just the image, and .photo-clip
+        // (normal document flow, hugging its content) and the frame (same,
+        // hugging .photo-clip) follow along on their own with no extra code;
+        // applyRegionZoom is the one mechanism that reshapes the frame to a
+        // size independent of the image's own box, which is exactly the
+        // case .photo-clip can't auto-derive and needs to be told directly.
+
+        // Pass null/null to release .photo-clip back to auto-sizing.
+        function setPhotoClipSize(width, height) {
+            const clip = elements['marker-detail-frame'].querySelector('.photo-clip');
+            clip.style.width = width == null ? '' : `${width}px`;
+            clip.style.height = height == null ? '' : `${height}px`;
+        }
+
+        // The one place #marker-detail-frame's .region-clipped class gets
+        // toggled — previously two independent classList calls in
+        // applyRegionZoom's enter/exit branches that had to be kept in
+        // sync by hand.
+        function setDetailClipped(clipped) {
+            elements['marker-detail-frame'].classList.toggle('region-clipped', clipped);
+        }
+
+        // Is `target` part of the enlarged-photo UI (the frame or the tool
+        // panel)? Used by the outside-click-to-close handler and the
+        // panel-drag guard — both need exactly this answer, and having it
+        // in one place is what the padding bug and the drag/outside-click
+        // collision bug were each missing: the outside-click check used to
+        // test containment against #marker-detail itself, which includes
+        // its own (non-visible) padding — a real click landing there
+        // should count as "outside" and close the view, not get silently
+        // absorbed by the padded parent.
+        function isInsideDetailUI(target) {
+            return elements['marker-detail-frame'].contains(target) ||
+                elements['marker-edit-panel'].contains(target);
         }
 
         // Drawing mode shows the image at ~2x its normal fitted size (clamped
@@ -5454,17 +5485,9 @@
             });
 
             // Close the enlarged photo/annotation editor via the × button,
-            // or by clicking anywhere outside it — the frame (which the
-            // dismiss/info-toggle buttons and info panel are all inside)
-            // and the edit panel (a sibling, and freely draggable — see
-            // setupEditPanelDrag — so it can't be assumed to sit inside
-            // the frame's own box) are checked individually, NOT against
-            // #marker-detail as a whole: that box has real padding around
-            // it now (for the annotation glow's blur to bleed into — see
-            // .photo-clip), so treating a click anywhere inside it as
-            // "inside" silently ate outside-clicks landing in that
-            // padding, which is invisible empty space, not actually part
-            // of the visible UI.
+            // or by clicking anywhere outside it — see isInsideDetailUI for
+            // what counts as "inside" and why that's not simply
+            // "#marker-detail.contains(target)".
             elements['marker-dismiss'].addEventListener('click', (e) => {
                 e.stopPropagation();
                 closeThumbnailDetail();
@@ -5474,8 +5497,7 @@
                     state.justDraggedEditPanel = false;
                     return;
                 }
-                if (elements['marker-detail-frame'].contains(e.target)) return;
-                if (elements['marker-edit-panel'].contains(e.target)) return;
+                if (isInsideDetailUI(e.target)) return;
                 if (e.target.closest('.marker-container')) return;
                 if (state.enlargedMarker) closeThumbnailDetail();
             });
