@@ -1232,6 +1232,17 @@
                 <input type="file" id="load-input" accept="application/json">
             </div>
 
+            <!-- Hidden by default; only shown if a fetch to /deploy-status
+                 (same-origin, so this is a no-op everywhere except when
+                 local_server.js is actually serving this page) confirms
+                 deploy credentials exist on THIS machine. See
+                 setupDeployButton and local_server.js's own comment for
+                 why the credentials can't just live in this page. -->
+            <div class="map-controls maker-only" id="deploy-controls" style="display: none;">
+                <button id="deploy-button" class="save">Deploy this walk to server</button>
+            </div>
+            <pre class="maker-only" id="deploy-output" style="display: none; font-size: 11px; max-height: 140px; overflow-y: auto; background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; padding: 6px; white-space: pre-wrap; word-break: break-all;"></pre>
+
             <div class="status" id="status">Map is loading...</div>
 
             <div class="divider maker-only"></div>
@@ -1564,7 +1575,8 @@
                         'text-run-preview',
                         'region-crop-svg', 'marker-dismiss', 'connect-folder', 'checkpoint-list',
                         'route-draw-toggle', 'route-undo-point', 'route-clear', 'map',
-                        'thumb-size-normal', 'thumb-size-reduced'];
+                        'thumb-size-normal', 'thumb-size-reduced',
+                        'deploy-controls', 'deploy-button', 'deploy-output'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -1636,6 +1648,7 @@
                     state.map.on('zoomend', handleZoomChange);
                     setupRouteTool();
                     setupThumbSizeToggle();
+                    setupDeployButton();
 
                     elements.status.textContent = 'Map loaded successfully. Ready for photos.';
 
@@ -2356,6 +2369,53 @@
             elements['thumb-size-reduced'].addEventListener('change', () => {
                 state.reducedMarkers = true;
                 handleZoomChange();
+            });
+        }
+
+        // Reveals the "Deploy this walk to server" button only if a
+        // same-origin fetch to /deploy-status succeeds and reports
+        // credentials are present — i.e. only when this page is actually
+        // being served by local_server.js on the machine that has them.
+        // On the real remote server (or any other static host) that path
+        // simply doesn't exist, the fetch fails, and the button just never
+        // appears — this file carries no credentials or SFTP logic of its
+        // own, only a trigger for the local helper process to do it (see
+        // local_server.js's own comment for why a browser can't do this
+        // directly).
+        function setupDeployButton() {
+            fetch('/deploy-status').then(r => r.json()).then(({ available }) => {
+                if (available) elements['deploy-controls'].style.display = '';
+            }).catch(() => {});
+
+            elements['deploy-button'].addEventListener('click', async () => {
+                if (!state.walkSlug) {
+                    alert('No walk is loaded (or it has no slug yet) — nothing to deploy.');
+                    return;
+                }
+                const btn = elements['deploy-button'];
+                const out = elements['deploy-output'];
+                btn.disabled = true;
+                out.style.display = '';
+                out.textContent = `Deploying "${state.walkSlug}"...\n`;
+                try {
+                    const res = await fetch('/deploy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ target: 'walk', slug: state.walkSlug }),
+                    });
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    for (;;) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        out.textContent += decoder.decode(value, { stream: true });
+                        out.scrollTop = out.scrollHeight;
+                    }
+                } catch (err) {
+                    out.textContent += `\n[failed: ${err.message}]`;
+                } finally {
+                    btn.disabled = false;
+                }
             });
         }
 
