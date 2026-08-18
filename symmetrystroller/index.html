@@ -594,11 +594,18 @@
         }
 
         .marker-container img {
-            transition: all 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transition: border-color 0.2s ease-out, transform 0.15s cubic-bezier(0.4, 0.0, 0.2, 1), width 0.15s cubic-bezier(0.4, 0.0, 0.2, 1), height 0.15s cubic-bezier(0.4, 0.0, 0.2, 1);
             transform-origin: center bottom;
-            border: 3px solid white;
+            /* Gray until the actual photo has loaded (see applyThumbLoadState),
+               white once it has — a visible cue on slow connections that the
+               pin's own placement doesn't wait on the image. */
+            border: 3px solid #999;
             border-radius: 3px;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .marker-container img.thumb-loaded {
+            border-color: white;
         }
 
         .marker-triangle {
@@ -1877,16 +1884,17 @@
 
                 // A single click on the photo itself (not a drag, not a
                 // control) just brings it to the top of the stack — same
-                // as viewer mode. Only a double-click enlarges it, with a
-                // dismiss button and an edit button to go into full
-                // drawing tools. Checked via e.detail (the browser's own
-                // consecutive-click counter) rather than a 'dblclick'
-                // listener — more robust against any DOM rebuild between
-                // the two clicks of a real double-click, and against a
-                // drag's release also firing a plain 'click' right after
-                // (mouseup always precedes it, and isMarkerDragging is
-                // already back to false by then) — bringing to front again
-                // is a harmless no-op there, unlike enlarging would be.
+                // as viewer mode. Only a double-click/double-tap enlarges
+                // it, with a dismiss button and an edit button to go into
+                // full drawing tools. Uses isDoubleTapEvent rather than a
+                // raw e.detail check or a 'dblclick' listener — robust
+                // against both a DOM rebuild between the two clicks and
+                // against iOS never incrementing detail for taps (see
+                // isDoubleTapEvent), and against a drag's release also
+                // firing a plain 'click' right after (mouseup always
+                // precedes it, and isMarkerDragging is already back to
+                // false by then) — bringing to front again is a harmless
+                // no-op there, unlike enlarging would be.
                 const markerContainer = e.target.closest('.marker-container');
                 if (!markerContainer) return;
                 const deleteBtn = markerContainer.querySelector('.delete-button');
@@ -1900,7 +1908,7 @@
                 if (state.enlargedMarker && state.enlargedMarker !== clickedMarker) {
                     closeThumbnailDetail();
                 }
-                if (e.detail >= 2) {
+                if (isDoubleTapEvent(e, clickedMarker)) {
                     openMakerPreview(clickedMarker, photoIndex);
                 } else {
                     bringMarkerToFront(clickedMarker);
@@ -2185,6 +2193,7 @@
                 const customIcon = createMarkerIcon(src, photo.id, dimensions);
 
                 const marker = L.marker([lat, lng], { icon: customIcon }).addTo(state.map);
+                applyThumbLoadState(marker);
                 state.maxZIndex += 1;
                 marker.setZIndexOffset(state.maxZIndex);
                 marker._currentZIndex = state.maxZIndex;
@@ -2296,8 +2305,27 @@
                     </div>
                 `,
                 iconSize: [width, totalHeight],
-                iconAnchor: [anchorX, anchorY]
+                iconAnchor: [anchorX, anchorY],
+                // Every icon starts unloaded; applyThumbLoadState (called
+                // once this divIcon's html is actually in the DOM) adds
+                // 'thumb-loaded' the moment its <img> finishes loading — or
+                // right away if it's already cached and complete.
             });
+        }
+
+        // Adds 'thumb-loaded' to a marker's <img> once its photo has
+        // actually finished loading (or immediately, if it was already
+        // cached) so the CSS border can go from gray to white as a loading
+        // cue — call right after the icon's html is in the DOM, i.e. after
+        // .addTo(map) or setIcon().
+        function applyThumbLoadState(marker) {
+            const img = marker._icon && marker._icon.querySelector('img');
+            if (!img) return;
+            if (img.complete && img.naturalWidth > 0) {
+                img.classList.add('thumb-loaded');
+            } else {
+                img.addEventListener('load', () => img.classList.add('thumb-loaded'), { once: true });
+            }
         }
 
         function handleZoomChange() {
@@ -2345,6 +2373,7 @@
 
             if (wasOnMap) {
                 marker.addTo(state.map);
+                applyThumbLoadState(marker);
             }
 
             if (currentZIndex) {
@@ -3412,6 +3441,7 @@
                 const customIcon = createMarkerIcon(photo.src, photo.id, dimensions);
 
                 const marker = L.marker([photo.lat, photo.lng], { icon: customIcon }).addTo(state.map);
+                applyThumbLoadState(marker);
                 state.maxZIndex += 1;
                 marker.setZIndexOffset(state.maxZIndex);
                 marker._currentZIndex = state.maxZIndex;
@@ -3768,9 +3798,9 @@
         // Shared by both places a photo marker's Leaflet 'click' handler
         // gets attached in viewer mode: a single click just brings the
         // thumbnail to the top of the stack (same as maker mode); only a
-        // double-click enlarges it. Checked via e.detail (the browser's
-        // own consecutive-click counter) for the same DOM-rebuild
-        // robustness reasons as the maker-mode marker handling.
+        // double-click/double-tap enlarges it. Uses isDoubleTapEvent (not
+        // a raw e.detail check) so this also works on iOS, where touch
+        // taps never increment detail — see isDoubleTapEvent's comment.
         function handlePhotoMarkerClick(e, marker, index) {
             e.originalEvent.stopPropagation();
             // Clicking a DIFFERENT icon while one is already enlarged (or
@@ -3779,7 +3809,7 @@
             if (state.enlargedMarker && state.enlargedMarker !== marker) {
                 closeThumbnailDetail();
             }
-            if (e.originalEvent.detail >= 2) {
+            if (isDoubleTapEvent(e.originalEvent, marker)) {
                 handleMarkerClick(marker, index);
             } else {
                 bringMarkerToFront(marker);
@@ -4931,6 +4961,41 @@
             elements['marker-detail-frame'].classList.toggle('region-clipped', clipped);
         }
 
+        // iOS WebKit (Safari and Chrome, same engine underneath) doesn't
+        // increment click.detail for touch-generated taps the way it does
+        // for real mouse clicks — every tap reports detail:1, so the
+        // detail>=2 checks used throughout this file for double-click
+        // detection (chosen over 'dblclick' listeners specifically for
+        // their robustness against DOM rebuilds between the two clicks,
+        // see the comments at each call site) silently never fire from a
+        // double-TAP on iOS. This tracks taps by timestamp + a caller-given
+        // identity key as a fallback, gated to touch-capable devices only
+        // (IS_TOUCH_CAPABLE) — a real double-click on a mouse-driven device
+        // still resolves purely via detail, exactly as before. The timing
+        // fallback is a coarse heuristic (any two taps on the same key
+        // within the window count as double) that would otherwise produce
+        // false positives against deliberate, independent single clicks —
+        // fine for touch, where there's no mouse to make that a realistic
+        // pattern, but not safe to apply universally.
+        const DOUBLE_TAP_MS = 300;
+        const IS_TOUCH_CAPABLE = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+        state.lastTapTime = 0;
+        state.lastTapKey = null;
+        function isDoubleTapEvent(e, key) {
+            if (e.detail >= 2) return true;
+            if (!IS_TOUCH_CAPABLE) return false;
+            const now = Date.now();
+            const isDouble = state.lastTapKey === key && (now - state.lastTapTime) < DOUBLE_TAP_MS;
+            if (isDouble) {
+                state.lastTapTime = 0;
+                state.lastTapKey = null;
+            } else {
+                state.lastTapTime = now;
+                state.lastTapKey = key;
+            }
+            return isDouble;
+        }
+
         // Is `target` part of the enlarged-photo UI (the frame or the tool
         // panel)? Used by the outside-click-to-close handler and the
         // panel-drag guard — both need exactly this answer, and having it
@@ -5593,7 +5658,7 @@
             // drawing) cycles all the way back to the thumbnail, same as
             // the dismiss button or tapping anywhere else.
             elements['marker-detail-frame'].addEventListener('click', (e) => {
-                if (!state.enlargedMarker || e.detail < 2) return;
+                if (!state.enlargedMarker || !isDoubleTapEvent(e, elements['marker-detail-frame'])) return;
                 const photo = findPhotoById(state.detailPhotoId);
                 if (!photo) return;
                 if (CONFIG.IS_MAKER_MODE) {
