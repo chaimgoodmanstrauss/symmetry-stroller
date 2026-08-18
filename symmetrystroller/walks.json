@@ -18,5 +18,10 @@
     "slug": "momath-to-fifth",
     "title": "MoMath to Fifth",
     "dataFile": "walks/momath-to-fifth/momath-to-fifth.json"
+  },
+  {
+    "slug": "momath",
+    "title": "MoMath to Fifth",
+    "dataFile": "walks/momath/momath.json"
   }
 ]

@@ -424,9 +424,124 @@
       "originalWidth": 269,
       "originalHeight": 83,
       "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
-      "viewerRegion": null
+      "symmetryTypes": [
+        {
+          "class": "frieze",
+          "value": "*22∞"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "line",
+          "points": [
+            [
+              344.3,
+              144.3
+            ],
+            [
+              814.3,
+              143.5
+            ]
+          ]
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              714.2,
+              25.8
+            ],
+            [
+              714.2,
+              302.9
+            ]
+          ]
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              561.4,
+              6.1
+            ],
+            [
+              559.2,
+              291.9
+            ]
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            736.1,
+            128.2
+          ],
+          "runs": [
+            {
+              "text": "2",
+              "color": "#d0212b"
+            }
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            584.8,
+            127.5
+          ],
+          "runs": [
+            {
+              "text": "2",
+              "color": "#d0212b"
+            }
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            614.8,
+            32.4
+          ],
+          "runs": [
+            {
+              "text": "∞",
+              "color": "#d0212b"
+            }
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            749.3,
+            248.8
+          ],
+          "runs": [
+            {
+              "text": "*22∞",
+              "color": "#d0212b"
+            }
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            524.9,
+            128.1
+          ],
+          "runs": [
+            {
+              "text": "*",
+              "color": "#d0212b"
+            }
+          ]
+        }
+      ],
+      "viewerRegion": {
+        "x": 337.719298245614,
+        "y": 7.5726615779843645,
+        "width": 501.4619883040936,
+        "height": 267.54453213077795
+      }
     },
     {
       "id": "photo_1786985805739_1bt8itn6i",
@@ -657,10 +772,64 @@
       "lng": -73.99511799216272,
       "originalWidth": 83,
       "originalHeight": 91,
-      "comment": "",
+      "comment": "a trashcan!",
       "symmetryTypes": [],
-      "overlay": [],
-      "viewerRegion": null
+      "overlay": [
+        {
+          "tool": "line",
+          "points": [
+            [
+              260.5,
+              307.1
+            ],
+            [
+              827.3,
+              327.8
+            ]
+          ]
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              584.4,
+              172.8
+            ],
+            [
+              572.4,
+              1035.5
+            ]
+          ]
+        },
+        {
+          "tool": "domain",
+          "points": [
+            [
+              429.4,
+              265.8
+            ],
+            [
+              705,
+              283
+            ],
+            [
+              698.1,
+              431.1
+            ],
+            [
+              524.1,
+              422.5
+            ]
+          ],
+          "op": "add"
+        }
+      ],
+      "viewerRegion": {
+        "x": 336.3391655450875,
+        "y": 181.42675127962784,
+        "width": 463.66083445491256,
+        "height": 695.3732487203724
+      }
     },
     {
       "id": "photo_1786985805795_7u7183jkm",
@@ -1020,10 +1189,10 @@
     }
   ],
   "mapCenter": {
-    "lat": 40.73951853686268,
-    "lng": -73.99440050125123
+    "lat": 40.74021356884926,
+    "lng": -73.99412825703622
   },
-  "mapZoom": 17,
+  "mapZoom": 19,
   "version": "2.0",
-  "savedAt": "2026-08-17T22:46:57.253Z"
+  "savedAt": "2026-08-18T11:35:25.604Z"
 }
