@@ -4755,8 +4755,18 @@
             svg.style.top = '0';
             svg.style.left = '0';
 
-            const maxW = window.innerWidth * 0.75;
-            const maxH = window.innerHeight * 0.75;
+            // A flat window.innerWidth/innerHeight * 0.75 doesn't account
+            // for #marker-detail's own padding or the info panel sitting
+            // below the frame as a flex sibling — both are a fixed number
+            // of pixels, a much bigger relative bite out of a small phone
+            // screen than a spacious desktop window. On mobile this
+            // silently shrank the space actually left for the frame below
+            // what it was told it had, so #marker-detail's overflow-y:auto
+            // kicked in and most of the "zoomed in" region was only
+            // reachable by scrolling — reading as "the zoom clips off
+            // most" of the photo. Measuring the real available space
+            // directly fixes that regardless of screen size.
+            const { maxW, maxH } = computeDetailAvailableSpace();
             const regionAspect = region.width / region.height;
             let frameW, frameH;
             if (regionAspect >= maxW / maxH) {
@@ -4792,6 +4802,66 @@
             // frame instead clips both the svg and the image to frame's
             // real, current bounds.
             setDetailClipped(true);
+
+            // vector-effect="non-scaling-stroke" (see strokeToSvgElement)
+            // deliberately keeps a stroke's screen width constant against
+            // ANY transform, including this function's own CSS
+            // transform:scale() above — by design, so lines stay a
+            // manageable, constant width while the maker is zoomed in for
+            // editing. That same immunity is wrong here: the viewer's
+            // region-zoom is meant to look like a closer look at the same
+            // photo, so a drawn line should grow with it exactly like the
+            // image content and the (CSS-transform-scaled, and therefore
+            // already correctly growing) text and glow do.
+            scaleAnnotationStrokes(scale);
+        }
+
+        // See applyRegionZoom's call site for why only region-zoom needs
+        // this — vector-effect="non-scaling-stroke" is otherwise exactly
+        // the constant-width behavior every other zoom mechanism wants.
+        function scaleAnnotationStrokes(scale) {
+            const group = document.querySelector('#marker-detail-svg .annotation-group');
+            if (!group) return;
+            group.querySelectorAll('[stroke-width]').forEach(el => {
+                const base = parseFloat(el.dataset.baseStrokeWidth || el.getAttribute('stroke-width'));
+                el.dataset.baseStrokeWidth = base;
+                el.setAttribute('stroke-width', base * scale);
+            });
+            group.querySelectorAll('[stroke-dasharray]').forEach(el => {
+                const base = (el.dataset.baseDasharray || el.getAttribute('stroke-dasharray'))
+                    .split(',').map(Number);
+                el.dataset.baseDasharray = base.join(',');
+                el.setAttribute('stroke-dasharray', base.map(n => n * scale).join(','));
+            });
+        }
+
+        // The real, currently available space for #marker-detail-frame —
+        // window.innerWidth/innerHeight minus #marker-detail's own padding
+        // and (when visible) the info panel + flex gap below the frame,
+        // capped at the frame's own CSS max-width:75vw/max-height:75vh (a
+        // deliberate "don't fill edge-to-edge" ceiling that's the binding
+        // constraint on a spacious desktop window — capping to it here too
+        // keeps that CSS and this JS calculation from ever disagreeing;
+        // requesting a JS width past it would just get silently clamped by
+        // the CSS anyway, but .photo-clip has no such cap and would end up
+        // a different, wrong size from the frame it's supposed to match).
+        // See applyRegionZoom's call site for why this replaced a flat
+        // vw/vh fraction of the raw window size outright.
+        function computeDetailAvailableSpace() {
+            const detail = elements['marker-detail'];
+            const style = getComputedStyle(detail);
+            const padH = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+            const padV = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+            const gap = parseFloat(style.rowGap || style.gap) || 0;
+            const infoPanel = elements['marker-info-panel'];
+            const infoPanelH = infoPanel.classList.contains('visible')
+                ? infoPanel.getBoundingClientRect().height + gap
+                : 0;
+            const breathingRoom = 0.9;
+            return {
+                maxW: Math.min((window.innerWidth - padH) * breathingRoom, window.innerWidth * 0.75),
+                maxH: Math.min((window.innerHeight * 0.92 - padV - infoPanelH) * breathingRoom, window.innerHeight * 0.75)
+            };
         }
 
         // Writer-only scroll-to-zoom on the editing surface, so fine detail
