@@ -4873,7 +4873,27 @@
             // photo, so a drawn line should grow with it exactly like the
             // image content and the (CSS-transform-scaled, and therefore
             // already correctly growing) text and glow do.
-            scaleAnnotationStrokes(scale);
+            //
+            // NOT `scale` (frameW / (fracW * baseW)) — that treats a
+            // stroke-width attribute (defined in SVG viewBox/user-space
+            // units, e.g. LINE_WIDTH) as if it were already a CSS-pixel
+            // quantity measured against baseW, the STAGE-1 RENDERED image
+            // width in screen pixels. baseW varies with screen size
+            // (much smaller on a narrow phone, especially once
+            // computeDetailAvailableSpace started budgeting real space
+            // instead of a flat 75vw/75vh); the viewBox width (`w`,
+            // typically SVG_UNIT) never does. Dividing by the wrong,
+            // screen-size-dependent one is exactly why this "took up the
+            // entire box" specifically on a small screen: the smaller
+            // baseW got, the bigger this whole multiplier got. The
+            // correct multiplier converts straight from user-space units
+            // to actual rendered CSS pixels — frameW/fracW is how many
+            // CSS pixels the full image's `w`-unit-wide viewBox now spans
+            // post-transform (same derivation `scale` uses, just not
+            // anchored to baseW) — matching exactly how the SVG's own
+            // (non-vector-effect) coordinate scaling already correctly
+            // handles font-size for text.
+            scaleAnnotationStrokes((frameW / fracW) / w);
         }
 
         // See applyRegionZoom's call site for why only region-zoom needs
