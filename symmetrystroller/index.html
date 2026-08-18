@@ -598,14 +598,32 @@
             transform-origin: center bottom;
             /* Gray until the actual photo has loaded (see applyThumbLoadState),
                white once it has — a visible cue on slow connections that the
-               pin's own placement doesn't wait on the image. */
+               pin's own placement doesn't wait on the image. background-color
+               is what actually shows during the pulse below — an <img> with
+               no content painted yet is otherwise just empty/transparent. */
             border: 3px solid #999;
             border-radius: 3px;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+            background-color: #999;
+            animation: thumb-loading-pulse 1.8s ease-in-out infinite;
+            /* Same reasoning as #marker-detail-img: the double-tap that
+               enlarges a photo starts here, and can land as a native
+               drag-select (blue highlight) instead of a click. */
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        @keyframes thumb-loading-pulse {
+            0%, 100% { opacity: 0.55; }
+            50% { opacity: 1; }
         }
 
         .marker-container img.thumb-loaded {
             border-color: white;
+            background-color: transparent;
+            animation: none;
+            opacity: 1;
         }
 
         .marker-triangle {
@@ -812,6 +830,16 @@
             height: auto;
             object-fit: contain;
             transition: transform 0.2s ease;
+            /* A stray double-click (the exact gesture this whole view
+               opens with) can land as a native drag-select instead of a
+               click — Chrome/Safari then paint the image with the same
+               blue highlight as selected text, which persists across
+               opening OTHER photos afterward too, since nothing ever
+               clears that native selection state. Just refusing to be
+               selectable in the first place sidesteps it entirely. */
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-user-drag: none;
         }
 
         #marker-detail-svg {
@@ -2036,6 +2064,24 @@
             return '';
         }
 
+        // Same idea, but for the small generated thumbnail (see
+        // generateThumbnailBlob/saveState) — falls back to the full-res
+        // src for older saved data from before thumbnails existed, or a
+        // photo that hasn't been through a save yet this session.
+        function resolveThumbSrc(photo) {
+            if (photo.thumb) return (CONFIG.PHOTO_BASE || '') + photo.thumb;
+            return resolvePhotoSrc(photo);
+        }
+
+        // Stroller/viewer markers are always a small fixed square (see
+        // calculateMarkerDimensions) — the thumbnail is more than enough
+        // resolution and loads far faster than the original phone-camera
+        // photo. Maker mode's markers can grow much larger when zoomed in
+        // for review, so they keep using the full-res image.
+        function markerIconSrc(photo) {
+            return CONFIG.IS_MAKER_MODE ? photo.src : (photo.thumbSrc || photo.src);
+        }
+
         // Photo handling functions
         function handleFiles(event) {
             const files = Array.from(event.target.files).filter(f => f.type.startsWith('image/'));
@@ -3257,6 +3303,28 @@
                 .replace(/^-+|-+$/g, '');
         }
 
+        // Small JPEG derived from a full-res photo blob, for viewer-mode
+        // markers (see markerIconSrc) — those are always a fixed small
+        // square, so a several-MB phone-camera original is wasted bytes
+        // just to show a 90px (or 36px reduced) circle. Capped at
+        // THUMB_MAX_DIM on the longer side; never upscales a smaller image.
+        const THUMB_MAX_DIM = 400;
+        async function generateThumbnailBlob(blob) {
+            const bitmap = await createImageBitmap(blob);
+            try {
+                const scale = Math.min(1, THUMB_MAX_DIM / Math.max(bitmap.width, bitmap.height));
+                const width = Math.max(1, Math.round(bitmap.width * scale));
+                const height = Math.max(1, Math.round(bitmap.height * scale));
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+                return await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+            } finally {
+                bitmap.close();
+            }
+        }
+
         async function saveState() {
             if (state.photoData.length === 0) {
                 elements.status.textContent = 'No photos to save.';
@@ -3289,6 +3357,9 @@
                     return name;
                 };
 
+                let relThumbPath = photo.thumb || null;
+                let fullBlob = null;
+
                 if (dataUrlMatch) {
                     // Freshly uploaded this session — already in memory.
                     const mime = dataUrlMatch[1];
@@ -3297,7 +3368,8 @@
                     const byteString = atob(dataUrlMatch[2]);
                     const bytes = new Uint8Array(byteString.length);
                     for (let i = 0; i < byteString.length; i++) bytes[i] = byteString.charCodeAt(i);
-                    photoFiles.push({ name, blob: new Blob([bytes], { type: mime }) });
+                    fullBlob = new Blob([bytes], { type: mime });
+                    photoFiles.push({ name, blob: fullBlob });
                     relPath = `photos/${name}`;
                 } else if (photo.src) {
                     // Loaded from an existing lean walk.json (or elsewhere)
@@ -3306,19 +3378,37 @@
                     // photos that aren't actually there.
                     try {
                         const res = await fetch(photo.src);
-                        const blob = await res.blob();
+                        fullBlob = await res.blob();
                         const ext = (photo.photo || photo.src).split('.').pop().split(/[?#]/)[0] || 'jpg';
                         const name = reserveName(ext);
-                        photoFiles.push({ name, blob });
+                        photoFiles.push({ name, blob: fullBlob });
                         relPath = `photos/${name}`;
                     } catch (error) {
                         console.error(`Failed to fetch photo for save: ${photo.filename}`, error);
                     }
                 }
 
+                // Regenerated from the same bytes every save (cheap, and
+                // avoids the thumbnail silently going stale if the photo
+                // itself was ever replaced) rather than reused from
+                // photo.thumb — see markerIconSrc/generateThumbnailBlob.
+                if (fullBlob) {
+                    try {
+                        const thumbBlob = await generateThumbnailBlob(fullBlob);
+                        if (thumbBlob) {
+                            const thumbName = reserveName('thumb.jpg');
+                            photoFiles.push({ name: `thumbs/${thumbName}`, blob: thumbBlob });
+                            relThumbPath = `photos/thumbs/${thumbName}`;
+                        }
+                    } catch (error) {
+                        console.error(`Failed to generate thumbnail for: ${photo.filename}`, error);
+                    }
+                }
+
                 return {
                     id: photo.id,
                     photo: relPath,
+                    thumb: relThumbPath,
                     filename: photo.filename,
                     lat: photo.lat,
                     lng: photo.lng,
@@ -3460,6 +3550,8 @@
                 addSavedPhotoToMap({
                     id: photo.id,
                     src: resolvePhotoSrc(photo),
+                    thumbSrc: resolveThumbSrc(photo),
+                    thumb: photo.thumb,
                     photo: photo.photo,
                     filename: photo.filename,
                     lat: photo.lat,
@@ -3521,7 +3613,7 @@
                 }
 
                 const dimensions = calculateMarkerDimensions(markerWidth, markerHeight);
-                const customIcon = createMarkerIcon(photo.src, photo.id, dimensions);
+                const customIcon = createMarkerIcon(markerIconSrc(photo), photo.id, dimensions);
 
                 const marker = L.marker([photo.lat, photo.lng], { icon: customIcon }).addTo(state.map);
                 applyThumbLoadState(marker);
@@ -3533,7 +3625,7 @@
                 marker.originalWidth = markerWidth;
                 marker.originalHeight = markerHeight;
                 marker.aspectRatio = aspectRatio;
-                marker.photoSrc = photo.src;
+                marker.photoSrc = markerIconSrc(photo);
                 marker.photoId = photo.id;
                 // Add click handler for stroller mode
                 if (!CONFIG.IS_MAKER_MODE) {
@@ -5104,17 +5196,37 @@
             // preferring height would make even an ordinary landscape
             // photo balloon far past the viewport width on a narrow phone
             // (where maxH, a fraction of a tall viewport, is much more
-            // generous than maxW).
+            // generous than maxW). Only relevant on a narrow, upright
+            // (portrait) mobile screen — the actual case this shrinks
+            // unreadably on; a wide viewport (desktop, or a phone turned
+            // sideways) already has enough maxW headroom that this never
+            // needs to trigger, but gated explicitly rather than relying
+            // on that so it can't creep in unexpectedly on some in-between
+            // window size.
+            const isNarrowPortrait = isMobileDevice() && window.innerHeight > window.innerWidth;
             const containScale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
             const containHeight = img.naturalHeight * containScale;
             const MIN_READABLE_HEIGHT = maxH * 0.3;
-            const fitScale = containHeight < MIN_READABLE_HEIGHT
-                ? maxH / img.naturalHeight
-                : containScale;
+            const relaxWidth = isNarrowPortrait && containHeight < MIN_READABLE_HEIGHT;
+            const fitScale = relaxWidth ? maxH / img.naturalHeight : containScale;
             let width = img.naturalWidth * fitScale * multiplier;
             let height = img.naturalHeight * fitScale * multiplier;
-            if (height > maxH) {
-                const clamp = maxH / height;
+            if (relaxWidth) {
+                // Deliberately NOT clamping width back to maxW here — that's
+                // the entire point of this branch. Only height still needs
+                // clamping, since the multiplier (e.g. editing mode's 2x)
+                // can push it past maxH on its own.
+                if (height > maxH) {
+                    const clamp = maxH / height;
+                    width *= clamp;
+                    height *= clamp;
+                }
+            } else if (width > maxW || height > maxH) {
+                // Normal case: the multiplier can overshoot BOTH maxW and
+                // maxH even though fitScale alone (multiplier 1) always
+                // keeps both within bounds — contain-fit only guarantees
+                // that at 1x.
+                const clamp = Math.min(maxW / width, maxH / height);
                 width *= clamp;
                 height *= clamp;
             }
@@ -5252,6 +5364,14 @@
             const svg = elements['marker-detail-svg'];
             state.detailPhotoId = photo.id;
             state.viewerRegionOpen = false;
+
+            // Belt-and-suspenders alongside the user-select:none on
+            // #marker-detail-img/.marker-container img: clears any native
+            // text/image selection (the blue drag-select highlight a
+            // double-click's mousedown-then-move can trigger) left over
+            // from whatever was open before, so it can't carry forward
+            // onto this photo too.
+            window.getSelection()?.removeAllRanges();
 
             const sync = () => {
                 const w = img.naturalWidth || 1;
