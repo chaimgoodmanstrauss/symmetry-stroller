@@ -734,8 +734,13 @@
             box-sizing: border-box;
             /* frame + panel can together exceed 92vh (both now refuse to
                shrink below their own natural/max size) — scroll rather
-               than silently overflow past the viewport edge. */
+               than silently overflow past the viewport edge. Also true
+               horizontally now that a long-but-not-tall image is
+               deliberately allowed to size wider than the viewport (see
+               computeBaselineSize) instead of being squeezed to an
+               unreadable sliver. */
             overflow-y: auto;
+            overflow-x: auto;
             /* Scroll anchoring (on by default) nudges scrollTop to
                compensate whenever content above the viewport resizes —
                exactly what happens on every edit-zoom tick as the frame
@@ -751,7 +756,12 @@
 
         #marker-detail-frame {
             position: relative;
-            max-width: 75vw;
+            /* No max-width here (deliberately, see resetImageSize/
+               computeBaselineSize) — a long-but-not-tall image is sized
+               wider than the viewport on purpose so it stays tall enough
+               to read, and #marker-detail scrolls horizontally for it.
+               max-height stays as a redundant backstop matching what the
+               JS sizing already enforces. */
             max-height: 75vh;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
             line-height: 0;
@@ -788,18 +798,15 @@
            applyEditingImageSize's viewport-based ceiling exactly) to leave
            room for the tool panel underneath it. */
         .maker-mode #marker-detail-frame.editing {
-            max-width: 95vw;
             max-height: 78vh;
         }
 
         .maker-mode #marker-detail-frame.editing #marker-detail-img {
-            max-width: 95vw;
             max-height: 78vh;
         }
 
         #marker-detail-img {
             display: block;
-            max-width: 75vw;
             max-height: 75vh;
             width: auto;
             height: auto;
@@ -931,7 +938,15 @@
 
         #marker-info-toggle,
         #marker-dismiss {
-            position: absolute;
+            /* Fixed to the viewport, not absolute within the frame — a
+               long-but-not-tall image can now make the frame many times
+               wider than the screen (see computeBaselineSize), scrolled
+               horizontally within #marker-detail. Anchoring to the
+               frame's own corners would put these buttons wherever that
+               scroll happened to leave the frame's edge, often off-screen
+               and unreachable. Viewport corners are always reachable
+               regardless of the frame's size or current scroll position. */
+            position: fixed;
             top: 10px;
             width: 34px;
             height: 34px;
@@ -942,10 +957,23 @@
             font-family: 'EB Garamond', 'Georgia', serif;
             font-size: 17px;
             cursor: pointer;
-            display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 2;
+            z-index: 3600;
+            /* No longer a descendant of #marker-detail (see the HTML
+               comment above these two elements), so its own display:none/
+               .visible toggle can't hide these for free anymore —
+               .detail-visible is toggled alongside it, at the same two
+               call sites, to do the same job independently. */
+            display: none;
+        }
+
+        #marker-dismiss.detail-visible {
+            display: flex;
+        }
+
+        #marker-info-toggle.detail-visible:not(.hidden) {
+            display: flex;
         }
 
         #marker-info-toggle {
@@ -1271,6 +1299,21 @@
         <div id="map-container">
             <div id="map"></div>
         </div>
+        <!-- Direct children of <body>, not #marker-detail — position:fixed
+             on these two only actually anchors to the VIEWPORT if no
+             ancestor has its own `transform` (or similar), which
+             establishes a new containing block and hijacks position:fixed
+             to be relative to IT instead. #marker-detail has exactly such
+             a transform (the translate(-50%,-50%) that centers it), so
+             these have to live outside that subtree entirely — nesting
+             them inside #marker-detail-frame like the rest of its content
+             silently made "fixed" behave like "absolute relative to the
+             frame," putting them wherever the frame's own edge happened
+             to land, often off-screen once a long-but-not-tall image made
+             the frame many times wider than the viewport (see
+             computeBaselineSize) and horizontally scrolled. -->
+        <button id="marker-dismiss" title="Close">×</button>
+        <button id="marker-info-toggle" class="hidden" title="Show symmetry info">Ω</button>
         <div id="marker-detail">
             <div id="marker-detail-frame">
                 <div class="photo-clip">
@@ -1278,8 +1321,6 @@
                 </div>
                 <svg id="marker-detail-svg" xmlns="http://www.w3.org/2000/svg"></svg>
                 <svg id="region-crop-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
-                <button id="marker-dismiss" title="Close">×</button>
-                <button id="marker-info-toggle" class="hidden" title="Show symmetry info">Ω</button>
                 <div id="marker-info-panel" class="viewer-only"></div>
             </div>
             <div id="marker-edit-panel" class="maker-only">
@@ -3974,6 +4015,8 @@
             }
 
             elements['marker-detail'].classList.remove('visible');
+            elements['marker-dismiss'].classList.remove('detail-visible');
+            elements['marker-info-toggle'].classList.remove('detail-visible');
             elements['marker-detail-img'].src = '';
             elements['marker-info-panel'].classList.remove('visible');
             if (state.enlargedMarker) sendMarkerToBack(state.enlargedMarker);
@@ -5073,11 +5116,29 @@
         // zoom, general edit zoom) so they all agree on what "unzoomed"
         // looks like instead of drifting apart via copy-pasted variants.
         function computeBaselineSize(img, maxW, maxH, multiplier) {
-            const fitScale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+            // Fitting BOTH maxW and maxH (standard "contain" fit) is right
+            // for ordinary photos, but a long-but-not-tall image (a wide
+            // panorama-style crop) has such a small maxW/naturalWidth
+            // ratio that the resulting height can shrink to a sliver —
+            // technically "fits", but too short to actually read. When
+            // that happens, fit to height alone instead and let width run
+            // past maxW — #marker-detail scrolls horizontally for exactly
+            // this case (see its overflow-x). Guarded by a minimum-height
+            // floor rather than always fitting to height, since always
+            // preferring height would make even an ordinary landscape
+            // photo balloon far past the viewport width on a narrow phone
+            // (where maxH, a fraction of a tall viewport, is much more
+            // generous than maxW).
+            const containScale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+            const containHeight = img.naturalHeight * containScale;
+            const MIN_READABLE_HEIGHT = maxH * 0.3;
+            const fitScale = containHeight < MIN_READABLE_HEIGHT
+                ? maxH / img.naturalHeight
+                : containScale;
             let width = img.naturalWidth * fitScale * multiplier;
             let height = img.naturalHeight * fitScale * multiplier;
-            if (width > maxW || height > maxH) {
-                const clamp = Math.min(maxW / width, maxH / height);
+            if (height > maxH) {
+                const clamp = maxH / height;
                 width *= clamp;
                 height *= clamp;
             }
@@ -5189,9 +5250,25 @@
             updateAnnotationGlowScale();
         }
 
+        // The plain (non-editing) display size — was pure CSS
+        // (max-width:75vw/max-height:75vh via #marker-detail-img, "" width/
+        // height so the browser handles the fit) until a long-but-not-tall
+        // image exposed the same "contain-fit shrinks height to a sliver"
+        // problem applyEditingImageSize already handles via
+        // computeBaselineSize — needed here too now, so this is JS-driven
+        // like the editing size instead, using the same 75vw/75vh values
+        // the CSS used to enforce on its own.
         function resetImageSize(img) {
-            img.style.width = '';
-            img.style.height = '';
+            if (!img.naturalWidth || !img.naturalHeight) {
+                img.style.width = '';
+                img.style.height = '';
+                return;
+            }
+            const maxW = window.innerWidth * 0.75;
+            const maxH = window.innerHeight * 0.75;
+            const { width, height } = computeBaselineSize(img, maxW, maxH, 1);
+            img.style.width = `${width}px`;
+            img.style.height = `${height}px`;
         }
 
         function showMarkerDetailImage(photo, { hideOverlayInitially = false } = {}) {
@@ -5226,6 +5303,8 @@
             }
 
             elements['marker-detail'].classList.add('visible');
+            elements['marker-dismiss'].classList.add('detail-visible');
+            elements['marker-info-toggle'].classList.add('detail-visible');
         }
 
         function renderInfoPanel(photo) {
