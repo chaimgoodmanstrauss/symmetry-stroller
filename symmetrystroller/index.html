@@ -756,18 +756,28 @@
            inverse layer and below nothing — the marks themselves render on
            top of their own glow, both inside this same group.
 
-           Three tunable knobs, tell me new values to adjust:
-             --glow-opacity: how solid the white glow is (0-1, both layers)
-             --glow-spread:  blur radius of the tight inner layer (px)
-             --glow-radius:  blur radius of the wide outer layer (px) */
+           Tunable knobs, tell me new values to adjust (--glow-spread/
+           --glow-radius' base values live as GLOW_SPREAD_PX/GLOW_RADIUS_PX
+           in the JS constants near the top of the drawing-overlay code —
+           these two custom properties just hold their current,
+           zoom-scaled px value, set by updateAnnotationGlowScale):
+             --glow-opacity:      inner (tight) layer's solidity, 0-1
+             --glow-fade-opacity: outer (wide) layer's solidity, 0-1 —
+                                   lower this for a softer, longer fade
+                                   without touching how solid the glow is
+                                   right up against the mark
+             --glow-spread: blur radius of the tight inner layer (px)
+             --glow-radius: blur radius of the wide outer layer / how far
+                             the glow fades out (px) */
         :root {
             --glow-opacity: 1;
+            --glow-fade-opacity: 1;
             --glow-spread: 36px;
             --glow-radius: 90px;
         }
         #marker-detail-svg .annotation-group {
             filter: drop-shadow(0 0 var(--glow-spread) rgba(255, 255, 255, var(--glow-opacity)))
-                    drop-shadow(0 0 var(--glow-radius) rgba(255, 255, 255, var(--glow-opacity)));
+                    drop-shadow(0 0 var(--glow-radius) rgba(255, 255, 255, var(--glow-fade-opacity)));
         }
 
         #marker-detail-svg.drawable {
@@ -835,8 +845,12 @@
             cursor: ew-resize;
         }
 
-        #region-crop-svg .crop-corner-handle {
-            fill: #888888;
+        /* .crop-corner-handle is the small fixed-size visible dot (a
+           makeDot line, so "fill" doesn't apply — pointer-events is set
+           inline to none); .crop-corner-hit is the larger, invisible,
+           actually-draggable target underneath it. */
+        #region-crop-svg .crop-corner-hit {
+            fill: transparent;
             pointer-events: auto;
         }
 
@@ -3727,10 +3741,31 @@
         const SVG_UNIT = 1000;
         const RED = '#d0212b';
         const BLUE = '#2883ff';
-        const LINE_WIDTH = 6;
-        const DOT_SIZE = 20;
-        const SPLINE_WIDTH = 6;
-        const SPLINE_END_DOT = 10;
+
+        // ---- Tunable drawing-overlay parameters --------------------------
+        // All literal screen px unless noted, applied via
+        // vector-effect="non-scaling-stroke" so they stay this size
+        // regardless of zoom. Glow opacity/fade live as CSS custom
+        // properties on :root (search --glow-) since they're consumed by a
+        // CSS filter, not drawn as SVG attributes — GLOW_SPREAD_PX/
+        // GLOW_RADIUS_PX below are their zoom-scaled JS-side base values.
+        const LINE_WIDTH = 6;           // line tool stroke width
+        const DOT_SIZE = 20;            // dot tool diameter
+        const SPLINE_WIDTH = 6;         // spline tool stroke width
+        const SPLINE_END_DOT = 10;      // spline endpoint marker diameter
+        const GLOW_SPREAD_PX = 36;      // glow: tight inner layer's blur radius
+        const GLOW_RADIUS_PX = 90;      // glow: wide outer layer's blur radius (how far it fades out)
+        // See :root's --glow-opacity / --glow-fade-opacity for the two
+        // layers' opacity (inner solidity / outer fade), and
+        // updateAnnotationGlowScale for how GLOW_SPREAD_PX/GLOW_RADIUS_PX
+        // scale with the active zoom.
+
+        // Region ("viewing region") tool box:
+        const CROP_LINE_WIDTH = 2.5;       // outline stroke width
+        const CROP_LINE_HALO_WIDTH = 1;    // white halo, each side of the outline
+        const CROP_DOT_SIZE = 4;           // corner handle's visible dot diameter
+        const CROP_CORNER_HIT_RADIUS = 1.8; // corner handle's clickable radius — percent of frame width (grows with zoom, unlike the dot above, so it stays easy to grab at high zoom)
+
         // Tune these to adjust the '*' glyph in text-tool orbifold labels:
         // ASTERISK_SIZE_PCT is its font-size as a % of the surrounding
         // text; ASTERISK_DY_EM shifts it down (in em, relative to its own
@@ -3738,16 +3773,6 @@
         // up by the same amount automatically.
         const ASTERISK_SIZE_PCT = 165;
         const ASTERISK_DY_EM = 0.32;
-        // CROP_DOT_RADIUS is in the 0-100 percent-of-frame space
-        // region-crop-svg's viewBox uses (so it grows with zoom, which
-        // helps the corner handles stay easy to grab at high zoom).
-        // CROP_LINE_WIDTH/CROP_LINE_HALO_WIDTH are literal screen px
-        // (applied via vector-effect="non-scaling-stroke") — a
-        // percent-of-frame outline got visibly thick once the crop tool's
-        // zoom grew the frame well past its baseline size.
-        const CROP_LINE_WIDTH = 2.5;
-        const CROP_LINE_HALO_WIDTH = 1;
-        const CROP_DOT_RADIUS = 1.8;
 
         function findPhotoById(id) {
             return state.photoData.find(p => p.id === id);
@@ -3827,8 +3852,8 @@
             } else if (state.editingOverlay) {
                 scale = state.editZoom;
             }
-            group.style.setProperty('--glow-spread', `${36 * scale}px`);
-            group.style.setProperty('--glow-radius', `${90 * scale}px`);
+            group.style.setProperty('--glow-spread', `${GLOW_SPREAD_PX * scale}px`);
+            group.style.setProperty('--glow-radius', `${GLOW_RADIUS_PX * scale}px`);
         }
 
         function startTextDrag(e, stroke) {
@@ -4048,14 +4073,23 @@
                 { x: b.x, y: b.y + b.h, vEdge: 'bottom', hEdge: 'left', cursor: 'nesw-resize' },
                 { x: b.x + b.w, y: b.y + b.h, vEdge: 'bottom', hEdge: 'right', cursor: 'nwse-resize' }
             ].forEach(spec => {
-                const handle = document.createElementNS(SVG_NS, 'circle');
-                handle.setAttribute('class', 'crop-corner-handle');
-                handle.setAttribute('cx', spec.x);
-                handle.setAttribute('cy', spec.y);
-                handle.setAttribute('r', CROP_DOT_RADIUS);
-                handle.style.cursor = spec.cursor;
-                handle.addEventListener('mousedown', (e) => startCropCornerResize(e, spec.vEdge, spec.hEdge, photo));
-                svg.appendChild(handle);
+                // Two elements per corner: a larger invisible hit target
+                // (percent-of-frame, so it stays easy to grab at high
+                // zoom — same reasoning as the edge handles) and a small,
+                // fixed-size visible dot drawn on top of it.
+                const hit = document.createElementNS(SVG_NS, 'circle');
+                hit.setAttribute('class', 'crop-corner-hit');
+                hit.setAttribute('cx', spec.x);
+                hit.setAttribute('cy', spec.y);
+                hit.setAttribute('r', CROP_CORNER_HIT_RADIUS);
+                hit.style.cursor = spec.cursor;
+                hit.addEventListener('mousedown', (e) => startCropCornerResize(e, spec.vEdge, spec.hEdge, photo));
+                svg.appendChild(hit);
+
+                const dot = makeDot([spec.x, spec.y], CROP_DOT_SIZE, '#888888');
+                dot.setAttribute('class', 'crop-corner-handle');
+                dot.style.pointerEvents = 'none';
+                svg.appendChild(dot);
             });
         }
 
@@ -4839,8 +4873,10 @@
             } else if (cls === 'frieze') {
                 // Frieze options keep their descriptive names (hop, step,
                 // sidle, ...) — those aren't IUC/crystallographic labels.
+                // Name leads, orbifold symbol follows in parens (matches
+                // formatSymmetryValue's chip formatting).
                 container.innerHTML = `<select id="frieze-select">` +
-                    FRIEZE_TYPES.map(t => `<option value="${t.symbol}">${t.symbol} (${t.name})</option>`).join('') +
+                    FRIEZE_TYPES.map(t => `<option value="${t.symbol}">${t.name} (${t.symbol})</option>`).join('') +
                     `</select>`;
             } else if (cls === 'planar') {
                 // Orbifold symbol only — no IUC crystallographic names.
