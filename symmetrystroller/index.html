@@ -4864,36 +4864,34 @@
             setDetailClipped(true);
 
             // vector-effect="non-scaling-stroke" (see strokeToSvgElement)
-            // deliberately keeps a stroke's screen width constant against
-            // ANY transform, including this function's own CSS
-            // transform:scale() above — by design, so lines stay a
-            // manageable, constant width while the maker is zoomed in for
-            // editing. That same immunity is wrong here: the viewer's
-            // region-zoom is meant to look like a closer look at the same
-            // photo, so a drawn line should grow with it exactly like the
-            // image content and the (CSS-transform-scaled, and therefore
-            // already correctly growing) text and glow do.
-            //
-            // NOT `scale` (frameW / (fracW * baseW)) — that treats a
-            // stroke-width attribute (defined in SVG viewBox/user-space
-            // units, e.g. LINE_WIDTH) as if it were already a CSS-pixel
-            // quantity measured against baseW, the STAGE-1 RENDERED image
-            // width in screen pixels. baseW varies with screen size
-            // (much smaller on a narrow phone, especially once
-            // computeDetailAvailableSpace started budgeting real space
-            // instead of a flat 75vw/75vh); the viewBox width (`w`,
-            // typically SVG_UNIT) never does. Dividing by the wrong,
-            // screen-size-dependent one is exactly why this "took up the
-            // entire box" specifically on a small screen: the smaller
-            // baseW got, the bigger this whole multiplier got. The
-            // correct multiplier converts straight from user-space units
-            // to actual rendered CSS pixels — frameW/fracW is how many
-            // CSS pixels the full image's `w`-unit-wide viewBox now spans
-            // post-transform (same derivation `scale` uses, just not
-            // anchored to baseW) — matching exactly how the SVG's own
-            // (non-vector-effect) coordinate scaling already correctly
-            // handles font-size for text.
-            scaleAnnotationStrokes((frameW / fracW) / w);
+            // keeps a stroke's screen width constant against the SVG's own
+            // internal viewBox-to-render-size scaling — which is genuinely
+            // what makes lines stay a manageable, constant width while the
+            // maker is zoomed in for editing (applyEditZoom/applyCropZoomSize,
+            // both explicit-resize). It does NOT, empirically, block this
+            // function's own CSS transform:scale() above the way its name
+            // suggests it should — confirmed by screenshotting a drawn dot
+            // with the multiplier below removed entirely: it still grew
+            // with the transform, filling most of the frame instead of
+            // staying constant. So the transform's scale-up happens no
+            // matter what stroke-width attribute value is written here —
+            // the only question is what value, once THAT scale-up is
+            // applied on top of it, lands on the visually-correct final
+            // size. That's baseW/w: the CSS-pixels-per-viewBox-unit ratio
+            // at the STAGE-1 (un-zoomed) render, i.e. exactly the width
+            // this stroke would have if vector-effect weren't involved at
+            // all — multiplying it by the transform's own scale (baseW's
+            // own definition, backed out: transform scale is
+            // frameW/(fracW*baseW)) gives frameW/(fracW*w), the same
+            // "CSS pixels per viewBox unit post-transform" text and glow
+            // already correctly land on. An earlier version of this used
+            // (frameW/fracW)/w directly as the multiplier — that's the
+            // POST-transform target ratio, but since the transform ALSO
+            // applies to whatever gets written here, it was applying that
+            // ratio twice (once by hand, once by the browser), which is
+            // exactly what produced a dot/line ballooning to fill the
+            // frame instead of shrinking to the intended size.
+            scaleAnnotationStrokes(baseW / w);
         }
 
         // See applyRegionZoom's call site for why only region-zoom needs
@@ -5579,6 +5577,23 @@
                 const photo = findPhotoById(state.detailPhotoId);
                 if (!photo) return;
 
+                // Every tool branch below ends up calling renderOverlay
+                // (immediately for dot/domain/text, or later at mouseup for
+                // line/spline), which rebuilds the svg's children via
+                // innerHTML — mid-gesture, between this mousedown and the
+                // click event the browser fires afterward. That rebuild is
+                // enough for the browser's own hit-testing to resolve the
+                // resulting click to somewhere outside the frame entirely
+                // (confirmed via getBoundingClientRect/elementFromPoint: the
+                // geometry says the click point is squarely inside the
+                // frame/svg, pointer-events:auto and all, yet e.target is
+                // #marker-detail) — spuriously closing the editor and losing
+                // whatever was just drawn. Same fix already used for
+                // justDraggedEditPanel: a click that's really the tail end
+                // of a gesture like this can't be trusted for outside-click
+                // purposes, so skip it once via a flag instead.
+                state.justDrewOnCanvas = true;
+
                 if (state.overlayTool === 'dot') {
                     photo.overlay.push({ tool: 'dot', point: pt });
                     renderOverlay(photo);
@@ -5829,8 +5844,9 @@
                 closeThumbnailDetail();
             });
             document.addEventListener('click', (e) => {
-                if (state.justDraggedEditPanel) {
+                if (state.justDraggedEditPanel || state.justDrewOnCanvas) {
                     state.justDraggedEditPanel = false;
+                    state.justDrewOnCanvas = false;
                     return;
                 }
                 if (isInsideDetailUI(e.target)) return;
