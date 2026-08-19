@@ -1278,6 +1278,17 @@
     </style>
 </head>
 <body>
+    <script>
+        // Set the mode class synchronously, before the browser parses any
+        // of the maker-only markup below, so a viewer never sees even a
+        // single frame of the maker/editor UI (sidebar, edit panel, etc.)
+        // while waiting for DOMContentLoaded. initializeApp() below still
+        // computes CONFIG.IS_MAKER_MODE the same way once it runs — this
+        // is purely about not painting the wrong thing first.
+        document.body.className =
+            (new URLSearchParams(location.search).get('mode') === 'writer')
+                ? 'maker-mode' : 'stroller-mode';
+    </script>
     <div id="app">
         <div id="title-image">
             <span class="title-main">Symmetry Stroll</span>
