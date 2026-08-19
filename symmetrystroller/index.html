@@ -6208,18 +6208,35 @@
                 e.preventDefault();
                 const startX = e.clientX;
                 const startY = e.clientY;
+                // Viewport-relative — panel's own current visual position,
+                // captured BEFORE anything below changes it.
                 const rect = panel.getBoundingClientRect();
-                // Switching to position:fixed with explicit left/top (read
-                // from the panel's current on-screen rect first, so it
-                // doesn't jump) is what actually makes it draggable — the
-                // sticky/flex layout it starts in has no left/top to move.
+                // #marker-edit-panel's own position:fixed (applied via
+                // .dragged) doesn't actually mean "relative to the
+                // viewport" here: #marker-detail (its parent) has its own
+                // CSS transform (the translate(-50%,-50%) that centers
+                // it), which per spec makes IT the containing block for a
+                // position:fixed descendant instead — the exact gotcha
+                // #marker-dismiss/#marker-info-toggle hit earlier (see
+                // their own comment) — so left/top set below need to be
+                // expressed relative to ITS box, not the viewport.
+                // Measured AFTER adding .dragged, not before — pulling the
+                // panel out of #marker-detail's flex flow changes its
+                // total content size, which (since #marker-detail centers
+                // on exactly that size) shifts #marker-detail's own
+                // position too. Using the pre-drag container rect here
+                // would silently combine with that shift instead of
+                // canceling it out, still leaving a jump on mousedown.
                 panel.classList.add('dragged');
-                panel.style.left = `${rect.left}px`;
-                panel.style.top = `${rect.top}px`;
+                const containerRect = elements['marker-detail'].getBoundingClientRect();
+                const baseLeft = rect.left - containerRect.left;
+                const baseTop = rect.top - containerRect.top;
+                panel.style.left = `${baseLeft}px`;
+                panel.style.top = `${baseTop}px`;
 
                 const onMove = (moveEvent) => {
-                    panel.style.left = `${rect.left + (moveEvent.clientX - startX)}px`;
-                    panel.style.top = `${rect.top + (moveEvent.clientY - startY)}px`;
+                    panel.style.left = `${baseLeft + (moveEvent.clientX - startX)}px`;
+                    panel.style.top = `${baseTop + (moveEvent.clientY - startY)}px`;
                 };
                 const onUp = () => {
                     document.removeEventListener('mousemove', onMove);
