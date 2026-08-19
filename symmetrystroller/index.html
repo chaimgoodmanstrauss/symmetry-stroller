@@ -1059,6 +1059,13 @@
             right: 0;
             bottom: 0;
             max-height: 50%;
+            /* Without this, max-height:50% only caps the content box —
+               the 32px+14px padding below is added on top of that, so on
+               a very short frame (an extreme-aspect-ratio photo in the
+               viewer's region-zoom view) the panel's real rendered height
+               blew well past 50% and could swallow the entire frame,
+               hiding the photo and its marks entirely. */
+            box-sizing: border-box;
             overflow-y: auto;
             padding: 32px 18px 14px;
             background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.55) 60%, rgba(0, 0, 0, 0) 100%);
