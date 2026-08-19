@@ -1382,6 +1382,14 @@
                     <button type="button" class="color-swatch" data-color="#2883ff" style="background:#2883ff" title="Blue"></button>
                     <button type="button" class="color-swatch" data-color="#111111" style="background:#111111" title="Black"></button>
                 </div>
+                <div class="tool-row" id="line-width-options">
+                    <button type="button" class="tool-button" data-line-width="thick">Thick</button>
+                    <button type="button" class="tool-button" data-line-width="thin">Thin</button>
+                </div>
+                <div class="tool-row" id="dot-size-options">
+                    <button type="button" class="tool-button" data-dot-size="big">Big</button>
+                    <button type="button" class="tool-button" data-dot-size="little">Little</button>
+                </div>
                 <div class="tool-row" id="text-options" style="flex-direction:column; align-items:flex-start;">
                     <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">
                         Click the photo, then type. Switch color to start a new colored segment. Enter or Escape to finish.
@@ -1537,6 +1545,11 @@
             editingOverlay: false,
             overlayTool: 'domain',
             drawColor: '#d0212b',
+            // Current tool setting for new strokes (like drawColor) — not
+            // per-stroke selection/editing; existing strokes keep whatever
+            // they were drawn with (see strokeToSvgElement/makeDot).
+            lineThin: false,
+            dotLittle: false,
             activeStroke: null,
             activeTextPlacement: null,
             domainPolygon: null,
@@ -1652,6 +1665,7 @@
                         'symmetry-comment', 'symmetry-type-list', 'symmetry-class-select',
                         'symmetry-class-controls', 'symmetry-add-type', 'overlay-undo', 'overlay-clear',
                         'marker-edit-done', 'color-options', 'text-options',
+                        'line-width-options', 'dot-size-options',
                         'text-run-preview',
                         'region-crop-svg', 'marker-dismiss', 'connect-folder', 'checkpoint-list',
                         'route-draw-toggle', 'route-undo-point', 'route-clear', 'map',
@@ -4151,8 +4165,10 @@
         // properties on :root (search --glow-) since they're consumed by a
         // CSS filter, not drawn as SVG attributes — GLOW_SPREAD_PX/
         // GLOW_RADIUS_PX below are their zoom-scaled JS-side base values.
-        const LINE_WIDTH = 12;          // line tool stroke width
-        const DOT_SIZE = 50;            // dot tool diameter
+        const LINE_WIDTH = 12;          // line tool stroke width (thick/default)
+        const DOT_SIZE = 50;            // dot tool diameter (big/default)
+        const THIN_SCALE = 0.4;         // thin-line/little-dot size relative to the above
+        const LITTLE_SCALE = 0.4;
         const SPLINE_WIDTH = 12;        // spline tool stroke width
         const SPLINE_END_DOT = 20;      // spline endpoint marker diameter
         const GLOW_SPREAD_PX = 15;      // glow: tight inner layer's blur radius
@@ -4820,14 +4836,14 @@
                 el.setAttribute('x2', p1[0]);
                 el.setAttribute('y2', p1[1]);
                 el.setAttribute('stroke', RED);
-                el.setAttribute('stroke-width', LINE_WIDTH);
+                el.setAttribute('stroke-width', stroke.thin ? LINE_WIDTH * THIN_SCALE : LINE_WIDTH);
                 el.setAttribute('stroke-linecap', 'round');
                 el.setAttribute('vector-effect', 'non-scaling-stroke');
                 return el;
             }
 
             if (stroke.tool === 'dot') {
-                return makeDot(stroke.point, DOT_SIZE, BLUE);
+                return makeDot(stroke.point, stroke.little ? DOT_SIZE * LITTLE_SCALE : DOT_SIZE, BLUE);
             }
 
             if (stroke.tool === 'spline') {
@@ -5580,10 +5596,16 @@
                 btn.classList.toggle('active', btn.dataset.tool === state.overlayTool));
             document.querySelectorAll('#marker-edit-panel [data-color]').forEach(btn =>
                 btn.classList.toggle('active', btn.dataset.color === state.drawColor));
+            document.querySelectorAll('#marker-edit-panel [data-line-width]').forEach(btn =>
+                btn.classList.toggle('active', btn.dataset.lineWidth === (state.lineThin ? 'thin' : 'thick')));
+            document.querySelectorAll('#marker-edit-panel [data-dot-size]').forEach(btn =>
+                btn.classList.toggle('active', btn.dataset.dotSize === (state.dotLittle ? 'little' : 'big')));
 
             const showColor = ['spline', 'text'].includes(state.overlayTool);
             elements['color-options'].style.display = showColor ? 'flex' : 'none';
             elements['text-options'].style.display = state.overlayTool === 'text' ? 'flex' : 'none';
+            elements['line-width-options'].style.display = state.overlayTool === 'line' ? 'flex' : 'none';
+            elements['dot-size-options'].style.display = state.overlayTool === 'dot' ? 'flex' : 'none';
             updateOverlayCursor();
         }
 
@@ -5688,7 +5710,7 @@
             if (!photo) return;
             const [p0, p1] = stroke.points;
             if (Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 1) {
-                photo.overlay.push({ tool: 'line', points: [p0, p1] });
+                photo.overlay.push({ tool: 'line', points: [p0, p1], thin: state.lineThin });
             }
             renderOverlay(photo);
         }
@@ -5816,7 +5838,7 @@
                 state.justDrewOnCanvas = true;
 
                 if (state.overlayTool === 'dot') {
-                    photo.overlay.push({ tool: 'dot', point: pt });
+                    photo.overlay.push({ tool: 'dot', point: pt, little: state.dotLittle });
                     renderOverlay(photo);
                     return;
                 }
@@ -5988,6 +6010,18 @@
             document.querySelectorAll('#marker-edit-panel [data-color]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     state.drawColor = btn.dataset.color;
+                    updateToolButtonStates();
+                });
+            });
+            document.querySelectorAll('#marker-edit-panel [data-line-width]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.lineThin = btn.dataset.lineWidth === 'thin';
+                    updateToolButtonStates();
+                });
+            });
+            document.querySelectorAll('#marker-edit-panel [data-dot-size]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.dotLittle = btn.dataset.dotSize === 'little';
                     updateToolButtonStates();
                 });
             });
