@@ -162,6 +162,88 @@
             display: none !important;
         }
 
+        /* Field mode (see CONFIG.FIELD_MODE): the compact, single-walk,
+           map-only maker UI for a dedicated phone/tablet in the field.
+           Everything the sidebar normally offers beyond the map itself
+           (walk name/slug, upload dropzone, save/load, tour management,
+           deploy, the photo list) is presumed fixed for the session —
+           the walk is given by ?walk=, so none of that management UI is
+           reachable, or needed. */
+        .field-mode #sidebar {
+            display: none !important;
+        }
+
+        .field-mode #map-container {
+            width: 100vw !important;
+        }
+
+        /* Hidden by default (even in plain, non-field maker mode) —
+           .field-mode below is what actually reveals it. */
+        #field-toolbar {
+            display: none;
+        }
+
+        /* Both dock to the same screen edge as #marker-edit-panel — no
+           reason to show the "not editing a specific photo" toolbar
+           (add photo, route) while one's actually open, since neither
+           of those actions makes sense mid-edit anyway. */
+        .field-mode:has(#marker-edit-panel.visible) #field-toolbar {
+            display: none;
+        }
+
+        .field-mode #field-toolbar {
+            display: flex;
+            position: fixed;
+            z-index: 3600;
+            gap: 8px;
+            align-items: center;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            padding: 8px 10px;
+        }
+
+        #field-status {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Landscape (wider than tall): dock as a right-edge sidebar
+           strip, tools stacked vertically so they don't fight the map's
+           own width. */
+        @media (min-aspect-ratio: 1/1) {
+            .field-mode #field-toolbar {
+                top: 0;
+                right: 0;
+                bottom: 0;
+                flex-direction: column;
+                align-items: stretch;
+                width: min(200px, 30vw);
+                border-right: none;
+                border-radius: 0;
+                overflow-y: auto;
+            }
+        }
+
+        /* Portrait (taller than wide, the common phone-in-hand case):
+           dock as a bottom bar, tools flowing horizontally so a thumb
+           can reach any of them without stretching. */
+        @media (max-aspect-ratio: 1/1) {
+            .field-mode #field-toolbar {
+                left: 0;
+                right: 0;
+                bottom: 0;
+                flex-direction: row;
+                flex-wrap: wrap;
+                border-left: none;
+                border-right: none;
+                border-radius: 0;
+            }
+        }
+
         /* Mode selector */
         .mode-selector {
             display: flex;
@@ -1292,9 +1374,20 @@
         // while waiting for DOMContentLoaded. initializeApp() below still
         // computes CONFIG.IS_MAKER_MODE the same way once it runs — this
         // is purely about not painting the wrong thing first.
-        document.body.className =
-            (new URLSearchParams(location.search).get('mode') === 'writer')
-                ? 'maker-mode' : 'stroller-mode';
+        //
+        // field-mode is the compact, single-walk, phone/tablet-in-the-
+        // field editing UI (see CONFIG.FIELD_MODE) — a maker who's also
+        // carrying a ?key= is assumed to be on the one dedicated device
+        // this is meant for, so the class (and everything it hides/
+        // relocates via CSS) is applied just as early as the mode class
+        // itself, for the same reason.
+        {
+            const isWriter = new URLSearchParams(location.search).get('mode') === 'writer';
+            const hasFieldKey = Boolean(new URLSearchParams(location.search).get('key'));
+            document.body.className = isWriter
+                ? ('maker-mode' + (hasFieldKey ? ' field-mode' : ''))
+                : 'stroller-mode';
+        }
     </script>
     <div id="app">
         <div id="title-image">
@@ -1413,6 +1506,19 @@
              the frame many times wider than the viewport (see
              computeBaselineSize) and horizontally scrolled. -->
         <button id="marker-dismiss" title="Close">×</button>
+        <!-- Field mode's compact toolbar (see CONFIG.FIELD_MODE /
+             initFieldMode) — a direct child of <body>, same reasoning as
+             #marker-dismiss above: it needs to dock to the real
+             viewport edge regardless of #marker-detail's own transform.
+             "Add Photo" is new; the route/fit-all buttons are the exact
+             same DOM nodes normally living in #sidebar, relocated here
+             by initFieldMode() rather than duplicated, so their existing
+             listeners/state keep working unchanged. -->
+        <div id="field-toolbar" class="maker-only">
+            <button type="button" id="field-add-photo" class="tool-button">+ Photo</button>
+            <input type="file" id="field-photo-input" accept="image/*" style="display: none;">
+            <span id="field-status"></span>
+        </div>
         <div id="marker-detail">
             <div id="marker-detail-frame">
                 <div class="photo-clip">
@@ -1511,6 +1617,12 @@
             MARKER_DOT_OFFSET: 11,
             AUTO_LOAD_FILE: null,
             PHOTO_BASE: '',
+            // Compact field-editing UI (see api/save.php) — set from
+            // ?key= in initializeApp, once. FIELD_KEY is sent with every
+            // server-save request; FIELD_MODE just mirrors whether it's
+            // present, so call sites don't have to re-derive it.
+            FIELD_MODE: false,
+            FIELD_KEY: null,
             // Responsive sizing configuration
             MAX_MARKER_WIDTH: 500,    // Maximum width for desktop
             MAX_MARKER_HEIGHT: 550,   // Maximum height for desktop
@@ -1687,9 +1799,16 @@
             // else (including no param at all) is Stroller/viewer mode.
             const params = new URLSearchParams(location.search);
             CONFIG.IS_MAKER_MODE = params.get('mode') === 'writer';
+            CONFIG.FIELD_KEY = params.get('key') || null;
+            CONFIG.FIELD_MODE = CONFIG.IS_MAKER_MODE && Boolean(CONFIG.FIELD_KEY);
 
-            // Apply mode
-            document.body.className = CONFIG.IS_MAKER_MODE ? 'maker-mode' : 'stroller-mode';
+            // Apply mode — matches the early inline script's own logic
+            // (see its comment); recomputed here rather than left alone
+            // because this line's job is applying CONFIG's now-final
+            // values, not just avoiding a flash of the wrong content.
+            document.body.className = CONFIG.IS_MAKER_MODE
+                ? ('maker-mode' + (CONFIG.FIELD_MODE ? ' field-mode' : ''))
+                : 'stroller-mode';
 
             // Resolve which walk to show/edit from the URL, via the manifest
             currentWalk = await resolveWalk();
@@ -1724,6 +1843,10 @@
                 initTourManagement();
                 tryRestoreProjectFolder();
             }
+
+            if (CONFIG.FIELD_MODE) {
+                initFieldMode();
+            }
         }
 
         function cacheElements() {
@@ -1741,7 +1864,8 @@
                         'text-run-preview',
                         'region-crop-svg', 'marker-dismiss', 'connect-folder', 'checkpoint-list',
                         'route-draw-toggle', 'route-undo-point', 'route-clear', 'map',
-                        'deploy-controls', 'deploy-button', 'deploy-output'];
+                        'deploy-controls', 'deploy-button', 'deploy-output',
+                        'field-toolbar', 'field-add-photo', 'field-photo-input', 'field-status'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -2585,6 +2709,311 @@
             });
         }
 
+        // ---- Field mode (see CONFIG.FIELD_MODE) -----------------------
+        // The compact, single-walk, map-only maker UI for a dedicated
+        // phone/tablet used in the field. Everything below only runs
+        // when initializeApp() has already confirmed CONFIG.FIELD_MODE.
+        function initFieldMode() {
+            relocateButtonsForFieldMode();
+            setupFieldPhotoAdd();
+
+            // #marker-edit-panel starts out a descendant of #marker-detail,
+            // which has its own CSS transform (translate(-50%,-50%), to
+            // center it) — that makes #marker-detail the containing block
+            // for a position:fixed descendant AND (since it also sets
+            // overflow-y/x: auto for its own scrolling) clips it to
+            // #marker-detail's own current bounds, however the panel is
+            // actually positioned. The exact trap #marker-dismiss/
+            // #marker-info-toggle hit earlier (see their own comment) —
+            // same fix: move it out of that subtree entirely, direct
+            // child of <body>, so position:fixed in dockEditPanelForField
+            // below is genuinely viewport-relative and unclipped.
+            document.body.appendChild(elements['marker-edit-panel']);
+
+            window.addEventListener('resize', () => {
+                if (elements['marker-edit-panel'].classList.contains('visible')) {
+                    dockEditPanelForField();
+                }
+            });
+        }
+
+        // The route/fit-all buttons normally live in #sidebar (hidden
+        // entirely in field mode — see the CSS) — moved here rather than
+        // duplicated so their existing event listeners (attached once,
+        // in setupRouteTool/the fit-all listener) keep working unchanged;
+        // only their position in the DOM (and therefore on screen)
+        // changes.
+        function relocateButtonsForFieldMode() {
+            const toolbar = elements['field-toolbar'];
+            const addPhotoBtn = elements['field-add-photo'];
+            [elements['fit-all'], elements['route-draw-toggle'],
+             elements['route-undo-point'], elements['route-clear']].forEach(btn => {
+                if (btn) toolbar.insertBefore(btn, addPhotoBtn);
+            });
+        }
+
+        function setupFieldPhotoAdd() {
+            elements['field-add-photo'].addEventListener('click', () => {
+                elements['field-photo-input'].click();
+            });
+            elements['field-photo-input'].addEventListener('change', handleFieldPhotoAdd);
+        }
+
+        // Single-photo add flow for the field: EXIF GPS first (same as
+        // the desktop dropzone's handleFiles), falling back to the
+        // device's own current position (navigator.geolocation) if the
+        // photo has none — reasonable in the field, where you're
+        // presumably standing right where the photo was just taken,
+        // unlike desktop uploads of who-knows-what-vintage photos where
+        // that assumption wouldn't hold.
+        function handleFieldPhotoAdd(event) {
+            const file = event.target.files[0];
+            event.target.value = '';
+            if (!file || !file.type.startsWith('image/')) return;
+
+            setFieldStatus('Reading photo…');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    EXIF.getData(img, function () {
+                        const gpsLat = EXIF.getTag(this, 'GPSLatitude');
+                        const gpsLng = EXIF.getTag(this, 'GPSLongitude');
+                        if (gpsLat && gpsLng) {
+                            const lat = convertDMSToDD(gpsLat, EXIF.getTag(this, 'GPSLatitudeRef'));
+                            const lng = convertDMSToDD(gpsLng, EXIF.getTag(this, 'GPSLongitudeRef'));
+                            addPhotoToMap(img.src, file.name, lat, lng);
+                            setFieldStatus('Photo added.');
+                            scheduleFieldSave();
+                        } else if (navigator.geolocation) {
+                            setFieldStatus('No GPS in photo — using current location…');
+                            navigator.geolocation.getCurrentPosition(
+                                (pos) => {
+                                    addPhotoToMap(img.src, file.name, pos.coords.latitude, pos.coords.longitude);
+                                    setFieldStatus('Photo added (current location).');
+                                    scheduleFieldSave();
+                                },
+                                () => {
+                                    setFieldStatus('No GPS available — tap the map where this photo belongs.');
+                                    promptTapToPlace(img.src, file.name);
+                                },
+                                { enableHighAccuracy: true, timeout: 10000 }
+                            );
+                        } else {
+                            setFieldStatus('No GPS available — tap the map where this photo belongs.');
+                            promptTapToPlace(img.src, file.name);
+                        }
+                    });
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Last-resort placement when neither the photo's own EXIF nor
+        // the device's current position is available (e.g. location
+        // permission denied) — one map click places it, same gesture as
+        // the route tool's own point-placement.
+        function promptTapToPlace(src, filename) {
+            const onMapClick = (e) => {
+                addPhotoToMap(src, filename, e.latlng.lat, e.latlng.lng);
+                setFieldStatus('Photo added.');
+                scheduleFieldSave();
+                state.map.off('click', onMapClick);
+                state.map.getContainer().style.cursor = '';
+            };
+            state.map.getContainer().style.cursor = 'crosshair';
+            state.map.on('click', onMapClick);
+        }
+
+        function setFieldStatus(text) {
+            if (elements['field-status']) elements['field-status'].textContent = text;
+        }
+
+        // Repositions #marker-edit-panel to dock against the real
+        // viewport edge — right sidebar in landscape, bottom sheet in
+        // portrait — instead of desktop maker mode's floating/draggable
+        // placement below the photo frame. Genuinely viewport-relative
+        // (not the containing-block-relative math setupEditPanelDrag
+        // needs) because initFieldMode() already moved the panel to be
+        // a direct child of <body>, outside #marker-detail's subtree.
+        function dockEditPanelForField() {
+            if (!CONFIG.FIELD_MODE) return;
+            const panel = elements['marker-edit-panel'];
+            panel.classList.add('dragged'); // position:fixed; bottom:auto — see its own CSS comment
+
+            // The panel's own base CSS doesn't set box-sizing, so its
+            // default content-box would add its padding/border on top of
+            // whatever explicit width/height is set below — border-box
+            // makes those explicit values the actual rendered size.
+            panel.style.boxSizing = 'border-box';
+
+            const isPortrait = window.innerHeight >= window.innerWidth;
+            let width, maxHeight;
+            if (isPortrait) {
+                width = window.innerWidth;
+                maxHeight = Math.round(window.innerHeight * 0.42);
+                panel.style.left = '0px';
+                panel.style.top = `${window.innerHeight - maxHeight}px`;
+            } else {
+                width = Math.min(340, Math.round(window.innerWidth * 0.32));
+                maxHeight = window.innerHeight;
+                panel.style.left = `${window.innerWidth - width}px`;
+                panel.style.top = '0px';
+            }
+            panel.style.width = `${width}px`;
+            panel.style.maxHeight = `${maxHeight}px`;
+        }
+
+        // ---- Field mode: save-to-server -------------------------------
+        // Field mode has no realistic "connect a local folder" or
+        // "download a zip, deploy it later from a desktop" step — so
+        // instead of saveState()'s explicit Save button, edits are
+        // auto-saved to api/save.php shortly after they stop, via this
+        // debounce. See saveStateToServer's own comment for why it
+        // doesn't reuse saveState()'s per-photo loop.
+        let fieldSaveTimer = null;
+        const FIELD_SAVE_DEBOUNCE_MS = 2000;
+        function scheduleFieldSave() {
+            if (!CONFIG.FIELD_MODE) return;
+            if (fieldSaveTimer) clearTimeout(fieldSaveTimer);
+            setFieldStatus('Editing…');
+            fieldSaveTimer = setTimeout(() => {
+                fieldSaveTimer = null;
+                saveStateToServer();
+            }, FIELD_SAVE_DEBOUNCE_MS);
+        }
+
+        // Unlike saveState()'s desktop-oriented photo loop (which always
+        // re-fetches and re-uploads every photo's full-resolution bytes,
+        // to guarantee a self-contained zip/local-folder on every save),
+        // no tool in this app ever changes an existing photo's actual
+        // bytes once uploaded — comment, symmetry types, the drawn
+        // overlay, and viewerRegion (a non-destructive crop rectangle,
+        // applied via a CSS transform at display time, never a pixel
+        // re-encode) are all pure JSON. So only photos still holding a
+        // fresh data: URL (added this session, not yet on the server)
+        // need their bytes uploaded at all — every other photo's
+        // existing photos/<file> is left completely alone, which matters
+        // a lot on a field connection: a walk with 60 photos would
+        // otherwise mean re-uploading all 60 on every single debounced
+        // autosave.
+        async function saveStateToServer() {
+            const slug = state.walkSlug || currentWalk?.slug;
+            if (!slug || state.photoData.length === 0) return;
+
+            setFieldStatus('Saving…');
+            try {
+                const usedPaths = new Set(state.photoData.map(p => p.photo).filter(Boolean));
+                const photoFiles = []; // {path, blob}
+
+                const leanPhotos = await Promise.all(state.photoData.map(async (photo, index) => {
+                    const marker = state.markers[index];
+                    const dataUrlMatch = /^data:([^;]+);base64,(.*)$/.exec(photo.src || '');
+                    let relPath = photo.photo || null;
+                    let relThumbPath = photo.thumb || null;
+
+                    if (dataUrlMatch) {
+                        const mime = dataUrlMatch[1];
+                        const ext = mime === 'image/png' ? 'png' : 'jpg';
+                        const base = (photo.filename || photo.id).replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_-]/g, '_');
+                        let name = `${base}.${ext}`, n = 1;
+                        while (usedPaths.has(`photos/${name}`)) name = `${base}_${n++}.${ext}`;
+                        usedPaths.add(`photos/${name}`);
+
+                        const byteString = atob(dataUrlMatch[2]);
+                        const bytes = new Uint8Array(byteString.length);
+                        for (let i = 0; i < byteString.length; i++) bytes[i] = byteString.charCodeAt(i);
+                        const fullBlob = new Blob([bytes], { type: mime });
+                        photoFiles.push({ path: `photos/${name}`, blob: fullBlob });
+                        relPath = `photos/${name}`;
+
+                        const thumbBlob = await generateThumbnailBlob(fullBlob);
+                        if (thumbBlob) {
+                            const thumbName = `${base}.thumb.jpg`;
+                            photoFiles.push({ path: `photos/thumbs/${thumbName}`, blob: thumbBlob });
+                            relThumbPath = `photos/thumbs/${thumbName}`;
+                        }
+                    }
+
+                    return {
+                        id: photo.id,
+                        photo: relPath,
+                        thumb: relThumbPath,
+                        filename: photo.filename,
+                        lat: photo.lat,
+                        lng: photo.lng,
+                        originalWidth: marker?.originalWidth,
+                        originalHeight: marker?.originalHeight,
+                        comment: photo.comment || '',
+                        symmetryTypes: photo.symmetryTypes || [],
+                        overlay: photo.overlay || [],
+                        reduced: Boolean(photo.reduced),
+                        viewerRegion: photo.viewerRegion || null
+                    };
+                }));
+
+                const walkData = {
+                    slug,
+                    title: state.walkName || slug,
+                    photos: leanPhotos,
+                    route: state.walkRoute,
+                    mapCenter: state.map.getCenter(),
+                    mapZoom: state.map.getZoom(),
+                    version: '2.0',
+                    savedAt: new Date().toISOString()
+                };
+
+                let manifest = state.tourManifest;
+                if (!manifest || manifest.length === 0) {
+                    const res = await fetch('walks.json', { cache: 'no-store' });
+                    manifest = res.ok ? await res.json() : [];
+                }
+                const dataFile = `walks/${slug}/${slug}.json`;
+                const entry = { slug, title: state.walkName || slug, dataFile };
+                const existingIndex = manifest.findIndex(w => w.slug === slug);
+                if (existingIndex >= 0) manifest[existingIndex] = entry; else manifest.push(entry);
+
+                const formData = new FormData();
+                formData.append('key', CONFIG.FIELD_KEY);
+                formData.append('walk', slug);
+                formData.append('walkData', JSON.stringify(walkData));
+                formData.append('manifest', JSON.stringify(manifest));
+                photoFiles.forEach(pf => {
+                    formData.append('photoPaths[]', pf.path);
+                    formData.append('photoFiles[]', pf.blob, 'upload');
+                });
+
+                const res = await fetch('api/save.php', { method: 'POST', body: formData });
+                let result = null;
+                try { result = await res.json(); } catch (e) { /* non-JSON error page */ }
+                if (!res.ok || !result?.success) {
+                    throw new Error(result?.error || `HTTP ${res.status}`);
+                }
+
+                // Bytes are now on the server under relPath/relThumbPath —
+                // update in-memory state so a later save (before a reload)
+                // doesn't re-treat these as fresh, not-yet-uploaded photos.
+                state.photoData.forEach((photo, i) => {
+                    photo.photo = leanPhotos[i].photo;
+                    photo.thumb = leanPhotos[i].thumb;
+                    if (photo.src && photo.src.startsWith('data:') && leanPhotos[i].photo) {
+                        photo.src = (CONFIG.PHOTO_BASE || '') + leanPhotos[i].photo;
+                    }
+                });
+                state.tourManifest = manifest;
+
+                setFieldStatus(`Saved ${new Date().toLocaleTimeString()}.`);
+            } catch (error) {
+                console.error('Field save failed', error);
+                setFieldStatus(`Save failed — retrying (${error.message}).`);
+                // Retry once after a longer pause rather than hammering a
+                // flaky field connection immediately.
+                if (fieldSaveTimer) clearTimeout(fieldSaveTimer);
+                fieldSaveTimer = setTimeout(() => { fieldSaveTimer = null; saveStateToServer(); }, 15000);
+            }
+        }
+
         function updateMarkerIcon(marker, dimensions, position) {
             const currentZIndex = marker._currentZIndex || marker.options.zIndexOffset;
             const wasOnMap = state.map.hasLayer(marker);
@@ -2937,6 +3366,7 @@
                     const insertIndex = nearestRouteSegmentInsertIndex(e.latlng);
                     state.walkRoute.splice(insertIndex, 0, { lat: e.latlng.lat, lng: e.latlng.lng, waypoint: false });
                     renderRoute();
+                    if (CONFIG.FIELD_MODE) scheduleFieldSave();
                     return;
                 }
                 state.routeFront = true;
@@ -2990,7 +3420,10 @@
                         state.walkRoute[i].lng = ll.lng;
                         if (state.routeLayer) state.routeLayer.setLatLngs(state.walkRoute);
                     });
-                    marker.on('dragend', renderRoute);
+                    marker.on('dragend', () => {
+                        renderRoute();
+                        if (CONFIG.FIELD_MODE) scheduleFieldSave();
+                    });
                     marker.on('click', (e) => {
                         L.DomEvent.stopPropagation(e);
                         if (e.originalEvent.detail < 2) return;
@@ -3011,6 +3444,7 @@
                             state.walkRoute[i].waypoint = true;
                         }
                         renderRoute();
+                        if (CONFIG.FIELD_MODE) scheduleFieldSave();
                     });
                 }
                 state.routePointMarkers.push(marker);
@@ -3031,15 +3465,18 @@
             elements['route-undo-point'].addEventListener('click', () => {
                 state.walkRoute.pop();
                 renderRoute();
+                if (CONFIG.FIELD_MODE) scheduleFieldSave();
             });
             elements['route-clear'].addEventListener('click', () => {
                 state.walkRoute = [];
                 renderRoute();
+                if (CONFIG.FIELD_MODE) scheduleFieldSave();
             });
             state.map.on('click', (e) => {
                 if (!state.routeMode) return;
                 state.walkRoute.push({ lat: e.latlng.lat, lng: e.latlng.lng, waypoint: false });
                 renderRoute();
+                if (CONFIG.FIELD_MODE) scheduleFieldSave();
             });
         }
 
@@ -4195,8 +4632,12 @@
                 // Auto-save on close when a project folder is connected
                 // (direct disk write, no download prompt) — otherwise
                 // comments/overlay drawn this session would only persist
-                // via an explicit export or a tour switch.
+                // via an explicit export or a tour switch. Field mode has
+                // no equivalent explicit-save step at all (see
+                // scheduleFieldSave's own comment), so it gets the same
+                // "save when you're done with this photo" treatment.
                 if (state.projectDirHandle) saveState();
+                if (CONFIG.FIELD_MODE) scheduleFieldSave();
             }
 
             elements['marker-detail'].classList.remove('visible');
@@ -5987,6 +6428,7 @@
             elements['marker-detail-frame'].classList.add('editing');
             elements['marker-edit-panel'].classList.add('visible');
             resetEditPanelPosition();
+            dockEditPanelForField();
             elements['symmetry-comment'].value = photo.comment || '';
             renderSymmetryTypeList(photo);
             renderClassControls();
@@ -6469,13 +6911,15 @@
                 const rect = panel.getBoundingClientRect();
                 // #marker-edit-panel's own position:fixed (applied via
                 // .dragged) doesn't actually mean "relative to the
-                // viewport" here: #marker-detail (its parent) has its own
-                // CSS transform (the translate(-50%,-50%) that centers
-                // it), which per spec makes IT the containing block for a
-                // position:fixed descendant instead — the exact gotcha
-                // #marker-dismiss/#marker-info-toggle hit earlier (see
-                // their own comment) — so left/top set below need to be
-                // expressed relative to ITS box, not the viewport.
+                // viewport" here UNLESS field mode already moved it to be
+                // a direct child of <body> (see initFieldMode): normally
+                // #marker-detail (its parent) has its own CSS transform
+                // (the translate(-50%,-50%) that centers it), which per
+                // spec makes IT the containing block for a position:fixed
+                // descendant instead — the exact gotcha #marker-dismiss/
+                // #marker-info-toggle hit earlier (see their own comment)
+                // — so left/top set below need to be expressed relative
+                // to ITS box, not the viewport, in that case.
                 // Measured AFTER adding .dragged, not before — pulling the
                 // panel out of #marker-detail's flex flow changes its
                 // total content size, which (since #marker-detail centers
@@ -6484,7 +6928,10 @@
                 // would silently combine with that shift instead of
                 // canceling it out, still leaving a jump on mousedown.
                 panel.classList.add('dragged');
-                const containerRect = elements['marker-detail'].getBoundingClientRect();
+                const isBodyLevel = panel.parentElement === document.body;
+                const containerRect = isBodyLevel
+                    ? { left: 0, top: 0 }
+                    : elements['marker-detail'].getBoundingClientRect();
                 const baseLeft = rect.left - containerRect.left;
                 const baseTop = rect.top - containerRect.top;
                 panel.style.left = `${baseLeft}px`;
@@ -6518,6 +6965,11 @@
             panel.classList.remove('dragged');
             panel.style.left = '';
             panel.style.top = '';
+            // Only ever set by dockEditPanelForField (field mode) — safe
+            // to always clear here regardless of mode.
+            panel.style.width = '';
+            panel.style.maxHeight = '';
+            panel.style.boxSizing = '';
         }
     </script>
 </body>

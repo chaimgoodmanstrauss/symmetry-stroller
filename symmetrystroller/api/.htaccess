@@ -1,0 +1,8 @@
+# Belt-and-suspenders: config.php only ever needs to be `require`d by
+# save.php, never requested directly (PHP would still just execute it
+# and print nothing, since it has no output of its own, but there's no
+# reason to allow the request at all).
+Options -Indexes
+<Files "config.php">
+    Require all denied
+</Files>
