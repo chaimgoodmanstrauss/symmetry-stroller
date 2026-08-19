@@ -1376,11 +1376,18 @@
         // is purely about not painting the wrong thing first.
         //
         // field-mode is the compact, single-walk, phone/tablet-in-the-
-        // field editing UI (see CONFIG.FIELD_MODE) — a maker who's also
-        // carrying a ?key= is assumed to be on the one dedicated device
-        // this is meant for, so the class (and everything it hides/
-        // relocates via CSS) is applied just as early as the mode class
-        // itself, for the same reason.
+        // field editing UI (see CONFIG.FIELD_MODE) — applied here from
+        // mere PRESENCE of a ?key=, before its signature can actually be
+        // checked (that's async — WebCrypto has no synchronous path, so
+        // it can't finish before this first paint). This is only ever a
+        // provisional guess for that reason: initializeApp's own
+        // verifyFieldModeKey() below corrects it moments later if the
+        // key doesn't actually verify, same as this whole block exists
+        // to avoid a flash of the wrong content in the first place — a
+        // wrong key gets caught and hidden again in well under a frame
+        // for a real user, and reveals nothing more than "this page has
+        // a maker mode" (already visible in the page source anyway) to
+        // anyone just guessing at the URL.
         {
             const isWriter = new URLSearchParams(location.search).get('mode') === 'writer';
             const hasFieldKey = Boolean(new URLSearchParams(location.search).get('key'));
@@ -1617,12 +1624,18 @@
             MARKER_DOT_OFFSET: 11,
             AUTO_LOAD_FILE: null,
             PHOTO_BASE: '',
-            // Compact field-editing UI (see api/save.php) — set from
-            // ?key= in initializeApp, once. FIELD_KEY is sent with every
-            // server-save request; FIELD_MODE just mirrors whether it's
-            // present, so call sites don't have to re-derive it.
+            // Compact field-editing UI (see api/save.php). ?key= carries
+            // an ECDSA P-256 private key (JWK) that only this app's own
+            // public key (FIELD_PUBLIC_JWK, below — safe to be public)
+            // can verify; verifyFieldModeKey() in initializeApp does that
+            // check once, asynchronously (WebCrypto has no sync path),
+            // and only then sets FIELD_MODE true and FIELD_PRIVATE_KEY to
+            // the imported CryptoKey — used later to *sign* each save
+            // request rather than ever sending the private key itself
+            // over the network. A present-but-invalid key is treated
+            // exactly like no writer mode was requested at all.
             FIELD_MODE: false,
-            FIELD_KEY: null,
+            FIELD_PRIVATE_KEY: null,
             // Responsive sizing configuration
             MAX_MARKER_WIDTH: 500,    // Maximum width for desktop
             MAX_MARKER_HEIGHT: 550,   // Maximum height for desktop
@@ -1630,6 +1643,62 @@
             MOBILE_MAX_HEIGHT: 380,   // Maximum height for mobile
             MOBILE_BREAKPOINT: 768    // Width breakpoint for mobile devices
         };
+
+        // Field mode's public half of the ECDSA P-256 keypair (see
+        // CONFIG.FIELD_MODE and api/config.php, which holds the matching
+        // public key server-side — both copies are the SAME public key,
+        // deployed to two places; safe, since a public key can't be used
+        // to forge a signature). Used only to locally verify a ?key=
+        // private key is real, once, in verifyFieldModeKey.
+        const FIELD_PUBLIC_JWK = {
+            kty: 'EC', crv: 'P-256',
+            x: '5_Meb3WNlyg5B3Hj9-DvMwHdayM0vpmnKmFEwAnPyxI',
+            y: 'x8FHnFvAVk302LT9ADtMU2wIa2Dkom9KZX-POyvAB2U'
+        };
+
+        // Does a ?key= (a P-256 private key, as JWK) actually pair with
+        // FIELD_PUBLIC_JWK? Proven locally, with no network round trip,
+        // by signing a fixed message with the candidate private key and
+        // verifying that signature against the known-good public key —
+        // only a real matching private key could produce a signature
+        // that verifies. On success, keeps the imported CryptoKey around
+        // for signing real save requests later (see saveStateToServer);
+        // on any failure (malformed key, wrong curve, doesn't verify,
+        // browser lacks WebCrypto) returns false and leaves nothing
+        // behind, indistinguishable from no key having been given.
+        async function verifyFieldModeKey(keyParam) {
+            try {
+                const privateJwk = JSON.parse(keyParam);
+                const privateKey = await crypto.subtle.importKey(
+                    'jwk', privateJwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']
+                );
+                const publicKey = await crypto.subtle.importKey(
+                    'jwk', FIELD_PUBLIC_JWK, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']
+                );
+                const probe = new TextEncoder().encode('symmetrystroller-field-mode-keycheck');
+                const signature = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, probe);
+                const isValid = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, publicKey, signature, probe);
+                if (isValid) {
+                    CONFIG.FIELD_PRIVATE_KEY = privateKey;
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function arrayBufferToBase64(buf) {
+            let binary = '';
+            const bytes = new Uint8Array(buf);
+            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+            return btoa(binary);
+        }
+
+        async function sha256Hex(text) {
+            const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+            return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
 
         // Orbifold notation, following the conventions of Conway, Burgiel &
         // Goodman-Strauss's "The Symmetries of Things" / "The Magic
@@ -1799,13 +1868,31 @@
             // else (including no param at all) is Stroller/viewer mode.
             const params = new URLSearchParams(location.search);
             CONFIG.IS_MAKER_MODE = params.get('mode') === 'writer';
-            CONFIG.FIELD_KEY = params.get('key') || null;
-            CONFIG.FIELD_MODE = CONFIG.IS_MAKER_MODE && Boolean(CONFIG.FIELD_KEY);
+            const keyParam = params.get('key');
+
+            // The real check (see FIELD_PUBLIC_JWK's own comment) —
+            // async, so this couldn't happen in the early inline script.
+            // A key that's present but doesn't verify is treated as if
+            // writer mode had never been requested at all: falls all the
+            // way back to plain viewer, not just out of field mode, so a
+            // wrong guess can't land on unprotected desktop maker mode
+            // either.
+            CONFIG.FIELD_MODE = false;
+            if (CONFIG.IS_MAKER_MODE && keyParam) {
+                CONFIG.FIELD_MODE = await verifyFieldModeKey(keyParam);
+                if (!CONFIG.FIELD_MODE) {
+                    CONFIG.IS_MAKER_MODE = false;
+                    const walk = params.get('walk');
+                    const cleanQuery = walk ? `?walk=${encodeURIComponent(walk)}` : '';
+                    history.replaceState(null, '', location.pathname + cleanQuery);
+                }
+            }
 
             // Apply mode — matches the early inline script's own logic
             // (see its comment); recomputed here rather than left alone
-            // because this line's job is applying CONFIG's now-final
-            // values, not just avoiding a flash of the wrong content.
+            // because this line's job is applying CONFIG's now-final,
+            // verified values, not just avoiding a flash of the wrong
+            // content.
             document.body.className = CONFIG.IS_MAKER_MODE
                 ? ('maker-mode' + (CONFIG.FIELD_MODE ? ' field-mode' : ''))
                 : 'stroller-mode';
@@ -2974,10 +3061,28 @@
                 const existingIndex = manifest.findIndex(w => w.slug === slug);
                 if (existingIndex >= 0) manifest[existingIndex] = entry; else manifest.push(entry);
 
+                const walkDataJson = JSON.stringify(walkData);
+
+                // Signed, not sent as-is: the private key never leaves
+                // this device, over this connection or any other — only
+                // a signature over this exact request does. Bound to the
+                // walk slug, the walk data's own hash, and a timestamp
+                // (which save.php rejects outside a several-minute
+                // window) so a captured signature can't be replayed
+                // later or against different content.
+                const timestamp = Date.now();
+                const signPayload = `${slug}|${timestamp}|${await sha256Hex(walkDataJson)}`;
+                const signature = await crypto.subtle.sign(
+                    { name: 'ECDSA', hash: 'SHA-256' },
+                    CONFIG.FIELD_PRIVATE_KEY,
+                    new TextEncoder().encode(signPayload)
+                );
+
                 const formData = new FormData();
-                formData.append('key', CONFIG.FIELD_KEY);
                 formData.append('walk', slug);
-                formData.append('walkData', JSON.stringify(walkData));
+                formData.append('timestamp', String(timestamp));
+                formData.append('signature', arrayBufferToBase64(signature));
+                formData.append('walkData', walkDataJson);
                 formData.append('manifest', JSON.stringify(manifest));
                 photoFiles.forEach(pf => {
                     formData.append('photoPaths[]', pf.path);
