@@ -5765,6 +5765,15 @@
             // onto this photo too.
             window.getSelection()?.removeAllRanges();
 
+            // Clear the previous photo's marks immediately, rather than
+            // waiting for sync() (which only runs once the new image has
+            // finished loading) — otherwise the last photo's strokes stay
+            // in the SVG/canvas and are briefly visible over the new one
+            // while it loads.
+            elements['marker-detail-svg'].innerHTML = '';
+            const detailCanvasCtx = elements['marker-detail-canvas'].getContext('2d');
+            detailCanvasCtx.clearRect(0, 0, elements['marker-detail-canvas'].width, elements['marker-detail-canvas'].height);
+
             const sync = () => {
                 const w = img.naturalWidth || 1;
                 const h = img.naturalHeight || 1;
