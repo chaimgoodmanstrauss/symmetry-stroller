@@ -1653,7 +1653,12 @@
         document.addEventListener('DOMContentLoaded', initializeApp);
 
         async function resolveWalk() {
-            const slug = new URLSearchParams(location.search).get('walk');
+            // Viewer mode with no ?walk= at all defaults to momath rather
+            // than showing "No walk specified" — maker mode is left alone
+            // here (no slug there means "start a blank canvas for a new
+            // walk", a deliberately different flow).
+            let slug = new URLSearchParams(location.search).get('walk');
+            if (!slug && !CONFIG.IS_MAKER_MODE) slug = 'momath';
             if (!slug) return null;
 
             try {
