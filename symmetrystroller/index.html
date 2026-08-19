@@ -884,6 +884,27 @@
             opacity: 0;
         }
 
+        /* Positioned/sized identically to #marker-detail-svg (see
+           applyRegionZoom, which sets both the same way) — hidden by
+           default, shown only while actually zoomed into a region (see
+           .region-raster-active on #marker-detail-frame). */
+        #marker-detail-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+        }
+
+        #marker-detail-frame.region-raster-active #marker-detail-canvas {
+            display: block;
+        }
+
+        #marker-detail-frame.region-raster-active #marker-detail-svg {
+            display: none;
+        }
+
         /* Soft white outer glow behind all annotation marks (lines,
            dots, splines, text), so they read as sitting above the
            photo. Applied once to the whole group (not each mark
@@ -1380,6 +1401,19 @@
                     <img id="marker-detail-img" alt="">
                 </div>
                 <svg id="marker-detail-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+                <!-- Viewer-only, region-zoom-only (see renderOverlayToCanvas/
+                     applyRegionZoom): a rasterized copy of the same overlay,
+                     shown instead of the live #marker-detail-svg while
+                     zoomed into a region. A bitmap scales as a single unit
+                     with the CSS transform exactly like the photo <img>
+                     does, sidestepping the whole class of "stroke-width
+                     doesn't scale proportionally with the zoom" bugs
+                     (vector-effect vs CSS transform, screen-relative text
+                     sizing, etc.) that live SVG scaling kept running into
+                     this session — no per-element math, it just IS the
+                     photo's own zoom. Maker mode never uses this (still
+                     wants live, editable SVG marks). -->
+                <canvas id="marker-detail-canvas" class="viewer-only"></canvas>
                 <svg id="region-crop-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
                 <div id="marker-info-panel" class="viewer-only"></div>
             </div>
@@ -1675,6 +1709,7 @@
                         'status', 'app-title', 'app-description', 'walk-name-input', 'walk-slug-input',
                         'title-walk-name', 'tour-list',
                         'marker-detail', 'marker-detail-frame', 'marker-detail-img', 'marker-detail-svg',
+                        'marker-detail-canvas',
                         'marker-info-panel', 'marker-edit-panel',
                         'symmetry-comment', 'symmetry-type-list', 'symmetry-class-select',
                         'symmetry-class-controls', 'symmetry-add-type', 'overlay-undo', 'overlay-clear',
@@ -4179,6 +4214,7 @@
         const LITTLE_SCALE = 0.4;
         const SPLINE_WIDTH = 12;        // spline tool stroke width
         const SPLINE_END_DOT = 20;      // spline endpoint marker diameter
+        const TEXT_BASE_SIZE = 50;      // text tool font size, in the same viewBox-unit space as the above (used by drawTextCanvas — the live SVG instead sizes text relative to screen pixels, see strokeToSvgElement's own comment on why that doesn't apply here)
         const GLOW_SPREAD_PX = 15;      // glow: tight inner layer's blur radius
         const GLOW_RADIUS_PX = 35;      // glow: wide outer layer's blur radius (how far it fades out)
         // See :root's --glow-opacity / --glow-fade-opacity for the two
@@ -5034,6 +5070,7 @@
             const frame = elements['marker-detail-frame'];
             const img = elements['marker-detail-img'];
             const svg = elements['marker-detail-svg'];
+            const canvas = elements['marker-detail-canvas'];
             const region = photo.viewerRegion;
 
             if (!state.viewerRegionOpen || !region) {
@@ -5046,6 +5083,12 @@
                 svg.style.height = '';
                 svg.style.top = '';
                 svg.style.left = '';
+                canvas.style.transform = '';
+                canvas.style.width = '';
+                canvas.style.height = '';
+                canvas.style.top = '';
+                canvas.style.left = '';
+                frame.classList.remove('region-raster-active');
                 setDetailClipped(false);
                 return;
             }
@@ -5055,9 +5098,10 @@
             const h = vb.height || SVG_UNIT;
 
             // Measure the image's natural (untransformed) rendered size —
-            // svg is switched from "100% of frame" to this same explicit
-            // size below, so it stays registered with the image once the
-            // frame's own box stops matching the photo's aspect ratio.
+            // svg/canvas are switched from "100% of frame" to this same
+            // explicit size below, so they stay registered with the image
+            // once the frame's own box stops matching the photo's aspect
+            // ratio.
             frame.style.width = '';
             frame.style.height = '';
             img.style.transform = '';
@@ -5070,6 +5114,14 @@
             svg.style.height = `${baseH}px`;
             svg.style.top = '0';
             svg.style.left = '0';
+            // Only actually visible in viewer mode (see #marker-detail-
+            // canvas's own CSS) — sized/positioned identically to svg
+            // regardless, cheap and keeps this one code path in charge of
+            // both.
+            canvas.style.width = `${baseW}px`;
+            canvas.style.height = `${baseH}px`;
+            canvas.style.top = '0';
+            canvas.style.left = '0';
 
             // A flat window.innerWidth/innerHeight * 0.75 doesn't account
             // for #marker-detail's own padding or the info panel sitting
@@ -5105,9 +5157,11 @@
 
             img.style.transformOrigin = `${fracCenterX * 100}% ${fracCenterY * 100}%`;
             svg.style.transformOrigin = `${fracCenterX * 100}% ${fracCenterY * 100}%`;
+            canvas.style.transformOrigin = `${fracCenterX * 100}% ${fracCenterY * 100}%`;
             const transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
             img.style.transform = transform;
             svg.style.transform = transform;
+            canvas.style.transform = transform;
 
             // Drawn marks (and the glow around them) shouldn't spill past
             // the region the viewer is actually looking at. The svg's own
@@ -5115,57 +5169,216 @@
             // baseH, positioned via the transform above), not to the
             // frame's smaller reshaped window — so clipping the svg itself
             // wouldn't constrain to what's actually visible. Clipping the
-            // frame instead clips both the svg and the image to frame's
-            // real, current bounds.
+            // frame instead clips both the svg/canvas and the image to
+            // frame's real, current bounds.
             setDetailClipped(true);
 
-            // vector-effect="non-scaling-stroke" (see strokeToSvgElement)
-            // keeps a stroke's screen width constant against the SVG's own
-            // internal viewBox-to-render-size scaling — which is genuinely
-            // what makes lines stay a manageable, constant width while the
-            // maker is zoomed in for editing (applyEditZoom/applyCropZoomSize,
-            // both explicit-resize). It does NOT, empirically, block this
-            // function's own CSS transform:scale() above the way its name
-            // suggests it should — confirmed by screenshotting a drawn dot
-            // with the multiplier below removed entirely: it still grew
-            // with the transform, filling most of the frame instead of
-            // staying constant. So the transform's scale-up happens no
-            // matter what stroke-width attribute value is written here —
-            // the only question is what value, once THAT scale-up is
-            // applied on top of it, lands on the visually-correct final
-            // size. That's baseW/w: the CSS-pixels-per-viewBox-unit ratio
-            // at the STAGE-1 (un-zoomed) render, i.e. exactly the width
-            // this stroke would have if vector-effect weren't involved at
-            // all — multiplying it by the transform's own scale (baseW's
-            // own definition, backed out: transform scale is
-            // frameW/(fracW*baseW)) gives frameW/(fracW*w), the same
-            // "CSS pixels per viewBox unit post-transform" text and glow
-            // already correctly land on. An earlier version of this used
-            // (frameW/fracW)/w directly as the multiplier — that's the
-            // POST-transform target ratio, but since the transform ALSO
-            // applies to whatever gets written here, it was applying that
-            // ratio twice (once by hand, once by the browser), which is
-            // exactly what produced a dot/line ballooning to fill the
-            // frame instead of shrinking to the intended size.
-            scaleAnnotationStrokes(baseW / w);
+            // Viewer mode shows the rasterized canvas instead of the live
+            // SVG here — see #marker-detail-canvas's own HTML comment for
+            // why. It's given the exact same transform as the photo <img>
+            // above, so it scales as one unit with it with no separate
+            // per-mark math needed (unlike the live SVG, whose
+            // vector-effect="non-scaling-stroke" strokes need explicit
+            // compensation — see strokeToSvgElement's own comment — that
+            // only applies to marker mode's own zoom tools now).
+            frame.classList.toggle('region-raster-active', !CONFIG.IS_MAKER_MODE);
         }
 
-        // See applyRegionZoom's call site for why only region-zoom needs
-        // this — vector-effect="non-scaling-stroke" is otherwise exactly
-        // the constant-width behavior every other zoom mechanism wants.
-        function scaleAnnotationStrokes(scale) {
-            const group = document.querySelector('#marker-detail-svg .annotation-group');
-            if (!group) return;
-            group.querySelectorAll('[stroke-width]').forEach(el => {
-                const base = parseFloat(el.dataset.baseStrokeWidth || el.getAttribute('stroke-width'));
-                el.dataset.baseStrokeWidth = base;
-                el.setAttribute('stroke-width', base * scale);
+        // ---- Rasterized overlay (viewer region-zoom only) ----------------
+        // See the HTML comment on #marker-detail-canvas for why this exists
+        // instead of scaling the live SVG (which is what maker mode's own
+        // zoom mechanisms still do, unaffected by any of this). Rendered
+        // once per photo-open at CANVAS_MAX_DIM resolution — independent of
+        // the CURRENT zoom, since the canvas then scales via the exact same
+        // CSS transform as the photo <img> (see applyRegionZoom), same as
+        // how a real photo print doesn't need to be "re-drawn" to look
+        // right zoomed in on a phone.
+        const CANVAS_MAX_DIM = 2000;
+
+        function renderOverlayToCanvas(canvas, photo, naturalWidth, naturalHeight) {
+            if (!naturalWidth || !naturalHeight) return;
+            const dimScale = Math.min(1, CANVAS_MAX_DIM / Math.max(naturalWidth, naturalHeight));
+            canvas.width = Math.max(1, Math.round(naturalWidth * dimScale));
+            canvas.height = Math.max(1, Math.round(naturalHeight * dimScale));
+            const scale = canvas.width / SVG_UNIT;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const strokes = photo.overlay || [];
+            const domainStrokes = strokes.filter(s => s.tool === 'domain');
+            const markStrokes = strokes.filter(s => s.tool !== 'domain');
+
+            if (domainStrokes.length > 0) {
+                drawDomainWhiteoutCanvas(ctx, domainStrokes, scale, canvas.width, canvas.height);
+            }
+            if (markStrokes.length === 0) return;
+
+            // Draw every mark to an offscreen canvas first (no shadow), so
+            // the glow below — applied once, to this combined silhouette —
+            // doesn't show a seam wherever two marks overlap. Same
+            // reasoning as the SVG's single shared .annotation-group
+            // filter (see renderOverlay's own comment).
+            const off = document.createElement('canvas');
+            off.width = canvas.width;
+            off.height = canvas.height;
+            const octx = off.getContext('2d');
+            markStrokes.forEach(stroke => drawMarkCanvas(octx, stroke, scale));
+
+            const drawGlowPass = (blurPx) => {
+                ctx.save();
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = blurPx;
+                ctx.drawImage(off, 0, 0);
+                ctx.restore();
+            };
+            drawGlowPass(GLOW_RADIUS_PX * scale);
+            drawGlowPass(GLOW_SPREAD_PX * scale);
+            ctx.drawImage(off, 0, 0); // crisp foreground, no shadow
+
+            // Custom web fonts not yet loaded at draw time silently fall
+            // back for THIS canvas paint (unlike DOM text, a canvas doesn't
+            // repaint itself once a font finishes loading) — re-render once
+            // it's ready, if this is still the open photo.
+            if (document.fonts && document.fonts.status !== 'loaded') {
+                const photoIdAtRender = photo.id;
+                document.fonts.ready.then(() => {
+                    if (state.detailPhotoId === photoIdAtRender) {
+                        renderOverlayToCanvas(canvas, photo, naturalWidth, naturalHeight);
+                        applyRegionZoom(photo);
+                    }
+                });
+            }
+        }
+
+        function drawDomainWhiteoutCanvas(ctx, domainStrokes, scale, canvasW, canvasH) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.fillRect(0, 0, canvasW, canvasH);
+            domainStrokes.forEach(stroke => {
+                if (!stroke.points || stroke.points.length < 3) return;
+                ctx.beginPath();
+                stroke.points.forEach((p, i) => {
+                    const x = p[0] * scale, y = p[1] * scale;
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                });
+                ctx.closePath();
+                if (stroke.op === 'subtract') {
+                    // Re-scrim: same translucent white, drawn normally.
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                } else {
+                    // Reveal: erase this shape back to transparent,
+                    // regardless of fill color (destination-out uses only
+                    // the shape's alpha).
+                    ctx.globalCompositeOperation = 'destination-out';
+                    ctx.fillStyle = 'rgba(0,0,0,1)';
+                }
+                ctx.fill();
             });
-            group.querySelectorAll('[stroke-dasharray]').forEach(el => {
-                const base = (el.dataset.baseDasharray || el.getAttribute('stroke-dasharray'))
-                    .split(',').map(Number);
-                el.dataset.baseDasharray = base.join(',');
-                el.setAttribute('stroke-dasharray', base.map(n => n * scale).join(','));
+            ctx.restore();
+        }
+
+        function drawMarkCanvas(ctx, stroke, scale) {
+            if (stroke.tool === 'line') {
+                const [p0, p1] = stroke.points;
+                ctx.strokeStyle = RED;
+                ctx.lineWidth = (stroke.thin ? LINE_WIDTH * THIN_SCALE : LINE_WIDTH) * scale;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(p0[0] * scale, p0[1] * scale);
+                ctx.lineTo(p1[0] * scale, p1[1] * scale);
+                ctx.stroke();
+                return;
+            }
+            if (stroke.tool === 'dot') {
+                drawDotCanvas(ctx, stroke.point, (stroke.little ? DOT_SIZE * LITTLE_SCALE : DOT_SIZE) * scale, BLUE, scale);
+                return;
+            }
+            if (stroke.tool === 'spline') {
+                ctx.strokeStyle = stroke.color;
+                ctx.lineWidth = SPLINE_WIDTH * scale;
+                ctx.lineCap = 'round';
+                ctx.setLineDash([SPLINE_WIDTH * 3 * scale, SPLINE_WIDTH * 2 * scale]);
+                traceSmoothPath(ctx, stroke.points, scale);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                drawDotCanvas(ctx, stroke.points[0], SPLINE_END_DOT * scale, stroke.color, scale);
+                drawDotCanvas(ctx, stroke.points[stroke.points.length - 1], SPLINE_END_DOT * scale, stroke.color, scale);
+                return;
+            }
+            if (stroke.tool === 'text') {
+                drawTextCanvas(ctx, stroke, scale);
+                return;
+            }
+        }
+
+        // Zero-length "line" trick isn't needed on canvas — arc() draws a
+        // real filled circle directly. `size` is already in canvas px here
+        // (the diameter); scale is only needed by callers that pass a
+        // viewBox-unit size, so this takes the final px size directly.
+        function drawDotCanvas(ctx, point, sizePx, color, scale) {
+            ctx.beginPath();
+            ctx.arc(point[0] * scale, point[1] * scale, sizePx / 2, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        // Same Catmull-Rom-to-cubic-Bezier math as smoothPathData, just
+        // issued as canvas path calls (with points pre-scaled) instead of
+        // built into an SVG path string.
+        function traceSmoothPath(ctx, points, scale) {
+            if (points.length < 2) return;
+            ctx.beginPath();
+            ctx.moveTo(points[0][0] * scale, points[0][1] * scale);
+            if (points.length === 2) {
+                ctx.lineTo(points[1][0] * scale, points[1][1] * scale);
+                return;
+            }
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = points[i - 1] || points[i];
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const p3 = points[i + 2] || p2;
+                const c1x = (p1[0] + (p2[0] - p0[0]) / 6) * scale;
+                const c1y = (p1[1] + (p2[1] - p0[1]) / 6) * scale;
+                const c2x = (p2[0] - (p3[0] - p1[0]) / 6) * scale;
+                const c2y = (p2[1] - (p3[1] - p1[1]) / 6) * scale;
+                ctx.bezierCurveTo(c1x, c1y, c2x, c2y, p2[0] * scale, p2[1] * scale);
+            }
+        }
+
+        // Mirrors strokeToSvgElement's text case exactly (same asterisk
+        // enlarge-and-shift, same infinity-glyph font fallback) — see its
+        // own comments for why each of these exists — just accumulating a
+        // running cursor position instead of relying on SVG tspan/dy.
+        function drawTextCanvas(ctx, stroke, scale) {
+            const fontSizePx = TEXT_BASE_SIZE * scale;
+            let cursorX = stroke.point[0] * scale;
+            const baselineY = stroke.point[1] * scale;
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+
+            let pendingDyEm = 0;
+            (stroke.runs || []).forEach(run => {
+                Array.from(run.text).forEach(ch => {
+                    let thisFontSizePx = fontSizePx;
+                    let fontFamily = "'EB Garamond', Georgia, serif";
+                    let dyEm = pendingDyEm;
+                    if (ch === '*') {
+                        thisFontSizePx = fontSizePx * (ASTERISK_SIZE_PCT / 100);
+                        dyEm += ASTERISK_DY_EM;
+                        pendingDyEm = -ASTERISK_DY_EM * (ASTERISK_SIZE_PCT / 100);
+                    } else if (ch === '∞') {
+                        fontFamily = "Georgia, 'Times New Roman', serif";
+                        pendingDyEm = 0;
+                    } else {
+                        pendingDyEm = 0;
+                    }
+                    ctx.font = `${thisFontSizePx}px ${fontFamily}`;
+                    ctx.fillStyle = run.color;
+                    ctx.fillText(ch, cursorX, baselineY + dyEm * thisFontSizePx);
+                    cursorX += ctx.measureText(ch).width;
+                });
             });
         }
 
@@ -5539,6 +5752,9 @@
                     resetImageSize(img);
                 }
                 renderOverlay(photo);
+                if (!CONFIG.IS_MAKER_MODE) {
+                    renderOverlayToCanvas(elements['marker-detail-canvas'], photo, img.naturalWidth, img.naturalHeight);
+                }
                 svg.classList.toggle('overlay-hidden', hideOverlayInitially);
                 applyRegionZoom(photo);
                 if (state.editingOverlay && state.overlayTool !== 'region') {
