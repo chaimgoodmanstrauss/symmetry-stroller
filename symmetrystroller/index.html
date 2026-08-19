@@ -6176,7 +6176,7 @@
                 }
 
                 if (state.overlayTool === 'line') {
-                    state.activeStroke = { tool: 'line', points: [pt, pt] };
+                    state.activeStroke = { tool: 'line', points: [pt, pt], thin: state.lineThin };
                     renderActiveStrokePreview();
                     document.addEventListener('mousemove', onLineMouseMove);
                     document.addEventListener('mouseup', onLineMouseUp);
