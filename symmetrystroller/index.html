@@ -4233,6 +4233,18 @@
                     el.style.cursor = 'move';
                     el.addEventListener('mousedown', (e) => startTextDrag(e, stroke));
                 }
+                // Same idea for lines and dots — only grabbable while their
+                // own tool is the active one, same as text, so a mousedown
+                // elsewhere doesn't get ambiguous about "move this" vs
+                // "start drawing a new one".
+                if (stroke.tool === 'line' && state.editingOverlay && state.overlayTool === 'line') {
+                    el.style.cursor = 'move';
+                    el.addEventListener('mousedown', (e) => startLineDrag(e, stroke));
+                }
+                if (stroke.tool === 'dot' && state.editingOverlay && state.overlayTool === 'dot') {
+                    el.style.cursor = 'move';
+                    el.addEventListener('mousedown', (e) => startDotDrag(e, stroke));
+                }
                 group.appendChild(el);
             });
             svg.appendChild(group);
@@ -4277,6 +4289,15 @@
         function startTextDrag(e, stroke) {
             e.preventDefault();
             e.stopPropagation();
+            // stopPropagation means the svg-level mousedown handler (where
+            // this normally gets set — see its own comment) never runs for
+            // a drag that starts on an existing mark instead of empty
+            // canvas. Same risk applies here: renderOverlay gets called on
+            // every move, rebuilding the svg's children each time, which
+            // is exactly what can land the drag's trailing click on
+            // #marker-detail instead of the frame/svg and spuriously close
+            // the editor.
+            state.justDrewOnCanvas = true;
             commitTextPlacement();
             const photo = findPhotoById(state.detailPhotoId);
             if (!photo) return;
@@ -4286,6 +4307,70 @@
             const onMove = (moveEvent) => {
                 const pt = svgPointFromEvent(moveEvent);
                 stroke.point = [pt[0] + offset[0], pt[1] + offset[1]];
+                renderOverlay(photo);
+            };
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        // Dot: plain single-point drag, same shape as startTextDrag minus
+        // the text-placement bookkeeping.
+        function startDotDrag(e, stroke) {
+            e.preventDefault();
+            e.stopPropagation();
+            state.justDrewOnCanvas = true;
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+            const startPt = svgPointFromEvent(e);
+            const offset = [stroke.point[0] - startPt[0], stroke.point[1] - startPt[1]];
+
+            const onMove = (moveEvent) => {
+                const pt = svgPointFromEvent(moveEvent);
+                stroke.point = [pt[0] + offset[0], pt[1] + offset[1]];
+                renderOverlay(photo);
+            };
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        }
+
+        // Line: grabbing near either endpoint (within ENDPOINT_GRAB_RADIUS,
+        // in the same viewBox-unit space as everything else here) moves
+        // just that one point; grabbing anywhere else along the line moves
+        // both endpoints together, i.e. the whole line.
+        const ENDPOINT_GRAB_RADIUS = 30;
+        function startLineDrag(e, stroke) {
+            e.preventDefault();
+            e.stopPropagation();
+            state.justDrewOnCanvas = true;
+            const photo = findPhotoById(state.detailPhotoId);
+            if (!photo) return;
+            const startPt = svgPointFromEvent(e);
+            const [p0, p1] = stroke.points;
+            const d0 = Math.hypot(startPt[0] - p0[0], startPt[1] - p0[1]);
+            const d1 = Math.hypot(startPt[0] - p1[0], startPt[1] - p1[1]);
+            const endpointIndex = Math.min(d0, d1) <= ENDPOINT_GRAB_RADIUS ? (d0 <= d1 ? 0 : 1) : null;
+
+            const basePoints = stroke.points.map(p => p.slice());
+
+            const onMove = (moveEvent) => {
+                const pt = svgPointFromEvent(moveEvent);
+                if (endpointIndex !== null) {
+                    stroke.points[endpointIndex] = pt;
+                } else {
+                    // Whole line: translate both endpoints by exactly how
+                    // far the mouse itself has moved since mousedown.
+                    const dx = pt[0] - startPt[0];
+                    const dy = pt[1] - startPt[1];
+                    stroke.points = basePoints.map(p => [p[0] + dx, p[1] + dy]);
+                }
                 renderOverlay(photo);
             };
             const onUp = () => {
@@ -6004,6 +6089,13 @@
                     if (state.overlayTool !== 'domain') {
                         cancelDomainPolygon();
                     }
+                    // Line/dot/text marks only get their drag-to-move
+                    // listener attached at render time (see renderOverlay),
+                    // gated on their own tool being the active one — an
+                    // existing mark switched to just now (as opposed to
+                    // one drawn fresh while its tool was already active)
+                    // wouldn't have it yet without this.
+                    if (photo) renderOverlay(photo);
                     updateToolButtonStates();
                 });
             });
