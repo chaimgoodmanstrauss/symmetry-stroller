@@ -554,6 +554,32 @@
             border-color: var(--accent);
         }
 
+        /* Bottom-left of the thumbnail (delete/annotate already occupy the
+           top-left corner) — checking it marks this one photo to show
+           smaller to viewers (see calculateMarkerDimensions/
+           markerIconSrc), replacing what used to be a single walk-wide
+           Normal/Reduced choice. */
+        .photo-reduced-toggle {
+            position: absolute;
+            top: 63px;
+            left: 5px;
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            background-color: var(--surface);
+            border: 1.5px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .photo-reduced-toggle input {
+            margin: 0;
+            cursor: pointer;
+        }
+
         /* Control point */
         .control-point {
             position: absolute;
@@ -1326,13 +1352,8 @@
             <div class="divider"></div>
 
             <h3>Uploaded Photos</h3>
-            <div class="maker-only" id="thumb-size-options" style="margin-bottom: 10px; font-size: 13px;" title="Saved with the walk — sets how big the round photo markers appear to viewers">
-                <label style="margin-right: 12px; cursor: pointer;">
-                    <input type="radio" name="thumb-size" id="thumb-size-normal" value="normal" checked> Normal thumbnails
-                </label>
-                <label style="cursor: pointer;">
-                    <input type="radio" name="thumb-size" id="thumb-size-reduced" value="reduced"> Reduced thumbnails
-                </label>
+            <div class="maker-only" style="margin-bottom: 10px; font-size: 12px; color: var(--text-muted);">
+                Check a photo's box (bottom-left of its thumbnail) to show it smaller to viewers.
             </div>
             <div id="photo-list"></div>
         </div>
@@ -1560,13 +1581,6 @@
             routeLayer: null,
             routeArrowMarkers: [],
             routePointMarkers: [],
-            // Maker-authored, saved with the walk (see saveState/
-            // loadStateFromData) — the sidebar only exists in maker mode
-            // (.stroller-mode #sidebar is display:none), so this can't be
-            // a live viewer-side toggle; it's a choice baked into the walk
-            // when saved. See the "Normal"/"Reduced" radio group above
-            // #photo-list.
-            reducedMarkers: false,
             viewerRegionOpen: false,
             editZoom: 1,
             // Crop-tool state (Viewer region tool): the image pans/zooms
@@ -1669,7 +1683,6 @@
                         'text-run-preview',
                         'region-crop-svg', 'marker-dismiss', 'connect-folder', 'checkpoint-list',
                         'route-draw-toggle', 'route-undo-point', 'route-clear', 'map',
-                        'thumb-size-normal', 'thumb-size-reduced',
                         'deploy-controls', 'deploy-button', 'deploy-output'];
 
             ids.forEach(id => {
@@ -1741,7 +1754,6 @@
                     // smoothly.
                     state.map.on('zoomend', handleZoomChange);
                     setupRouteTool();
-                    setupThumbSizeToggle();
                     setupDeployButton();
 
                     elements.status.textContent = 'Map loaded successfully. Ready for photos.';
@@ -2340,13 +2352,15 @@
         }
 
         // Marker functions with responsive sizing
-        function calculateMarkerDimensions(originalWidth, originalHeight, zoomLevel) {
+        function calculateMarkerDimensions(originalWidth, originalHeight, zoomLevel, reduced) {
             // Always square in stroller mode. "Reduced" shrinks the photo
             // itself (a straight 60% size cut) while the marker's border —
             // a fixed 3px in CSS, not computed from this width/height —
-            // stays exactly as it was.
+            // stays exactly as it was. Per-photo (see the checkbox on each
+            // sidebar thumbnail, photo.reduced) — callers here are
+            // responsible for passing the right photo's own flag.
             if (!CONFIG.IS_MAKER_MODE) {
-                const size = state.reducedMarkers ? Math.round(CONFIG.SQUARE_SIZE * 0.4) : CONFIG.SQUARE_SIZE;
+                const size = reduced ? Math.round(CONFIG.SQUARE_SIZE * 0.4) : CONFIG.SQUARE_SIZE;
                 return { width: size, height: size, mode: 'square' };
             }
 
@@ -2458,29 +2472,11 @@
 
             state.markers.forEach((marker, index) => {
                 if (marker && marker.originalWidth && marker.originalHeight && state.photoData[index]) {
-                    const newDimensions = calculateMarkerDimensions(marker.originalWidth, marker.originalHeight);
+                    const newDimensions = calculateMarkerDimensions(marker.originalWidth, marker.originalHeight, null, state.photoData[index].reduced);
                     const correctPosition = L.latLng(state.photoData[index].lat, state.photoData[index].lng);
 
                     updateMarkerIcon(marker, newDimensions, correctPosition);
                 }
-            });
-        }
-
-        // "Normal"/"Reduced" thumbnail-size radio group above the photo
-        // list (maker-only — see state.reducedMarkers). Changing it here
-        // has no visible effect in maker mode itself (calculateMarkerDimensions
-        // only applies it in stroller mode), it just records the maker's
-        // choice for saveState to persist; handleZoomChange is called
-        // anyway so a maker who switches to Stroller mode mid-session sees
-        // it take effect immediately rather than needing a reload.
-        function setupThumbSizeToggle() {
-            elements['thumb-size-normal'].addEventListener('change', () => {
-                state.reducedMarkers = false;
-                handleZoomChange();
-            });
-            elements['thumb-size-reduced'].addEventListener('change', () => {
-                state.reducedMarkers = true;
-                handleZoomChange();
             });
         }
 
@@ -2680,6 +2676,25 @@
                         openAnnotationEditor(photo);
                     });
                     photoItem.appendChild(annotateButton);
+
+                    // Per-photo (see calculateMarkerDimensions/
+                    // markerIconSrc) — replaces what used to be a single
+                    // walk-wide Normal/Reduced choice, so individual
+                    // photos (e.g. a wide establishing shot vs. a tight
+                    // detail crop) can size differently for viewers.
+                    const reducedLabel = document.createElement('label');
+                    reducedLabel.className = 'photo-reduced-toggle';
+                    reducedLabel.title = 'Show this photo as a smaller marker to viewers';
+                    reducedLabel.addEventListener('click', (e) => e.stopPropagation());
+                    const reducedCheckbox = document.createElement('input');
+                    reducedCheckbox.type = 'checkbox';
+                    reducedCheckbox.checked = Boolean(photo.reduced);
+                    reducedCheckbox.addEventListener('change', () => {
+                        photo.reduced = reducedCheckbox.checked;
+                        if (state.markers[index]) handleZoomChange();
+                    });
+                    reducedLabel.appendChild(reducedCheckbox);
+                    photoItem.appendChild(reducedLabel);
                 }
 
                 photoItem.addEventListener('click', () => {
@@ -3467,6 +3482,7 @@
                     comment: photo.comment || '',
                     symmetryTypes: photo.symmetryTypes || [],
                     overlay: photo.overlay || [],
+                    reduced: Boolean(photo.reduced),
                     viewerRegion: photo.viewerRegion || null
                 };
             }));
@@ -3478,7 +3494,6 @@
                 route: state.walkRoute,
                 mapCenter: state.map.getCenter(),
                 mapZoom: state.map.getZoom(),
-                reducedMarkers: state.reducedMarkers,
                 version: '2.0',
                 savedAt: new Date().toISOString()
             };
@@ -3580,14 +3595,6 @@
                 state.map.setView([saveData.mapCenter.lat, saveData.mapCenter.lng], saveData.mapZoom);
             }
 
-            // Must be set before the photos loop below creates markers —
-            // calculateMarkerDimensions reads this at marker-creation time.
-            state.reducedMarkers = Boolean(saveData.reducedMarkers);
-            if (elements['thumb-size-normal']) {
-                elements['thumb-size-normal'].checked = !state.reducedMarkers;
-                elements['thumb-size-reduced'].checked = state.reducedMarkers;
-            }
-
             // Older saved walks stored route points as plain [lat,lng]
             // pairs, before waypoints existed — normalize those into the
             // current {lat,lng,waypoint} shape.
@@ -3611,6 +3618,7 @@
                     comment: photo.comment || '',
                     symmetryTypes: photo.symmetryTypes || [],
                     overlay: photo.overlay || [],
+                    reduced: Boolean(photo.reduced),
                     viewerRegion: photo.viewerRegion || null
                 });
             });
@@ -3662,7 +3670,7 @@
                     }
                 }
 
-                const dimensions = calculateMarkerDimensions(markerWidth, markerHeight);
+                const dimensions = calculateMarkerDimensions(markerWidth, markerHeight, null, photo.reduced);
                 const customIcon = createMarkerIcon(markerIconSrc(photo), photo.id, dimensions);
 
                 const marker = L.marker([photo.lat, photo.lng], { icon: customIcon }).addTo(state.map);
