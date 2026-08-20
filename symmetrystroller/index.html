@@ -112,6 +112,74 @@
             opacity: 0.85;
         }
 
+        /* #title-image itself is pointer-events:none so its decorative
+           glow never blocks map interaction underneath — the switcher
+           button/menu opt back into pointer events individually instead
+           of lifting that for the whole title block. */
+        button#walk-switcher-toggle.title-walk {
+            pointer-events: auto;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            font: inherit;
+            color: inherit;
+            text-shadow: inherit;
+            -webkit-font-smoothing: inherit;
+        }
+
+        #walk-switcher-caret {
+            font-size: 0.6em;
+            opacity: 0.7;
+        }
+
+        #walk-switcher-menu {
+            pointer-events: auto;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            min-width: 200px;
+            max-width: min(80vw, 320px);
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+            padding: 6px;
+            text-align: left;
+            z-index: 1001;
+        }
+
+        #walk-switcher-menu[hidden] {
+            display: none;
+        }
+
+        #walk-switcher-menu button {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: left;
+            background: none;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-family: 'EB Garamond', 'Garamond', 'Georgia', serif;
+            font-size: 17px;
+            font-style: normal;
+            color: #4a1030;
+            text-shadow: none;
+            cursor: pointer;
+        }
+
+        #walk-switcher-menu button:hover,
+        #walk-switcher-menu button:focus-visible {
+            background: rgba(74, 16, 48, 0.08);
+        }
+
+        #walk-switcher-menu button[aria-current="true"] {
+            font-weight: 600;
+        }
+
         /* Same italic-script styling as .title-walk (the subtitle), just
            smaller — a credit link at the bottom of the page, right-
            justified to align with the title above. */
@@ -1399,7 +1467,10 @@
     <div id="app">
         <div id="title-image">
             <span class="title-main">Symmetry Stroll</span>
-            <span class="title-walk" id="title-walk-name"></span>
+            <button type="button" id="walk-switcher-toggle" class="title-walk">
+                <span id="title-walk-name"></span><span id="walk-switcher-caret" aria-hidden="true"> ▾</span>
+            </button>
+            <div id="walk-switcher-menu" role="menu" hidden></div>
         </div>
         <a id="magic-theorem-link" href="https://themagictheorem.com" target="_blank" rel="noopener">The Magic Theorem</a>
         <div class="loading-overlay" id="loading-overlay">Loading Symmetry Walk...</div>
@@ -1769,6 +1840,10 @@
         // Which walk this page instance is showing, resolved from ?walk=<slug> via walks.json
         let currentWalk = null;
 
+        // Cached by resolveWalk (its own fetch of walks.json) so the walk
+        // switcher doesn't need a second network round trip for the same data.
+        let walksManifestCache = null;
+
         // App State
         const state = {
             map: null,
@@ -1845,6 +1920,7 @@
             try {
                 const res = await fetch('walks.json', { cache: 'no-store' });
                 const manifest = await res.json();
+                walksManifestCache = manifest;
                 const entry = manifest.find(w => w.slug === slug);
                 if (!entry) console.warn(`No walk found in walks.json for slug "${slug}"`);
                 return entry || null;
@@ -1854,12 +1930,86 @@
             }
         }
 
+        // Simple switcher (viewer mode only): tapping the walk name in the
+        // floating title reveals the other walks from walks.json, already
+        // fetched by resolveWalk above. Switching just re-navigates with a
+        // new ?walk=, the same "reload with an updated query param" pattern
+        // navigateToMode uses — no separate in-place data-swap path to keep
+        // in sync with the normal load flow.
+        function navigateToWalk(slug) {
+            const params = new URLSearchParams(location.search);
+            params.set('walk', slug);
+            location.search = params.toString();
+        }
+
+        function closeWalkSwitcher() {
+            const menu = elements['walk-switcher-menu'];
+            if (menu) menu.hidden = true;
+            document.removeEventListener('click', handleWalkSwitcherOutsideClick, true);
+            document.removeEventListener('keydown', handleWalkSwitcherEscape, true);
+        }
+
+        function handleWalkSwitcherOutsideClick(e) {
+            const menu = elements['walk-switcher-menu'];
+            const toggle = elements['walk-switcher-toggle'];
+            if (menu && !menu.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) {
+                closeWalkSwitcher();
+            }
+        }
+
+        function handleWalkSwitcherEscape(e) {
+            if (e.key === 'Escape') closeWalkSwitcher();
+        }
+
+        function openWalkSwitcher() {
+            const menu = elements['walk-switcher-menu'];
+            if (!menu || !walksManifestCache) return;
+
+            menu.innerHTML = '';
+            walksManifestCache.forEach(walk => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.textContent = walk.title || walk.slug;
+                if (walk.slug === state.walkSlug) item.setAttribute('aria-current', 'true');
+                item.addEventListener('click', () => navigateToWalk(walk.slug));
+                menu.appendChild(item);
+            });
+
+            menu.hidden = false;
+            // Deferred so the click that opened the menu doesn't immediately
+            // close it again via the same listener (it's still bubbling).
+            setTimeout(() => {
+                document.addEventListener('click', handleWalkSwitcherOutsideClick, true);
+                document.addEventListener('keydown', handleWalkSwitcherEscape, true);
+            }, 0);
+        }
+
+        function initWalkSwitcher() {
+            const toggle = elements['walk-switcher-toggle'];
+            const menu = elements['walk-switcher-menu'];
+            if (!toggle || !menu) return;
+
+            toggle.addEventListener('click', () => {
+                if (menu.hidden) openWalkSwitcher();
+                else closeWalkSwitcher();
+            });
+        }
+
         // Navigate to a given mode ('writer' or 'stroller') by rewriting the
         // `mode` URL param, so the address bar always reflects the current
         // mode and can be bookmarked/shared/reloaded directly.
+        //
+        // Also pins down `walk` explicitly from currentWalk.slug, even if
+        // it was never actually in the URL — viewer mode's no-?walk=
+        // default (see resolveWalk) only resolves a walk in memory, so
+        // without this, switching from that implicit default into maker
+        // mode would carry no walk param at all and lose the walk (both
+        // its metadata AND its photos) rather than just its metadata.
         function navigateToMode(mode) {
             const params = new URLSearchParams(location.search);
             params.set('mode', mode);
+            const slug = currentWalk?.slug || params.get('walk');
+            if (slug) params.set('walk', slug);
             location.search = params.toString();
         }
 
@@ -1926,6 +2076,10 @@
             // Show the floating title
             updateTitleDisplay();
 
+            if (!CONFIG.IS_MAKER_MODE) {
+                initWalkSwitcher();
+            }
+
             if (CONFIG.IS_MAKER_MODE) {
                 initTourManagement();
                 tryRestoreProjectFolder();
@@ -1940,7 +2094,7 @@
             const ids = ['photo-list', 'file-input', 'load-input', 'dropzone', 'error-message',
                         'success-message', 'fit-all', 'clear-all', 'save-state', 'load-state',
                         'status', 'app-title', 'app-description', 'walk-name-input', 'walk-slug-input',
-                        'title-walk-name', 'tour-list',
+                        'title-walk-name', 'walk-switcher-toggle', 'walk-switcher-menu', 'tour-list',
                         'marker-detail', 'marker-detail-frame', 'marker-detail-img', 'marker-detail-svg',
                         'marker-detail-canvas',
                         'marker-info-panel', 'marker-edit-panel',
