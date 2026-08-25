@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Symmetry Walker</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <!-- Vendored locally (see vendor/README.md) rather than loaded from a
+         CDN — field mode is used on-site, sometimes on spotty cell
+         connections, where a blocked/slow CDN request would otherwise
+         take the whole app down before it even starts. -->
+    <script src="vendor/leaflet.js"></script>
+    <link rel="stylesheet" href="vendor/leaflet.css" />
     <style>
         /* EB Garamond, self-hosted (open-source alternative to Adobe
            Garamond Pro) so the title renders correctly offline. */
@@ -1680,8 +1684,8 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="vendor/exif.min.js"></script>
+    <script src="vendor/jszip.min.js"></script>
     <script>
         // Configuration
         const CONFIG = {

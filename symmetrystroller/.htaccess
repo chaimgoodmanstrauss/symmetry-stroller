@@ -1,0 +1,12 @@
+# index.html is the whole app (viewer, writer, and field mode all live
+# in this one file) and every walk's own JSON is fetched fresh with
+# cache: 'no-store' already — but the shell itself has no equivalent
+# protection, so a stale cached copy of index.html can silently keep
+# serving old app code after a deploy until this expires on its own.
+# Force revalidation on every load instead; the browser still gets a
+# fast 304 when nothing changed, it just always asks first.
+<IfModule mod_headers.c>
+    <Files "index.html">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </Files>
+</IfModule>
