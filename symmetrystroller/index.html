@@ -148,6 +148,15 @@
             color: inherit;
             text-shadow: inherit;
             -webkit-font-smoothing: inherit;
+            /* A <button>'s own UA default (text-align: center) sets this
+               directly on the element, which wins over the inherited
+               text-align: right from #title-image — inheritance only
+               applies when nothing else targets the element itself, and
+               nothing here overrode that default until now. Left it
+               visibly off-center, under "Symmetry Stroll" which IS
+               right-aligned (a plain <span>, no such default to fight). */
+            text-align: right;
+            width: 100%;
         }
 
         #walk-switcher-caret {
