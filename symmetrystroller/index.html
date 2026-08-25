@@ -116,6 +116,23 @@
             opacity: 0.85;
         }
 
+        /* Hidden unless ?logo=true (see CONFIG.SHOW_LOGO) — a block
+           element stacks above .title-main for free, in this container's
+           own normal flow, right-aligned (margin-left: auto) to match
+           the text below it. */
+        #momath-logo {
+            display: none;
+            width: 92%;
+            height: auto;
+            margin: 0 0 10px auto;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-md);
+        }
+
+        .show-logo #momath-logo {
+            display: block;
+        }
+
         /* #title-image itself is pointer-events:none so its decorative
            glow never blocks map interaction underneath — the switcher
            button/menu opt back into pointer events individually instead
@@ -199,19 +216,6 @@
             flex-direction: column;
             align-items: flex-end;
             gap: 10px;
-        }
-
-        #momath-logo {
-            display: none;
-            max-width: 150px;
-            width: 100%;
-            height: auto;
-            border-radius: var(--radius-sm);
-            box-shadow: var(--shadow-md);
-        }
-
-        .show-logo #momath-logo {
-            display: block;
         }
 
         #magic-theorem-link {
@@ -311,32 +315,46 @@
            decorative — the actual GPS accuracy is drawn separately, as a
            real-scale L.circle on the map (see updateLocationMarker),
            since accuracy in meters and this dot's fixed pixel size have
-           nothing to do with each other. */
+           nothing to do with each other. Sized and positioned
+           independently of .location-dot-icon's own (much smaller) box —
+           position:absolute isn't clipped by an ancestor unless that
+           ancestor sets overflow:hidden, which Leaflet's marker icon
+           doesn't — so this is free to grow well past it. A radial
+           gradient (solid at the center, fully transparent at the edge)
+           reads as a soft glow rather than a hard-edged disc fading via
+           opacity alone. */
         .location-dot-pulse {
             position: absolute;
-            inset: 0;
+            top: 50%;
+            left: 50%;
+            width: 26px;
+            height: 26px;
+            margin: -13px 0 0 -13px;
             border-radius: 50%;
-            background: var(--accent);
-            opacity: 0.45;
-            animation: location-pulse 1.8s ease-out infinite;
+            background: radial-gradient(circle, var(--accent) 0%, var(--accent) 45%, rgba(79, 70, 229, 0) 72%);
+            opacity: 0.55;
+            animation: location-pulse 2.2s cubic-bezier(0.15, 0.6, 0.35, 1) infinite;
         }
 
         .location-dot-core {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 14px;
-            height: 14px;
-            margin: -7px 0 0 -7px;
+            width: 13px;
+            height: 13px;
+            margin: -6.5px 0 0 -6.5px;
             border-radius: 50%;
             background: var(--accent);
-            border: 2px solid #fff;
-            box-shadow: 0 0 0 1px rgba(16, 24, 40, 0.2);
+            border: 2.5px solid #fff;
+            /* Blurred drop shadow instead of the previous hard-edged
+               1px ring, for a softer edge against busy map tiles. */
+            box-shadow: 0 1px 6px rgba(16, 24, 40, 0.35);
         }
 
         @keyframes location-pulse {
-            0% { transform: scale(0.3); opacity: 0.45; }
-            100% { transform: scale(1); opacity: 0; }
+            0% { transform: scale(0.5); opacity: 0.5; }
+            70% { opacity: 0.12; }
+            100% { transform: scale(2.8); opacity: 0; }
         }
 
         /* Field mode (see CONFIG.FIELD_MODE): the compact, single-walk,
@@ -1576,6 +1594,10 @@
     </script>
     <div id="app">
         <div id="title-image">
+            <!-- display:none by default, shown via .show-logo (?logo=true,
+                 see CONFIG.SHOW_LOGO) — a block child stacks above
+                 .title-main for free in this container's normal flow. -->
+            <img id="momath-logo" src="momath-logo.png" alt="National Museum of Mathematics">
             <span class="title-main">Symmetry Stroll</span>
             <button type="button" id="walk-switcher-toggle" class="title-walk">
                 <span id="title-walk-name"></span><span id="walk-switcher-caret" aria-hidden="true"> ▾</span>
@@ -1585,8 +1607,7 @@
         <!-- Fixed to this one corner as a single flex column (see
              #corner-stack), so each item just takes its natural place in
              the stack — no per-item pixel offsets to keep in sync as
-             #momath-logo's visibility (?logo=true, see CONFIG.SHOW_LOGO)
-             or #recenter-button's (.viewer-only) come and go. -->
+             #recenter-button's visibility (.viewer-only) comes and goes. -->
         <div id="corner-stack">
             <button type="button" id="recenter-button" class="viewer-only" title="Show my location" aria-label="Show my location">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -1597,7 +1618,6 @@
                     <line x1="19" y1="12" x2="22" y2="12"></line>
                 </svg>
             </button>
-            <img id="momath-logo" src="momath-logo.png" alt="National Museum of Mathematics">
             <a id="magic-theorem-link" href="https://themagictheorem.com" target="_blank" rel="noopener">The Magic Theorem</a>
         </div>
         <div class="loading-overlay" id="loading-overlay">Loading Symmetry Walk...</div>
@@ -3175,12 +3195,15 @@
             }
 
             if (!state.userAccuracyCircle) {
+                // weight/opacity kept low — a faint wash rather than a
+                // hard-edged ring, to match the dot's own softer styling.
                 state.userAccuracyCircle = L.circle(latlng, {
                     radius: accuracy,
                     color: LOCATION_ACCENT,
                     weight: 1,
+                    opacity: 0.25,
                     fillColor: LOCATION_ACCENT,
-                    fillOpacity: 0.08,
+                    fillOpacity: 0.07,
                     interactive: false
                 }).addTo(state.map);
             } else {
