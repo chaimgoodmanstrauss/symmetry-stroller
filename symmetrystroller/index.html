@@ -234,6 +234,98 @@
             display: none !important;
         }
 
+        /* Recenter button ("show my location", like Google Maps) + the
+           live blue-dot marker it manages. The button itself sits over
+           the map (a sibling of #map inside #map-container, which is
+           position:relative); the dot is a Leaflet marker at whatever
+           the browser reports as the current position, built in
+           updateLocationMarker rather than here. */
+        #recenter-button {
+            position: absolute;
+            right: 16px;
+            /* #magic-theorem-link also anchors to this corner (position:
+               fixed, bottom:16px, right:20px), with a font-size that
+               scales up to 34px — cleared with room to spare so its
+               (invisible, larger-than-it-looks) link box can never
+               overlap and steal this button's clicks, at any viewport
+               size. */
+            bottom: 80px;
+            z-index: 900;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-md);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: color 0.15s ease, transform 0.1s ease;
+        }
+
+        #recenter-button:hover {
+            color: var(--text);
+        }
+
+        #recenter-button:active {
+            transform: scale(0.94);
+        }
+
+        /* Actively tracking (a position has been received at least once). */
+        #recenter-button.tracking {
+            color: var(--accent);
+        }
+
+        /* Permission denied, or the browser/device has no geolocation. */
+        #recenter-button.denied {
+            color: var(--danger);
+        }
+
+        /* The dot marker's own icon (see L.divIcon's className in
+           updateLocationMarker — this REPLACES Leaflet's default
+           .leaflet-div-icon box/border, it doesn't add to it).
+           pointer-events: none so it never intercepts a map drag or a
+           click meant for a photo marker underneath/near it. */
+        .location-dot-icon {
+            pointer-events: none;
+        }
+
+        /* Soft ring that continuously expands and fades, echoing the
+           "live" pulse Google Maps uses on its own dot. Purely
+           decorative — the actual GPS accuracy is drawn separately, as a
+           real-scale L.circle on the map (see updateLocationMarker),
+           since accuracy in meters and this dot's fixed pixel size have
+           nothing to do with each other. */
+        .location-dot-pulse {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: var(--accent);
+            opacity: 0.45;
+            animation: location-pulse 1.8s ease-out infinite;
+        }
+
+        .location-dot-core {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 14px;
+            height: 14px;
+            margin: -7px 0 0 -7px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 1px rgba(16, 24, 40, 0.2);
+        }
+
+        @keyframes location-pulse {
+            0% { transform: scale(0.3); opacity: 0.45; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+
         /* Field mode (see CONFIG.FIELD_MODE): the compact, single-walk,
            map-only maker UI for a dedicated phone/tablet in the field.
            Everything the sidebar normally offers beyond the map itself
@@ -1573,6 +1665,20 @@
         </div>
         <div id="map-container">
             <div id="map"></div>
+            <!-- Viewer-only (see .viewer-only) — the glowing dot itself is
+                 a Leaflet marker (see updateLocationMarker), created lazily
+                 on first click since requesting geolocation permission
+                 unprompted on page load is both bad practice and often
+                 silently blocked anyway. -->
+            <button type="button" id="recenter-button" class="viewer-only" title="Show my location" aria-label="Show my location">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <line x1="12" y1="2" x2="12" y2="5"></line>
+                    <line x1="12" y1="19" x2="12" y2="22"></line>
+                    <line x1="2" y1="12" x2="5" y2="12"></line>
+                    <line x1="19" y1="12" x2="22" y2="12"></line>
+                </svg>
+            </button>
         </div>
         <!-- Direct children of <body>, not #marker-detail — position:fixed
              on these two only actually anchors to the VIEWPORT if no
@@ -1903,7 +2009,12 @@
             // File System Access API: a connected local project folder lets
             // saves write straight to disk instead of downloading a zip.
             projectDirHandle: null,
-            projectDirHandlePending: null
+            projectDirHandlePending: null,
+            // Geolocation "blue dot" (viewer mode only — see #recenter-button).
+            userLocationMarker: null,
+            userAccuracyCircle: null,
+            geoWatchId: null,
+            locationTracking: false
         };
 
         // DOM Elements
@@ -2110,7 +2221,8 @@
                         'region-crop-svg', 'marker-dismiss', 'connect-folder', 'checkpoint-list',
                         'route-draw-toggle', 'route-undo-point', 'route-clear', 'map',
                         'deploy-controls', 'deploy-button', 'deploy-output',
-                        'field-toolbar', 'field-add-photo', 'field-photo-input', 'field-status'];
+                        'field-toolbar', 'field-add-photo', 'field-photo-input', 'field-status',
+                        'recenter-button'];
 
             ids.forEach(id => {
                 elements[id] = document.getElementById(id);
@@ -2182,6 +2294,7 @@
                     state.map.on('zoomend', handleZoomChange);
                     setupRouteTool();
                     setupDeployButton();
+                    if (!CONFIG.IS_MAKER_MODE) setupRecenterButton();
 
                     elements.status.textContent = 'Map loaded successfully. Ready for photos.';
 
@@ -2952,6 +3065,107 @@
                     btn.disabled = false;
                 }
             });
+        }
+
+        // ---- Geolocation "blue dot" + recenter button (viewer mode only) ----
+        // Same idea as Google Maps: a live dot shows where you are; the
+        // button snaps the map back to it once you've panned away, and
+        // turns accent-colored while a fix is actively being tracked.
+        // Matches --accent (#4f46e5) — Leaflet sets stroke/fill as SVG
+        // presentation attributes via inline styles, not CSS custom
+        // properties, so this can't just reference the variable.
+        const LOCATION_ACCENT = '#4f46e5';
+
+        function setupRecenterButton() {
+            const btn = elements['recenter-button'];
+            if (!btn) return;
+            btn.addEventListener('click', () => {
+                // Already tracking: just snap back to the dot, in case the
+                // visitor panned/zoomed away from it — same as tapping
+                // Google Maps' own button a second time.
+                if (state.locationTracking && state.userLocationMarker) {
+                    state.map.setView(state.userLocationMarker.getLatLng(), Math.max(state.map.getZoom(), 17));
+                    return;
+                }
+                startWatchingLocation();
+            });
+        }
+
+        // Requesting geolocation only on this first click (not on page
+        // load) means the permission prompt only ever appears in
+        // response to something the visitor actually did.
+        function startWatchingLocation() {
+            const btn = elements['recenter-button'];
+            if (!navigator.geolocation) {
+                btn.classList.add('denied');
+                btn.title = 'Geolocation is not supported by this browser';
+                return;
+            }
+            btn.classList.remove('denied');
+
+            let firstFix = true;
+            state.geoWatchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    updateLocationMarker(position);
+                    state.locationTracking = true;
+                    btn.classList.remove('denied');
+                    btn.classList.add('tracking');
+                    btn.title = 'Recenter on my location';
+                    if (firstFix) {
+                        firstFix = false;
+                        state.map.setView(state.userLocationMarker.getLatLng(), Math.max(state.map.getZoom(), 17));
+                    }
+                },
+                (error) => {
+                    console.error('Geolocation error:', error);
+                    state.locationTracking = false;
+                    btn.classList.remove('tracking');
+                    btn.classList.add('denied');
+                    btn.title = error.code === error.PERMISSION_DENIED
+                        ? 'Location access denied — check your browser/OS location settings'
+                        : 'Could not determine your location';
+                },
+                { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+            );
+        }
+
+        // Called on every watchPosition update — moves the existing dot
+        // (and its accuracy circle) rather than recreating them, same
+        // reasoning as updateMarkerIcon vs. rebuilding a photo marker from
+        // scratch: smoother, and avoids a flicker on every GPS tick.
+        function updateLocationMarker(position) {
+            const { latitude, longitude, accuracy } = position.coords;
+            const latlng = [latitude, longitude];
+
+            if (!state.userLocationMarker) {
+                state.userLocationMarker = L.marker(latlng, {
+                    icon: L.divIcon({
+                        className: 'location-dot-icon',
+                        html: '<div class="location-dot-pulse"></div><div class="location-dot-core"></div>',
+                        iconSize: [22, 22],
+                        iconAnchor: [11, 11]
+                    }),
+                    interactive: false,
+                    keyboard: false,
+                    zIndexOffset: state.maxZIndex
+                }).addTo(state.map);
+            } else {
+                state.userLocationMarker.setLatLng(latlng);
+            }
+
+            if (!state.userAccuracyCircle) {
+                state.userAccuracyCircle = L.circle(latlng, {
+                    radius: accuracy,
+                    color: LOCATION_ACCENT,
+                    weight: 1,
+                    fillColor: LOCATION_ACCENT,
+                    fillOpacity: 0.08,
+                    interactive: false
+                }).addTo(state.map);
+            } else {
+                state.userAccuracyCircle.setLatLng(latlng);
+                state.userAccuracyCircle.setRadius(accuracy);
+            }
         }
 
         // ---- Field mode (see CONFIG.FIELD_MODE) -----------------------
