@@ -116,12 +116,12 @@
             opacity: 0.85;
         }
 
-        /* Hidden unless ?logo=true (see CONFIG.SHOW_LOGO) — a block
-           element stacks above .title-main for free, in this container's
-           own normal flow, right-aligned (margin-left: auto) to match
-           the text below it. */
+        /* Shown by default; hidden only by ?logo=false (see
+           CONFIG.SHOW_LOGO) — a block element stacks above .title-main
+           for free, in this container's own normal flow, right-aligned
+           (margin-left: auto) to match the text below it. */
         #momath-logo {
-            display: none;
+            display: block;
             width: 92%;
             height: auto;
             margin: 0 0 10px auto;
@@ -129,8 +129,8 @@
             box-shadow: var(--shadow-md);
         }
 
-        .show-logo #momath-logo {
-            display: block;
+        .hide-logo #momath-logo {
+            display: none;
         }
 
         /* #title-image itself is pointer-events:none so its decorative
@@ -1586,15 +1586,15 @@
         {
             const isWriter = new URLSearchParams(location.search).get('mode') === 'writer';
             const hasFieldKey = Boolean(new URLSearchParams(location.search).get('key'));
-            const showLogo = new URLSearchParams(location.search).get('logo') === 'true';
+            const hideLogo = new URLSearchParams(location.search).get('logo') === 'false';
             document.body.className = (isWriter
                 ? ('maker-mode' + (hasFieldKey ? ' field-mode' : ''))
-                : 'stroller-mode') + (showLogo ? ' show-logo' : '');
+                : 'stroller-mode') + (hideLogo ? ' hide-logo' : '');
         }
     </script>
     <div id="app">
         <div id="title-image">
-            <!-- display:none by default, shown via .show-logo (?logo=true,
+            <!-- Shown by default, hidden via .hide-logo (?logo=false,
                  see CONFIG.SHOW_LOGO) — a block child stacks above
                  .title-main for free in this container's normal flow. -->
             <img id="momath-logo" src="momath-logo.png" alt="National Museum of Mathematics">
@@ -1833,9 +1833,10 @@
         // Configuration
         const CONFIG = {
             IS_MAKER_MODE: false, //the program has two states, which are toggled here
-            // ?logo=true shows #momath-logo (see the early inline script
-            // and initializeApp, both of which set this from the URL).
-            SHOW_LOGO: false,
+            // #momath-logo shows by default; ?logo=false hides it (see
+            // the early inline script and initializeApp, both of which
+            // set this from the URL).
+            SHOW_LOGO: true,
             DEFAULT_CENTER: [40.7420, -73.9880],
             DEFAULT_ZOOM: 13,
             MAX_ZOOM: 21,
@@ -2173,7 +2174,7 @@
             // else (including no param at all) is Stroller/viewer mode.
             const params = new URLSearchParams(location.search);
             CONFIG.IS_MAKER_MODE = params.get('mode') === 'writer';
-            CONFIG.SHOW_LOGO = params.get('logo') === 'true';
+            CONFIG.SHOW_LOGO = params.get('logo') !== 'false';
             const keyParam = params.get('key');
 
             // The real check (see FIELD_PUBLIC_JWK's own comment) —
@@ -2201,7 +2202,7 @@
             // content.
             document.body.className = (CONFIG.IS_MAKER_MODE
                 ? ('maker-mode' + (CONFIG.FIELD_MODE ? ' field-mode' : ''))
-                : 'stroller-mode') + (CONFIG.SHOW_LOGO ? ' show-logo' : '');
+                : 'stroller-mode') + (CONFIG.SHOW_LOGO ? '' : ' hide-logo');
 
             // Resolve which walk to show/edit from the URL, via the manifest
             currentWalk = await resolveWalk();
