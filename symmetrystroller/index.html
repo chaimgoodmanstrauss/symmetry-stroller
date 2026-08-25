@@ -2586,8 +2586,10 @@
                 // A single click on the photo itself (not a drag, not a
                 // control) just brings it to the top of the stack — same
                 // as viewer mode. Only a double-click/double-tap enlarges
-                // it, with a dismiss button and an edit button to go into
-                // full drawing tools. Uses isDoubleTapEvent rather than a
+                // it (openMakerPreview) — from there, double-clicking the
+                // enlarged image itself opens full drawing tools (no
+                // separate edit button; see the #marker-detail-frame
+                // click listener). Uses isDoubleTapEvent rather than a
                 // raw e.detail check or a 'dblclick' listener — robust
                 // against both a DOM rebuild between the two clicks and
                 // against iOS never incrementing detail for taps (see
@@ -3708,7 +3710,13 @@
 
                 photoItem.addEventListener('click', () => {
                     if (state.markers[index]) {
-                        state.map.setView([photo.lat, photo.lng], 16);
+                        // Never zooms OUT — only in, and only as far as 16
+                        // if the map's currently more zoomed out than that.
+                        // A flat setView(..., 16) used to snap back out to
+                        // 16 even if you'd already zoomed in much further
+                        // to work on a tight cluster of photos.
+                        const zoom = Math.max(state.map.getZoom(), 16);
+                        state.map.setView([photo.lat, photo.lng], zoom);
                     }
                 });
 
@@ -5093,11 +5101,13 @@
             renderInfoPanel(photo);
         }
 
-        // Maker mode's equivalent of handleMarkerClick: a single click
-        // enlarges the photo for a quick look (overlay shown, not hidden —
-        // it's the maker's own work); double-clicking the enlarged image
-        // (see the #marker-detail-frame click listener, shared with
-        // viewer mode) opens full drawing tools from there.
+        // Maker mode's equivalent of handleMarkerClick: a double-click on
+        // the marker enlarges the photo for a quick look, overlay shown
+        // (not hidden — it's the maker's own work, there's no reason to
+        // hide it from the person who drew it); double-clicking the
+        // enlarged image itself (see the #marker-detail-frame click
+        // listener, shared with viewer mode) opens full drawing tools
+        // from there.
         // Scrolls the sidebar's photo list to `photoId`'s entry and marks
         // it with the blue translucent trim (see .active-thumb), or clears
         // the trim entirely if photoId is null. Maker-only — the photo
@@ -5122,10 +5132,13 @@
             bringMarkerToFront(marker);
 
             const photo = state.photoData[index];
-            // Just the photo, not the drawing — that only appears once
-            // the enlarged image itself is double-clicked, opening the
-            // full annotation editor.
-            showMarkerDetailImage(photo, { hideOverlayInitially: true });
+            // Overlay shown immediately — this was previously hidden
+            // until a second double-click (on the enlarged image, opening
+            // full annotation editing), which meant just glancing at a
+            // photo's existing drawing needed two double-clicks instead
+            // of one, and made it look like the drawing was sometimes
+            // just missing.
+            showMarkerDetailImage(photo, { hideOverlayInitially: false });
 
             renderInfoPanel(photo);
             elements['marker-info-panel'].classList.add('visible');
