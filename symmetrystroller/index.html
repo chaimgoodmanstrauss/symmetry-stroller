@@ -187,11 +187,34 @@
         /* Same italic-script styling as .title-walk (the subtitle), just
            smaller — a credit link at the bottom of the page, right-
            justified to align with the title above. */
-        #magic-theorem-link {
+        /* Fixed to the bottom-right corner as a flex column — see the
+           HTML comment above #corner-stack for why positioning lives
+           here instead of on each item individually. */
+        #corner-stack {
             position: fixed;
             bottom: 16px;
             right: 20px;
             z-index: 999;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        #momath-logo {
+            display: none;
+            max-width: 150px;
+            width: 100%;
+            height: auto;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-md);
+        }
+
+        .show-logo #momath-logo {
+            display: block;
+        }
+
+        #magic-theorem-link {
             text-align: right;
             font-family: 'EB Garamond', 'Garamond', 'Georgia', serif;
             font-style: italic;
@@ -235,22 +258,12 @@
         }
 
         /* Recenter button ("show my location", like Google Maps) + the
-           live blue-dot marker it manages. The button itself sits over
-           the map (a sibling of #map inside #map-container, which is
-           position:relative); the dot is a Leaflet marker at whatever
-           the browser reports as the current position, built in
+           live blue-dot marker it manages. Positioned as the top item of
+           #corner-stack (a plain flex item here, no offsets of its own —
+           see that rule for why); the dot itself is a Leaflet marker at
+           whatever the browser reports as the current position, built in
            updateLocationMarker rather than here. */
         #recenter-button {
-            position: absolute;
-            right: 16px;
-            /* #magic-theorem-link also anchors to this corner (position:
-               fixed, bottom:16px, right:20px), with a font-size that
-               scales up to 34px — cleared with room to spare so its
-               (invisible, larger-than-it-looks) link box can never
-               overlap and steal this button's clicks, at any viewport
-               size. */
-            bottom: 80px;
-            z-index: 900;
             width: 44px;
             height: 44px;
             border-radius: 50%;
@@ -1555,9 +1568,10 @@
         {
             const isWriter = new URLSearchParams(location.search).get('mode') === 'writer';
             const hasFieldKey = Boolean(new URLSearchParams(location.search).get('key'));
-            document.body.className = isWriter
+            const showLogo = new URLSearchParams(location.search).get('logo') === 'true';
+            document.body.className = (isWriter
                 ? ('maker-mode' + (hasFieldKey ? ' field-mode' : ''))
-                : 'stroller-mode';
+                : 'stroller-mode') + (showLogo ? ' show-logo' : '');
         }
     </script>
     <div id="app">
@@ -1568,7 +1582,24 @@
             </button>
             <div id="walk-switcher-menu" role="menu" hidden></div>
         </div>
-        <a id="magic-theorem-link" href="https://themagictheorem.com" target="_blank" rel="noopener">The Magic Theorem</a>
+        <!-- Fixed to this one corner as a single flex column (see
+             #corner-stack), so each item just takes its natural place in
+             the stack — no per-item pixel offsets to keep in sync as
+             #momath-logo's visibility (?logo=true, see CONFIG.SHOW_LOGO)
+             or #recenter-button's (.viewer-only) come and go. -->
+        <div id="corner-stack">
+            <button type="button" id="recenter-button" class="viewer-only" title="Show my location" aria-label="Show my location">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <line x1="12" y1="2" x2="12" y2="5"></line>
+                    <line x1="12" y1="19" x2="12" y2="22"></line>
+                    <line x1="2" y1="12" x2="5" y2="12"></line>
+                    <line x1="19" y1="12" x2="22" y2="12"></line>
+                </svg>
+            </button>
+            <img id="momath-logo" src="momath-logo.png" alt="National Museum of Mathematics">
+            <a id="magic-theorem-link" href="https://themagictheorem.com" target="_blank" rel="noopener">The Magic Theorem</a>
+        </div>
         <div class="loading-overlay" id="loading-overlay">Loading Symmetry Walk...</div>
         <div id="sidebar">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -1665,20 +1696,6 @@
         </div>
         <div id="map-container">
             <div id="map"></div>
-            <!-- Viewer-only (see .viewer-only) — the glowing dot itself is
-                 a Leaflet marker (see updateLocationMarker), created lazily
-                 on first click since requesting geolocation permission
-                 unprompted on page load is both bad practice and often
-                 silently blocked anyway. -->
-            <button type="button" id="recenter-button" class="viewer-only" title="Show my location" aria-label="Show my location">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <line x1="12" y1="2" x2="12" y2="5"></line>
-                    <line x1="12" y1="19" x2="12" y2="22"></line>
-                    <line x1="2" y1="12" x2="5" y2="12"></line>
-                    <line x1="19" y1="12" x2="22" y2="12"></line>
-                </svg>
-            </button>
         </div>
         <!-- Direct children of <body>, not #marker-detail — position:fixed
              on these two only actually anchors to the VIEWPORT if no
@@ -1796,6 +1813,9 @@
         // Configuration
         const CONFIG = {
             IS_MAKER_MODE: false, //the program has two states, which are toggled here
+            // ?logo=true shows #momath-logo (see the early inline script
+            // and initializeApp, both of which set this from the URL).
+            SHOW_LOGO: false,
             DEFAULT_CENTER: [40.7420, -73.9880],
             DEFAULT_ZOOM: 13,
             MAX_ZOOM: 21,
@@ -2133,6 +2153,7 @@
             // else (including no param at all) is Stroller/viewer mode.
             const params = new URLSearchParams(location.search);
             CONFIG.IS_MAKER_MODE = params.get('mode') === 'writer';
+            CONFIG.SHOW_LOGO = params.get('logo') === 'true';
             const keyParam = params.get('key');
 
             // The real check (see FIELD_PUBLIC_JWK's own comment) —
@@ -2158,9 +2179,9 @@
             // because this line's job is applying CONFIG's now-final,
             // verified values, not just avoiding a flash of the wrong
             // content.
-            document.body.className = CONFIG.IS_MAKER_MODE
+            document.body.className = (CONFIG.IS_MAKER_MODE
                 ? ('maker-mode' + (CONFIG.FIELD_MODE ? ' field-mode' : ''))
-                : 'stroller-mode';
+                : 'stroller-mode') + (CONFIG.SHOW_LOGO ? ' show-logo' : '');
 
             // Resolve which walk to show/edit from the URL, via the manifest
             currentWalk = await resolveWalk();
