@@ -2333,9 +2333,21 @@
                     state.map.createPane('route-handles');
                     state.map.getPane('route-handles').style.zIndex = 660;
 
-                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                    // CartoDB's free anonymous "light_all" tiles (used here
+                    // for years) started requiring an API key as of
+                    // 2026-08-26 — every tile started rendering as a
+                    // literal "API KEY REQUIRED" watermark instead of a
+                    // map. Esri's Light Gray Canvas is free with no key
+                    // and no separate account, and ships as two layers
+                    // (a base + a labels/borders overlay) rather than
+                    // Carto's single baked-together tile.
+                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                         maxZoom: CONFIG.MAX_ZOOM,
-                        maxNativeZoom: 19
+                        maxNativeZoom: 16
+                    }).addTo(state.map);
+                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+                        maxZoom: CONFIG.MAX_ZOOM,
+                        maxNativeZoom: 16
                     }).addTo(state.map);
 
                     // Recalculate marker sizing once the zoom level has
