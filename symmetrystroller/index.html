@@ -119,17 +119,26 @@
         /* Shown by default; hidden only by ?logo=false (see
            CONFIG.SHOW_LOGO) — a block element stacks above .title-main
            for free, in this container's own normal flow, right-aligned
-           (margin-left: auto) to match the text below it. */
-        #momath-logo {
+           (margin-left: auto) to match the text below it. #title-image
+           itself is pointer-events:none (see that rule's own comment),
+           so this opts back in individually, same as the walk-switcher
+           button. */
+        #momath-logo-link {
+            pointer-events: auto;
             display: block;
             width: 78%; /* 85% of the previous 92% */
-            height: auto;
             margin: 0 0 10px auto;
+        }
+
+        #momath-logo {
+            display: block;
+            width: 100%;
+            height: auto;
             border-radius: var(--radius-sm);
             box-shadow: var(--shadow-md);
         }
 
-        .hide-logo #momath-logo {
+        .hide-logo #momath-logo-link {
             display: none;
         }
 
@@ -1611,7 +1620,9 @@
             <!-- Shown by default, hidden via .hide-logo (?logo=false,
                  see CONFIG.SHOW_LOGO) — a block child stacks above
                  .title-main for free in this container's normal flow. -->
-            <img id="momath-logo" src="momath-logo.png" alt="National Museum of Mathematics">
+            <a id="momath-logo-link" href="https://momath.org" target="_blank" rel="noopener">
+                <img id="momath-logo" src="momath-logo.png" alt="National Museum of Mathematics">
+            </a>
             <span class="title-main">Symmetry Stroll</span>
             <button type="button" id="walk-switcher-toggle" class="title-walk">
                 <span id="title-walk-name"></span><span id="walk-switcher-caret" aria-hidden="true"> ▾</span>
@@ -1844,6 +1855,10 @@
     <script src="vendor/exif.min.js"></script>
     <script src="vendor/jszip.min.js"></script>
     <script>
+        // CARTO basemap key (see initializeMap's own comment on why this
+        // is fine to have in plain sight, unlike deploy credentials).
+        const CARTO_API_KEY = 'YOUR_CARTO_KEY';
+
         // Configuration
         const CONFIG = {
             IS_MAKER_MODE: false, //the program has two states, which are toggled here
@@ -2333,22 +2348,33 @@
                     state.map.createPane('route-handles');
                     state.map.getPane('route-handles').style.zIndex = 660;
 
-                    // CartoDB's free anonymous "light_all" tiles (used here
-                    // for years) started requiring an API key as of
-                    // 2026-08-26 — every tile started rendering as a
+                    // CartoDB's free ANONYMOUS "light_all" tiles (used here
+                    // for years, no key) started requiring one as of
+                    // 2026-08-26 — every tile briefly rendered as a
                     // literal "API KEY REQUIRED" watermark instead of a
-                    // map. Esri's Light Gray Canvas is free with no key
-                    // and no separate account, and ships as two layers
-                    // (a base + a labels/borders overlay) rather than
-                    // Carto's single baked-together tile.
-                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                    // map (Esri's Light Gray Canvas covered for it in the
+                    // meantime). This key is free (fair-use tier) and not
+                    // a secret in the way deploy credentials are — like
+                    // any browser-side map API key (Mapbox, Google Maps,
+                    // ...) it's necessarily visible in every tile request
+                    // this page makes, restricted by usage/referrer on
+                    // CARTO's end rather than by being hidden.
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=' + CARTO_API_KEY, {
                         maxZoom: CONFIG.MAX_ZOOM,
-                        maxNativeZoom: 16
+                        maxNativeZoom: 19
                     }).addTo(state.map);
-                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-                        maxZoom: CONFIG.MAX_ZOOM,
-                        maxNativeZoom: 16
-                    }).addTo(state.map);
+
+                    // CARTO's license requires crediting both CARTO and
+                    // OpenStreetMap on every map (see carto.com/attributions)
+                    // — the exact text their own docs/examples use. Kept in
+                    // its own bottomleft control (map option
+                    // attributionControl:false above just suppresses
+                    // Leaflet's default bottomright one) so it doesn't
+                    // collide with #corner-stack, which already lives in
+                    // the map's bottom-right corner.
+                    L.control.attribution({ position: 'bottomleft', prefix: false })
+                        .addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>')
+                        .addTo(state.map);
 
                     // Recalculate marker sizing once the zoom level has
                     // settled, not on every frame of the zoom animation
