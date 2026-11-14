@@ -116,32 +116,6 @@
             opacity: 0.85;
         }
 
-        /* Shown by default; hidden only by ?logo=false (see
-           CONFIG.SHOW_LOGO) — a block element stacks above .title-main
-           for free, in this container's own normal flow, right-aligned
-           (margin-left: auto) to match the text below it. #title-image
-           itself is pointer-events:none (see that rule's own comment),
-           so this opts back in individually, same as the walk-switcher
-           button. */
-        #momath-logo-link {
-            pointer-events: auto;
-            display: block;
-            width: 78%; /* 85% of the previous 92% */
-            margin: 0 0 10px auto;
-        }
-
-        #momath-logo {
-            display: block;
-            width: 100%;
-            height: auto;
-            border-radius: var(--radius-sm);
-            box-shadow: var(--shadow-md);
-        }
-
-        .hide-logo #momath-logo-link {
-            display: none;
-        }
-
         /* #title-image itself is pointer-events:none so its decorative
            glow never blocks map interaction underneath — the switcher
            button/menu opt back into pointer events individually instead
@@ -162,14 +136,14 @@
                text-align: right from #title-image — inheritance only
                applies when nothing else targets the element itself, and
                nothing here overrode that default until now. Left it
-               visibly off-center, under "Symmetry Stroll" which IS
+               visibly off-center, under "Symmetry Stroller" which IS
                right-aligned (a plain <span>, no such default to fight). */
             text-align: right;
             width: 100%;
         }
 
         #walk-switcher-caret {
-            font-size: 0.6em;
+            font-size: 0.96em;
             opacity: 0.7;
         }
 
@@ -285,9 +259,9 @@
         }
 
         /* Recenter button ("show my location", like Google Maps) + the
-           live blue-dot marker it manages. Positioned as the top item of
-           #corner-stack (a plain flex item here, no offsets of its own —
-           see that rule for why); the dot itself is a Leaflet marker at
+           live blue-dot marker it manages. Moved at map init into a
+           top-left Leaflet control directly under the +/- zoom buttons
+           (see initializeMap); the dot itself is a Leaflet marker at
            whatever the browser reports as the current position, built in
            updateLocationMarker rather than here. */
         #recenter-button {
@@ -1609,21 +1583,14 @@
         {
             const isWriter = new URLSearchParams(location.search).get('mode') === 'writer';
             const hasFieldKey = Boolean(new URLSearchParams(location.search).get('key'));
-            const hideLogo = new URLSearchParams(location.search).get('logo') === 'false';
             document.body.className = (isWriter
                 ? ('maker-mode' + (hasFieldKey ? ' field-mode' : ''))
-                : 'stroller-mode') + (hideLogo ? ' hide-logo' : '');
+                : 'stroller-mode');
         }
     </script>
     <div id="app">
         <div id="title-image">
-            <!-- Shown by default, hidden via .hide-logo (?logo=false,
-                 see CONFIG.SHOW_LOGO) — a block child stacks above
-                 .title-main for free in this container's normal flow. -->
-            <a id="momath-logo-link" href="https://momath.org" target="_blank" rel="noopener">
-                <img id="momath-logo" src="momath-logo.png" alt="National Museum of Mathematics">
-            </a>
-            <span class="title-main">Symmetry Stroll</span>
+            <span class="title-main">Symmetry Stroller</span>
             <button type="button" id="walk-switcher-toggle" class="title-walk">
                 <span id="title-walk-name"></span><span id="walk-switcher-caret" aria-hidden="true"> ▾</span>
             </button>
@@ -1631,8 +1598,8 @@
         </div>
         <!-- Fixed to this one corner as a single flex column (see
              #corner-stack), so each item just takes its natural place in
-             the stack — no per-item pixel offsets to keep in sync as
-             #recenter-button's visibility (.viewer-only) comes and goes. -->
+             the stack. #recenter-button starts here but is moved under
+             the zoom control at map init (see initializeMap). -->
         <div id="corner-stack">
             <button type="button" id="recenter-button" class="viewer-only" title="Show my location" aria-label="Show my location">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -1862,10 +1829,6 @@
         // Configuration
         const CONFIG = {
             IS_MAKER_MODE: false, //the program has two states, which are toggled here
-            // #momath-logo shows by default; ?logo=false hides it (see
-            // the early inline script and initializeApp, both of which
-            // set this from the URL).
-            SHOW_LOGO: true,
             DEFAULT_CENTER: [40.7420, -73.9880],
             DEFAULT_ZOOM: 13,
             MAX_ZOOM: 21,
@@ -2203,7 +2166,6 @@
             // else (including no param at all) is Stroller/viewer mode.
             const params = new URLSearchParams(location.search);
             CONFIG.IS_MAKER_MODE = params.get('mode') === 'writer';
-            CONFIG.SHOW_LOGO = params.get('logo') !== 'false';
             const keyParam = params.get('key');
 
             // The real check (see FIELD_PUBLIC_JWK's own comment) —
@@ -2231,7 +2193,7 @@
             // content.
             document.body.className = (CONFIG.IS_MAKER_MODE
                 ? ('maker-mode' + (CONFIG.FIELD_MODE ? ' field-mode' : ''))
-                : 'stroller-mode') + (CONFIG.SHOW_LOGO ? '' : ' hide-logo');
+                : 'stroller-mode');
 
             // Resolve which walk to show/edit from the URL, via the manifest
             currentWalk = await resolveWalk();
@@ -2372,6 +2334,19 @@
                     // Leaflet's default bottomright one) so it doesn't
                     // collide with #corner-stack, which already lives in
                     // the map's bottom-right corner.
+                    // Location button sits directly under the +/- zoom
+                    // control (top-left). The button node itself is moved
+                    // (not cloned), so its existing listeners and
+                    // .viewer-only visibility still apply.
+                    const recenterControl = L.control({ position: 'topleft' });
+                    recenterControl.onAdd = () => {
+                        const wrap = L.DomUtil.create('div', 'leaflet-control recenter-control');
+                        wrap.appendChild(document.getElementById('recenter-button'));
+                        L.DomEvent.disableClickPropagation(wrap);
+                        return wrap;
+                    };
+                    recenterControl.addTo(state.map);
+
                     L.control.attribution({ position: 'bottomleft', prefix: false })
                         .addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>')
                         .addTo(state.map);
