@@ -1,0 +1,9 @@
+{
+  "name": "Symmetry Stroller",
+  "cat": "Maps & Data",
+  "icon": "pin",
+  "desc": "Symmetry photo walks.",
+  "path": "symmetrystroller/",
+  "live": true,
+  "img": "icons/pin.jpg"
+}
