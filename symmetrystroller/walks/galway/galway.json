@@ -5,6 +5,7 @@
     {
       "id": "photo_1786575497220_tnil4kbrw",
       "photo": "photos/IMG_2754.jpg",
+      "thumb": "photos/thumbs/IMG_2754.thumb.jpg",
       "filename": "IMG_2754.jpg",
       "lat": 53.278908333333334,
       "lng": -9.058883333333334,
@@ -33,6 +34,7 @@
           ]
         }
       ],
+      "reduced": false,
       "viewerRegion": {
         "x": 199.99999999999977,
         "y": 3125.4570204617708,
@@ -43,6 +45,7 @@
     {
       "id": "photo_1786575497281_m42snbobq",
       "photo": "photos/IMG_2982.jpg",
+      "thumb": "photos/thumbs/IMG_2982.thumb.jpg",
       "filename": "IMG_2982.jpg",
       "lat": 53.2803544730526,
       "lng": -9.066832065582277,
@@ -192,6 +195,7 @@
           ]
         }
       ],
+      "reduced": false,
       "viewerRegion": {
         "x": 177.03218767048554,
         "y": 3480.1978175747827,
@@ -202,6 +206,7 @@
     {
       "id": "photo_1786575497287_8jm4r5qrh",
       "photo": "photos/IMG_2978.jpg",
+      "thumb": "photos/thumbs/IMG_2978.thumb.jpg",
       "filename": "IMG_2978.jpg",
       "lat": 53.26945555555555,
       "lng": -9.05338888888889,
@@ -210,11 +215,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497291_m7j8wxvxv",
       "photo": "photos/IMG_2984.jpg",
+      "thumb": "photos/thumbs/IMG_2984.thumb.jpg",
       "filename": "IMG_2984.jpg",
       "lat": 53.28348888888889,
       "lng": -9.064066666666667,
@@ -223,11 +230,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497295_31rbk2inv",
       "photo": "photos/IMG_2891.jpg",
+      "thumb": "photos/thumbs/IMG_2891.thumb.jpg",
       "filename": "IMG_2891.jpg",
       "lat": 53.282535439655675,
       "lng": -9.065973758697512,
@@ -236,11 +245,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497299_a310wqjp4",
       "photo": "photos/IMG_2863.jpg",
+      "thumb": "photos/thumbs/IMG_2863.thumb.jpg",
       "filename": "IMG_2863.jpg",
       "lat": 53.27596666666667,
       "lng": -9.053883333333333,
@@ -249,11 +260,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497303_nq2hl2yex",
       "photo": "photos/IMG_2743.jpg",
+      "thumb": "photos/thumbs/IMG_2743.thumb.jpg",
       "filename": "IMG_2743.jpg",
       "lat": 53.27599722222222,
       "lng": -9.059072222222223,
@@ -262,11 +275,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497306_tf1tq6rf8",
       "photo": "photos/IMG_2737.jpg",
+      "thumb": "photos/thumbs/IMG_2737.thumb.jpg",
       "filename": "IMG_2737.jpg",
       "lat": 53.27531111111111,
       "lng": -9.056708333333335,
@@ -275,11 +290,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497314_ta03byzy8",
       "photo": "photos/IMG_2977.jpg",
+      "thumb": "photos/thumbs/IMG_2977.thumb.jpg",
       "filename": "IMG_2977.jpg",
       "lat": 53.269438888888885,
       "lng": -9.053325000000001,
@@ -288,11 +305,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497319_820f871bg",
       "photo": "photos/IMG_2745.jpg",
+      "thumb": "photos/thumbs/IMG_2745.thumb.jpg",
       "filename": "IMG_2745.jpg",
       "lat": 53.27627222222222,
       "lng": -9.06027777777778,
@@ -301,11 +320,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497334_qtf3twmu0",
       "photo": "photos/IMG_2751.jpg",
+      "thumb": "photos/thumbs/IMG_2751.thumb.jpg",
       "filename": "IMG_2751.jpg",
       "lat": 53.279854117959346,
       "lng": -9.059085845947267,
@@ -411,11 +432,13 @@
           "op": "add"
         }
       ],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497348_z1rd86mjj",
       "photo": "photos/IMG_2768.jpg",
+      "thumb": "photos/thumbs/IMG_2768.thumb.jpg",
       "filename": "IMG_2768.jpg",
       "lat": 53.28841944444444,
       "lng": -9.068108333333333,
@@ -424,11 +447,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497356_z47k0x3rn",
       "photo": "photos/IMG_2862.jpg",
+      "thumb": "photos/thumbs/IMG_2862.thumb.jpg",
       "filename": "IMG_2862.jpg",
       "lat": 53.27598888888889,
       "lng": -9.054,
@@ -437,11 +462,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497361_lps06rdki",
       "photo": "photos/IMG_2732.jpg",
+      "thumb": "photos/thumbs/IMG_2732.thumb.jpg",
       "filename": "IMG_2732.jpg",
       "lat": 53.428352777777775,
       "lng": -6.242702777777778,
@@ -450,11 +477,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497364_5pc1dlvau",
       "photo": "photos/IMG_2967.jpg",
+      "thumb": "photos/thumbs/IMG_2967.thumb.jpg",
       "filename": "IMG_2967.jpg",
       "lat": 53.274169444444446,
       "lng": -9.047869444444444,
@@ -463,11 +492,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497369_71daxj95x",
       "photo": "photos/IMG_2747.jpg",
+      "thumb": "photos/thumbs/IMG_2747.thumb.jpg",
       "filename": "IMG_2747.jpg",
       "lat": 53.27713055555555,
       "lng": -9.059886111111112,
@@ -476,11 +507,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497429_bxl7p0pv2",
       "photo": "photos/IMG_2983.jpg",
+      "thumb": "photos/thumbs/IMG_2983.thumb.jpg",
       "filename": "IMG_2983.jpg",
       "lat": 53.28341944444444,
       "lng": -9.064136111111111,
@@ -489,11 +522,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497435_hgvikxz21",
       "photo": "photos/IMG_2734.jpg",
+      "thumb": "photos/thumbs/IMG_2734.thumb.jpg",
       "filename": "IMG_2734.jpg",
       "lat": 53.27441388888889,
       "lng": -9.047472222222222,
@@ -502,11 +537,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497440_ecqvpk2y0",
       "photo": "photos/IMG_2750.jpg",
+      "thumb": "photos/thumbs/IMG_2750.thumb.jpg",
       "filename": "IMG_2750.jpg",
       "lat": 53.27803226274099,
       "lng": -9.067111015319826,
@@ -590,6 +627,7 @@
           "op": "add"
         }
       ],
+      "reduced": false,
       "viewerRegion": {
         "x": 269.4826457105435,
         "y": 376.1752322969473,
@@ -600,6 +638,7 @@
     {
       "id": "photo_1786575497447_q8z6yqit8",
       "photo": "photos/IMG_2753.jpg",
+      "thumb": "photos/thumbs/IMG_2753.thumb.jpg",
       "filename": "IMG_2753.jpg",
       "lat": 53.27865555555555,
       "lng": -9.058741666666668,
@@ -608,11 +647,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497453_nvu4lokhl",
       "photo": "photos/IMG_2744.jpg",
+      "thumb": "photos/thumbs/IMG_2744.thumb.jpg",
       "filename": "IMG_2744.jpg",
       "lat": 53.27598611111111,
       "lng": -9.05916388888889,
@@ -621,11 +662,13 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
+      "reduced": false,
       "viewerRegion": null
     },
     {
       "id": "photo_1786575497459_vn8326y9g",
       "photo": "photos/IMG_2769.jpg",
+      "thumb": "photos/thumbs/IMG_2769.thumb.jpg",
       "filename": "IMG_2769.jpg",
       "lat": 53.28842222222222,
       "lng": -9.068052777777778,
@@ -663,6 +706,7 @@
           ]
         }
       ],
+      "reduced": false,
       "viewerRegion": {
         "x": 199.99999999999991,
         "y": 206.20000000000005,
@@ -674,25 +718,110 @@
   "route": [
     {
       "waypoint": false,
-      "lat": 53.279405076349654,
-      "lng": -9.06925678253174
-    },
-    {
-      "lat": 53.278715467548615,
-      "lng": -9.06850039958954,
-      "waypoint": false
+      "lat": 53.274016209027096,
+      "lng": -9.047713279724123
     },
     {
       "waypoint": false,
-      "lat": 53.27894320005761,
-      "lng": -9.06723976135254
+      "lat": 53.27458078889212,
+      "lng": -9.050427675247194
+    },
+    {
+      "waypoint": false,
+      "lat": 53.273964883215065,
+      "lng": -9.0512752532959
+    },
+    {
+      "waypoint": false,
+      "lat": 53.27515177685321,
+      "lng": -9.05354976654053
+    },
+    {
+      "waypoint": false,
+      "lat": 53.27592805162295,
+      "lng": -9.05404329299927
+    },
+    {
+      "waypoint": false,
+      "lat": 53.275421229197136,
+      "lng": -9.056596755981447
+    },
+    {
+      "waypoint": false,
+      "lat": 53.27593446705817,
+      "lng": -9.05925750732422
+    },
+    {
+      "waypoint": false,
+      "lat": 53.27621032986212,
+      "lng": -9.060630798339846
+    },
+    {
+      "waypoint": false,
+      "lat": 53.277442067636386,
+      "lng": -9.058624505996706
+    },
+    {
+      "waypoint": false,
+      "lat": 53.278834145204726,
+      "lng": -9.05876398086548
+    },
+    {
+      "waypoint": false,
+      "lat": 53.28026466615951,
+      "lng": -9.059311151504518
+    },
+    {
+      "waypoint": false,
+      "lat": 53.282496952974476,
+      "lng": -9.062476158142092
+    },
+    {
+      "waypoint": false,
+      "lat": 53.282804845453484,
+      "lng": -9.063892364501955
+    },
+    {
+      "waypoint": false,
+      "lat": 53.285280733492094,
+      "lng": -9.06526565551758
+    },
+    {
+      "waypoint": false,
+      "lat": 53.28761537732032,
+      "lng": -9.065544605255129
+    },
+    {
+      "waypoint": false,
+      "lat": 53.28817977755979,
+      "lng": -9.066424369812013
+    },
+    {
+      "waypoint": false,
+      "lat": 53.287942473822014,
+      "lng": -9.067207574844362
+    },
+    {
+      "waypoint": false,
+      "lat": 53.288590245778344,
+      "lng": -9.068301916122438
+    },
+    {
+      "waypoint": false,
+      "lat": 53.28872492980329,
+      "lng": -9.068613052368166
+    },
+    {
+      "waypoint": false,
+      "lat": 53.28884678641241,
+      "lng": -9.069213867187502
     }
   ],
   "mapCenter": {
-    "lat": 53.27866735489145,
-    "lng": -9.068073928356172
+    "lat": 53.27495930985331,
+    "lng": -9.052605628967287
   },
-  "mapZoom": 18,
+  "mapZoom": 16,
   "version": "2.0",
-  "savedAt": "2026-08-17T19:32:40.485Z"
+  "savedAt": "2026-08-25T20:03:27.787Z"
 }

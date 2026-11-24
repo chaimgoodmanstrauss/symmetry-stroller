@@ -19,7 +19,7 @@
         }
       ],
       "overlay": [],
-      "reduced": false,
+      "reduced": true,
       "viewerRegion": {
         "x": 200.00000000000065,
         "y": 1851.8000000000002,
@@ -36,11 +36,188 @@
       "lng": -73.99311840534212,
       "originalWidth": 320,
       "originalHeight": 81,
-      "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
+      "comment": "Two classics. What are their symmetry types?",
+      "symmetryTypes": [
+        {
+          "class": "frieze",
+          "value": "*∞∞"
+        },
+        {
+          "class": "frieze",
+          "value": "22∞"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "domain",
+          "points": [
+            [
+              459.1,
+              34.8
+            ],
+            [
+              462,
+              124.5
+            ],
+            [
+              513.3,
+              120.6
+            ],
+            [
+              511.3,
+              27.9
+            ]
+          ],
+          "op": "add"
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              460,
+              24.9
+            ],
+            [
+              460,
+              127.5
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              511.3,
+              18
+            ],
+            [
+              509.4,
+              122.6
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              417.6,
+              30.8
+            ],
+            [
+              418.6,
+              121.6
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              367.3,
+              28.8
+            ],
+            [
+              373.2,
+              119.6
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              320.9,
+              30.8
+            ],
+            [
+              320.9,
+              119.6
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              552.8,
+              33.8
+            ],
+            [
+              558.7,
+              118.6
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "dot",
+          "point": [
+            471.9,
+            196.6
+          ],
+          "little": false
+        },
+        {
+          "tool": "dot",
+          "point": [
+            431.4,
+            192.6
+          ],
+          "little": false
+        },
+        {
+          "tool": "dot",
+          "point": [
+            390,
+            194.6
+          ],
+          "little": true
+        },
+        {
+          "tool": "dot",
+          "point": [
+            345.6,
+            194.6
+          ],
+          "little": true
+        },
+        {
+          "tool": "dot",
+          "point": [
+            304.2,
+            193.6
+          ],
+          "little": true
+        },
+        {
+          "tool": "dot",
+          "point": [
+            517.3,
+            199.5
+          ],
+          "little": true
+        },
+        {
+          "tool": "dot",
+          "point": [
+            563.6,
+            198.5
+          ],
+          "little": true
+        }
+      ],
       "reduced": false,
-      "viewerRegion": null
+      "viewerRegion": {
+        "x": 282.4651051662081,
+        "y": 31.797208314368078,
+        "width": 291.0279235743408,
+        "height": 186.45935366408736
+      }
     },
     {
       "id": "photo_1786985805460_csa2fgom6",
@@ -51,11 +228,70 @@
       "lng": -73.9921796321869,
       "originalWidth": 320,
       "originalHeight": 44,
-      "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
+      "comment": "A classic \"greek key\" pattern.",
+      "symmetryTypes": [
+        {
+          "class": "frieze",
+          "value": "22∞"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "dot",
+          "point": [
+            512.3,
+            64.1
+          ],
+          "little": false
+        },
+        {
+          "tool": "dot",
+          "point": [
+            561.7,
+            64.1
+          ],
+          "little": false
+        },
+        {
+          "tool": "dot",
+          "point": [
+            460,
+            63.1
+          ],
+          "little": true
+        },
+        {
+          "tool": "dot",
+          "point": [
+            407.8,
+            61.1
+          ],
+          "little": true
+        },
+        {
+          "tool": "dot",
+          "point": [
+            617.9,
+            62.1
+          ],
+          "little": true
+        },
+        {
+          "tool": "dot",
+          "point": [
+            663.3,
+            63.1
+          ],
+          "little": true
+        }
+      ],
       "reduced": false,
-      "viewerRegion": null
+      "viewerRegion": {
+        "x": 380.1321032470886,
+        "y": 20.66424531440612,
+        "width": 281.16257023283777,
+        "height": 98.65809027392703
+      }
     },
     {
       "id": "photo_1786985805464_qheix628y",
@@ -66,11 +302,396 @@
       "lng": -73.99447962641717,
       "originalWidth": 320,
       "originalHeight": 44,
-      "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
-      "reduced": false,
-      "viewerRegion": null
+      "comment": "Mirror symmetry overall, but to either side, a few feet of the step symmetry. ",
+      "symmetryTypes": [
+        {
+          "class": "mirror",
+          "value": "*"
+        },
+        {
+          "class": "frieze",
+          "value": "∞×"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "spline",
+          "color": "#d0212b",
+          "points": [
+            [
+              583.4,
+              83.3
+            ],
+            [
+              586.3,
+              81.3
+            ],
+            [
+              588.3,
+              78.4
+            ],
+            [
+              591.3,
+              75.4
+            ],
+            [
+              594.2,
+              72.4
+            ],
+            [
+              597.2,
+              70.5
+            ],
+            [
+              600.1,
+              68.5
+            ],
+            [
+              603.1,
+              66.5
+            ],
+            [
+              607,
+              65.5
+            ],
+            [
+              610,
+              64.5
+            ],
+            [
+              613,
+              64.5
+            ],
+            [
+              615.9,
+              63.6
+            ],
+            [
+              618.9,
+              63.6
+            ],
+            [
+              622.8,
+              62.6
+            ],
+            [
+              625.8,
+              62.6
+            ],
+            [
+              630.7,
+              62.6
+            ],
+            [
+              633.7,
+              62.6
+            ],
+            [
+              638.6,
+              62.6
+            ],
+            [
+              642.6,
+              63.6
+            ],
+            [
+              645.5,
+              64.5
+            ],
+            [
+              649.5,
+              66.5
+            ],
+            [
+              652.4,
+              68.5
+            ],
+            [
+              655.4,
+              69.5
+            ],
+            [
+              658.3,
+              71.5
+            ],
+            [
+              661.3,
+              73.4
+            ],
+            [
+              665.2,
+              74.4
+            ],
+            [
+              668.2,
+              76.4
+            ],
+            [
+              671.2,
+              77.4
+            ],
+            [
+              674.1,
+              79.3
+            ],
+            [
+              677.1,
+              82.3
+            ],
+            [
+              680,
+              84.3
+            ]
+          ]
+        },
+        {
+          "tool": "spline",
+          "color": "#d0212b",
+          "points": [
+            [
+              676.1,
+              82.3
+            ],
+            [
+              679.1,
+              83.3
+            ],
+            [
+              683,
+              85.3
+            ],
+            [
+              686,
+              88.2
+            ],
+            [
+              688.9,
+              90.2
+            ],
+            [
+              691.9,
+              92.2
+            ],
+            [
+              694.8,
+              93.2
+            ],
+            [
+              697.8,
+              95.1
+            ],
+            [
+              701.7,
+              97.1
+            ],
+            [
+              704.7,
+              98.1
+            ],
+            [
+              707.7,
+              98.1
+            ],
+            [
+              710.6,
+              99.1
+            ],
+            [
+              713.6,
+              100.1
+            ],
+            [
+              716.5,
+              101.1
+            ],
+            [
+              720.5,
+              101.1
+            ],
+            [
+              724.4,
+              101.1
+            ],
+            [
+              728.4,
+              101.1
+            ],
+            [
+              733.3,
+              101.1
+            ],
+            [
+              736.3,
+              101.1
+            ],
+            [
+              741.2,
+              101.1
+            ],
+            [
+              745.2,
+              101.1
+            ],
+            [
+              749.1,
+              100.1
+            ],
+            [
+              752.1,
+              99.1
+            ],
+            [
+              754,
+              96.1
+            ],
+            [
+              757,
+              93.2
+            ],
+            [
+              759.9,
+              91.2
+            ],
+            [
+              760.9,
+              88.2
+            ],
+            [
+              762.9,
+              85.3
+            ],
+            [
+              764.9,
+              82.3
+            ]
+          ]
+        },
+        {
+          "tool": "spline",
+          "color": "#d0212b",
+          "points": [
+            [
+              671.2,
+              81.3
+            ],
+            [
+              671.2,
+              76.4
+            ],
+            [
+              673.1,
+              73.4
+            ],
+            [
+              676.1,
+              73.4
+            ],
+            [
+              679.1,
+              75.4
+            ],
+            [
+              679.1,
+              78.4
+            ],
+            [
+              678.1,
+              82.3
+            ],
+            [
+              676.1,
+              85.3
+            ],
+            [
+              673.1,
+              86.3
+            ]
+          ]
+        },
+        {
+          "tool": "spline",
+          "color": "#d0212b",
+          "points": [
+            [
+              581.4,
+              83.3
+            ],
+            [
+              580.4,
+              80.3
+            ],
+            [
+              582.4,
+              77.4
+            ],
+            [
+              586.3,
+              77.4
+            ],
+            [
+              586.3,
+              81.3
+            ],
+            [
+              585.3,
+              84.3
+            ],
+            [
+              582.4,
+              85.3
+            ]
+          ]
+        },
+        {
+          "tool": "spline",
+          "color": "#d0212b",
+          "points": [
+            [
+              768.8,
+              81.3
+            ],
+            [
+              769.8,
+              77.4
+            ],
+            [
+              772.8,
+              76.4
+            ],
+            [
+              776.7,
+              77.4
+            ],
+            [
+              776.7,
+              81.3
+            ],
+            [
+              775.7,
+              84.3
+            ],
+            [
+              773.8,
+              87.2
+            ],
+            [
+              770.8,
+              87.2
+            ],
+            [
+              767.8,
+              84.3
+            ]
+          ]
+        }
+      ],
+      "reduced": true,
+      "viewerRegion": {
+        "x": 446.2299706351592,
+        "y": 14.232020402380279,
+        "width": 519.9041210972122,
+        "height": 104.57625389628791
+      }
     },
     {
       "id": "photo_1786985805469_r2q6iimi5",
@@ -81,11 +702,254 @@
       "lng": -73.9915841817856,
       "originalWidth": 320,
       "originalHeight": 68,
-      "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
+      "comment": "The main frieze is spinning jump, but there's also a few sidles. ",
+      "symmetryTypes": [
+        {
+          "class": "frieze",
+          "value": "*22∞"
+        },
+        {
+          "class": "frieze",
+          "value": "*∞∞"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "line",
+          "points": [
+            [
+              459.1,
+              179
+            ],
+            [
+              459.1,
+              201.7
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              476.8,
+              178
+            ],
+            [
+              477.8,
+              202.7
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              491.6,
+              43.8
+            ],
+            [
+              491.6,
+              65.5
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              505.4,
+              43.8
+            ],
+            [
+              505.4,
+              64.6
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              504.4,
+              67.5
+            ],
+            [
+              504.4,
+              81.3
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              524.2,
+              70.5
+            ],
+            [
+              523.2,
+              83.3
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              419.6,
+              130.7
+            ],
+            [
+              559.7,
+              129.7
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              491.6,
+              89.2
+            ],
+            [
+              490.6,
+              174.1
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              547.8,
+              88.2
+            ],
+            [
+              549.8,
+              170.1
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              433.4,
+              92.2
+            ],
+            [
+              433.4,
+              175.1
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "domain",
+          "points": [
+            [
+              431.4,
+              90.2
+            ],
+            [
+              490.6,
+              86.3
+            ],
+            [
+              491.6,
+              127.7
+            ],
+            [
+              431.4,
+              130.7
+            ]
+          ],
+          "op": "add"
+        },
+        {
+          "tool": "domain",
+          "points": [
+            [
+              503.4,
+              82.3
+            ],
+            [
+              523.2,
+              82.3
+            ],
+            [
+              523.2,
+              68.5
+            ],
+            [
+              505.4,
+              68.5
+            ]
+          ],
+          "op": "add"
+        },
+        {
+          "tool": "domain",
+          "points": [
+            [
+              490.6,
+              62.6
+            ],
+            [
+              504.4,
+              62.6
+            ],
+            [
+              505.4,
+              44.8
+            ],
+            [
+              492.6,
+              44.8
+            ]
+          ],
+          "op": "add"
+        },
+        {
+          "tool": "domain",
+          "points": [
+            [
+              459.1,
+              177
+            ],
+            [
+              474.8,
+              177
+            ],
+            [
+              474.8,
+              201.7
+            ],
+            [
+              462,
+              201.7
+            ]
+          ],
+          "op": "add"
+        }
+      ],
       "reduced": false,
-      "viewerRegion": null
+      "viewerRegion": {
+        "x": 385.0647799178401,
+        "y": 42.20000000000001,
+        "width": 207.17242017156462,
+        "height": 161.7091174751607
+      }
     },
     {
       "id": "photo_1786985805476_hxx56pojq",
@@ -97,10 +961,71 @@
       "originalWidth": 320,
       "originalHeight": 28,
       "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
+      "symmetryTypes": [
+        {
+          "class": "frieze",
+          "value": "*∞∞"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "line",
+          "points": [
+            [
+              428.5,
+              -0.2
+            ],
+            [
+              428.5,
+              77.8
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              476.8,
+              2.8
+            ],
+            [
+              476.8,
+              77.8
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "domain",
+          "points": [
+            [
+              426.5,
+              7.2
+            ],
+            [
+              479.8,
+              7.2
+            ],
+            [
+              481.7,
+              77.3
+            ],
+            [
+              427.5,
+              79.3
+            ]
+          ],
+          "op": "add"
+        }
+      ],
       "reduced": false,
-      "viewerRegion": null
+      "viewerRegion": {
+        "x": 376.1859619104873,
+        "y": 5.275991941841114,
+        "width": 219.99737951551873,
+        "height": 78.92791451344486
+      }
     },
     {
       "id": "photo_1786985805657_49oa2oksg",
@@ -114,7 +1039,7 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
-      "reduced": false,
+      "reduced": true,
       "viewerRegion": null
     },
     {
@@ -129,7 +1054,7 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
-      "reduced": false,
+      "reduced": true,
       "viewerRegion": null
     },
     {
@@ -142,10 +1067,95 @@
       "originalWidth": 320,
       "originalHeight": 72,
       "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
+      "symmetryTypes": [
+        {
+          "class": "frieze",
+          "value": "22∞"
+        },
+        {
+          "class": "frieze",
+          "value": "*∞∞"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "dot",
+          "point": [
+            493.6,
+            56
+          ],
+          "little": false
+        },
+        {
+          "tool": "dot",
+          "point": [
+            534,
+            57
+          ],
+          "little": false
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              513.3,
+              134
+            ],
+            [
+              510.4,
+              213.9
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              453.1,
+              126.1
+            ],
+            [
+              453.1,
+              213.9
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "text",
+          "point": [
+            557.6999999999999,
+            60.2
+          ],
+          "runs": [
+            {
+              "text": "spin",
+              "color": "#111111"
+            }
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            555.7,
+            172.6
+          ],
+          "runs": [
+            {
+              "text": "sidle",
+              "color": "#111111"
+            }
+          ]
+        }
+      ],
       "reduced": false,
-      "viewerRegion": null
+      "viewerRegion": {
+        "x": 373.22635590803645,
+        "y": 13.850419480253734,
+        "width": 318.65091293054945,
+        "height": 204.2185389809699
+      }
     },
     {
       "id": "photo_1786985805701_y2knvvlv2",
@@ -158,9 +1168,178 @@
       "originalHeight": 35,
       "comment": "",
       "symmetryTypes": [],
-      "overlay": [],
+      "overlay": [
+        {
+          "tool": "spline",
+          "color": "#2883ff",
+          "points": [
+            [
+              393.9,
+              61.6
+            ],
+            [
+              392,
+              58.7
+            ],
+            [
+              388,
+              55.7
+            ],
+            [
+              385.1,
+              53.8
+            ],
+            [
+              381.1,
+              51.8
+            ],
+            [
+              377.2,
+              47.8
+            ],
+            [
+              373.2,
+              44.9
+            ],
+            [
+              370.3,
+              42.9
+            ],
+            [
+              367.3,
+              40.9
+            ],
+            [
+              364.3,
+              38
+            ],
+            [
+              361.4,
+              37
+            ],
+            [
+              358.4,
+              36
+            ],
+            [
+              355.5,
+              35
+            ],
+            [
+              352.5,
+              34
+            ],
+            [
+              349.5,
+              33
+            ],
+            [
+              345.6,
+              32
+            ],
+            [
+              341.7,
+              31.1
+            ],
+            [
+              337.7,
+              31.1
+            ],
+            [
+              333.8,
+              30.1
+            ],
+            [
+              330.8,
+              30.1
+            ],
+            [
+              327.8,
+              30.1
+            ],
+            [
+              322.9,
+              30.1
+            ],
+            [
+              319,
+              30.1
+            ],
+            [
+              316,
+              30.1
+            ],
+            [
+              312.1,
+              31.1
+            ],
+            [
+              308.1,
+              33
+            ],
+            [
+              305.2,
+              35
+            ],
+            [
+              302.2,
+              37
+            ],
+            [
+              299.2,
+              39.9
+            ],
+            [
+              296.3,
+              41.9
+            ],
+            [
+              293.3,
+              44.9
+            ],
+            [
+              290.4,
+              47.8
+            ],
+            [
+              287.4,
+              49.8
+            ],
+            [
+              284.4,
+              52.8
+            ],
+            [
+              281.5,
+              55.7
+            ],
+            [
+              280.5,
+              58.7
+            ]
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            412.7,
+            56.50000000000001
+          ],
+          "runs": [
+            {
+              "text": "hop",
+              "color": "#111111"
+            }
+          ]
+        }
+      ],
       "reduced": false,
-      "viewerRegion": null
+      "viewerRegion": {
+        "x": 138.43094638026312,
+        "y": 12.316871253211533,
+        "width": 362.05846763316305,
+        "height": 85.83271481587211
+      }
     },
     {
       "id": "photo_1786985805704_gfml1gb4y",
@@ -174,22 +1353,7 @@
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
-      "reduced": false,
-      "viewerRegion": null
-    },
-    {
-      "id": "photo_1786985805704_xznpanp5o",
-      "photo": "photos/IMG_3060.jpg",
-      "thumb": "photos/thumbs/IMG_3060.thumb.jpg",
-      "filename": "IMG_3060.JPG",
-      "lat": 40.73978069890359,
-      "lng": -73.99424225091936,
-      "originalWidth": 320,
-      "originalHeight": 25,
-      "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
-      "reduced": false,
+      "reduced": true,
       "viewerRegion": null
     },
     {
@@ -256,10 +1420,28 @@
               150.6
             ]
           ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            564.6,
+            82.4
+          ],
+          "runs": [
+            {
+              "text": "sidle",
+              "color": "#111111"
+            }
+          ]
         }
       ],
       "reduced": false,
-      "viewerRegion": null
+      "viewerRegion": {
+        "x": 362.3744672323831,
+        "y": 16.3399209486166,
+        "width": 437.62553276761696,
+        "height": 108.4600790513834
+      }
     },
     {
       "id": "photo_1786985805707_fphwn5a5l",
@@ -329,8 +1511,8 @@
         {
           "tool": "text",
           "point": [
-            462.9,
-            34.7
+            522.1,
+            77.1
           ],
           "runs": [
             {
@@ -342,10 +1524,10 @@
       ],
       "reduced": false,
       "viewerRegion": {
-        "x": 43.859649122807014,
+        "x": 339.684154546926,
         "y": 0,
-        "width": 905.7017543859649,
-        "height": 131.29126340570235
+        "width": 366.0046089697642,
+        "height": 131.29126340570232
       }
     },
     {
@@ -357,11 +1539,16 @@
       "lng": -73.99313047528268,
       "originalWidth": 261,
       "originalHeight": 83,
-      "comment": "",
+      "comment": "As a frieze, this is dizzy jump.",
       "symmetryTypes": [],
       "overlay": [],
-      "reduced": false,
-      "viewerRegion": null
+      "reduced": true,
+      "viewerRegion": {
+        "x": 61.48119031653911,
+        "y": 116.80578782811023,
+        "width": 937.2085674427926,
+        "height": 137.59421217188975
+      }
     },
     {
       "id": "photo_1786985805711_q129qwhug",
@@ -373,10 +1560,20 @@
       "originalWidth": 189,
       "originalHeight": 83,
       "comment": "",
-      "symmetryTypes": [],
+      "symmetryTypes": [
+        {
+          "class": "rosette",
+          "value": "*4•"
+        }
+      ],
       "overlay": [],
       "reduced": false,
-      "viewerRegion": null
+      "viewerRegion": {
+        "x": 520.2201206964323,
+        "y": 176.83100671612925,
+        "width": 280.17603489868736,
+        "height": 226.7083934034249
+      }
     },
     {
       "id": "photo_1786985805712_nv7hunmr8",
@@ -388,8 +1585,102 @@
       "originalWidth": 83,
       "originalHeight": 243,
       "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
+      "symmetryTypes": [
+        {
+          "class": "mirror",
+          "value": "*"
+        },
+        {
+          "class": "frieze",
+          "value": "*∞∞"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "line",
+          "points": [
+            [
+              482.8,
+              102.2
+            ],
+            [
+              512.3,
+              2351.4
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              326,
+              2390.6
+            ],
+            [
+              335.8,
+              2865.9
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              482.8,
+              2424.9
+            ],
+            [
+              492.6,
+              2861
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              639.7,
+              2410.2
+            ],
+            [
+              649.5,
+              2870.8
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              796.5,
+              2380.8
+            ],
+            [
+              801.4,
+              2885.5
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              164.3,
+              2429.8
+            ],
+            [
+              179,
+              2846.3
+            ]
+          ],
+          "thin": true
+        }
+      ],
       "reduced": false,
       "viewerRegion": null
     },
@@ -403,10 +1694,69 @@
       "originalWidth": 226,
       "originalHeight": 83,
       "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
+      "symmetryTypes": [
+        {
+          "class": "frieze",
+          "value": "*∞∞"
+        },
+        {
+          "class": "frieze",
+          "value": "22∞"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "line",
+          "points": [
+            [
+              435.4,
+              52.7
+            ],
+            [
+              428.5,
+              143.4
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              507.4,
+              55.6
+            ],
+            [
+              507.4,
+              148.4
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "dot",
+          "point": [
+            487.7,
+            215.5
+          ],
+          "little": false
+        },
+        {
+          "tool": "dot",
+          "point": [
+            350.5,
+            208.6
+          ],
+          "little": false
+        }
+      ],
       "reduced": false,
-      "viewerRegion": null
+      "viewerRegion": {
+        "x": 282.4651051662081,
+        "y": 52.6804339630545,
+        "width": 427.1697996870834,
+        "height": 259.4636618774348
+      }
     },
     {
       "id": "photo_1786985805714_vdkwum353",
@@ -417,11 +1767,58 @@
       "lng": -73.99191275238992,
       "originalWidth": 168,
       "originalHeight": 83,
-      "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
+      "comment": "A rare example of dizzy sidle, with a couple of bonus sidles. ",
+      "symmetryTypes": [
+        {
+          "class": "frieze",
+          "value": "2*∞"
+        }
+      ],
+      "overlay": [
+        {
+          "tool": "line",
+          "points": [
+            [
+              392,
+              455.2
+            ],
+            [
+              390,
+              265.8
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              430.4,
+              452.2
+            ],
+            [
+              424.5,
+              268.7
+            ]
+          ],
+          "thin": false
+        },
+        {
+          "tool": "dot",
+          "point": [
+            408.7,
+            356.5
+          ],
+          "little": false
+        }
+      ],
       "reduced": false,
-      "viewerRegion": null
+      "viewerRegion": {
+        "x": 336.72454854447506,
+        "y": 45.75112107623318,
+        "width": 162.7783301348008,
+        "height": 407.4439461883408
+      }
     },
     {
       "id": "photo_1786985805716_qh9k4hmwo",
@@ -452,9 +1849,23 @@
             ]
           ],
           "op": "add"
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              533.3,
+              209.9
+            ],
+            [
+              488.2,
+              1185.9
+            ]
+          ],
+          "thin": false
         }
       ],
-      "reduced": false,
+      "reduced": true,
       "viewerRegion": null
     },
     {
@@ -789,9 +2200,9 @@
       ],
       "reduced": false,
       "viewerRegion": {
-        "x": 367.6900584795322,
-        "y": 11.227641525126138,
-        "width": 444.44444444444474,
+        "x": 374.2128912421867,
+        "y": 8.267974767000874,
+        "width": 436.93507634763995,
         "height": 267.544532130778
       }
     },
@@ -909,21 +2320,6 @@
       "lng": -73.99451717734337,
       "originalWidth": 83,
       "originalHeight": 216,
-      "comment": "",
-      "symmetryTypes": [],
-      "overlay": [],
-      "reduced": false,
-      "viewerRegion": null
-    },
-    {
-      "id": "photo_1786985805757_xjn7948d5",
-      "photo": "photos/IMG_3045.jpg",
-      "thumb": "photos/thumbs/IMG_3045.thumb.jpg",
-      "filename": "IMG_3045.JPG",
-      "lat": 40.74036293881058,
-      "lng": -73.99431198835374,
-      "originalWidth": 83,
-      "originalHeight": 100,
       "comment": "",
       "symmetryTypes": [],
       "overlay": [],
@@ -1158,42 +2554,190 @@
       "lng": -73.99465799331666,
       "originalWidth": 83,
       "originalHeight": 89,
-      "comment": "",
-      "symmetryTypes": [],
+      "comment": "A typical hexagonal pattern",
+      "symmetryTypes": [
+        {
+          "class": "planar",
+          "value": "*632"
+        }
+      ],
       "overlay": [
+        {
+          "tool": "domain",
+          "points": [
+            [
+              420.4,
+              311.9
+            ],
+            [
+              436.5,
+              413.8
+            ],
+            [
+              484.8,
+              306.5
+            ]
+          ],
+          "op": "add"
+        },
         {
           "tool": "line",
           "points": [
             [
-              497.3,
-              260
+              436.5,
+              438.8
             ],
             [
-              525.9,
-              449.5
+              416.8,
+              267.2
             ]
           ],
-          "thin": false
+          "thin": true
         },
         {
-          "tool": "dot",
-          "point": [
-            440.1,
-            372.7
+          "tool": "line",
+          "points": [
+            [
+              359.6,
+              317.2
+            ],
+            [
+              518.8,
+              299.3
+            ]
           ],
-          "little": false
+          "thin": true
         },
         {
-          "tool": "dot",
-          "point": [
-            196.9,
-            340.5
+          "tool": "line",
+          "points": [
+            [
+              420.4,
+              437
+            ],
+            [
+              486.6,
+              277.9
+            ]
           ],
-          "little": false
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              459.8,
+              283.2
+            ],
+            [
+              484.8,
+              320.8
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              415.1,
+              406.6
+            ],
+            [
+              452.6,
+              403.1
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              422.2,
+              392.3
+            ],
+            [
+              450.8,
+              420.9
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "line",
+          "points": [
+            [
+              415.1,
+              419.1
+            ],
+            [
+              456.2,
+              388.7
+            ]
+          ],
+          "thin": true
+        },
+        {
+          "tool": "text",
+          "point": [
+            454.4,
+            471.8
+          ],
+          "runs": [
+            {
+              "text": "6",
+              "color": "#d0212b"
+            }
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            533.2,
+            316.29999999999995
+          ],
+          "runs": [
+            {
+              "text": "3",
+              "color": "#d0212b"
+            }
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            356.1,
+            278.7
+          ],
+          "runs": [
+            {
+              "text": "2",
+              "color": "#d0212b"
+            }
+          ]
+        },
+        {
+          "tool": "text",
+          "point": [
+            372.1,
+            350.3
+          ],
+          "runs": [
+            {
+              "text": "*",
+              "color": "#d0212b"
+            }
+          ]
         }
       ],
       "reduced": false,
-      "viewerRegion": null
+      "viewerRegion": {
+        "x": 325.65205850714574,
+        "y": 227.81163177396337,
+        "width": 291.47399449574607,
+        "height": 290.48881862340755
+      }
     },
     {
       "id": "photo_1786985805817_bt6m7k5ns",
@@ -1530,10 +3074,10 @@
     }
   ],
   "mapCenter": {
-    "lat": 40.74072289871678,
-    "lng": -73.994582220912
+    "lat": 40.74042797052567,
+    "lng": -73.99413228034975
   },
-  "mapZoom": 21,
+  "mapZoom": 19,
   "version": "2.0",
-  "savedAt": "2026-08-20T16:39:42.345Z"
+  "savedAt": "2026-08-26T00:04:44.816Z"
 }

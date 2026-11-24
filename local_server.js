@@ -29,7 +29,7 @@ const { spawn } = require('child_process');
 const PORT = 8934;
 const ROOT = __dirname;
 const DEPLOY_SCRIPT = path.join(ROOT, 'symmetrystroller', 'deploy.sh');
-const CREDS_FILE = path.join(process.env.HOME || '', '.symmetrystroller_deploy.env');
+const CREDS_FILE = path.join(process.env.HOME || '', 'Archive', 'Programming', 'Top Secret', 'symmetrystroller_deploy.env');
 
 const MIME = {
     '.html': 'text/html; charset=utf-8',
