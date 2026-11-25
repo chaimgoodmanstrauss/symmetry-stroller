@@ -1821,10 +1821,32 @@
 
     <script src="vendor/exif.min.js"></script>
     <script src="vendor/jszip.min.js"></script>
+    <!-- Optional, gitignored: sets window.SYMMETRY_STROLLER_CONFIG (your own
+         CARTO key). Copy config.example.js -> config.local.js. A 404 here is
+         normal and harmless when you don't have one. -->
+    <script src="config.local.js" onerror="void 0"></script>
     <script>
-        // CARTO basemap key (see initializeMap's own comment on why this
-        // is fine to have in plain sight, unlike deploy credentials).
-        const CARTO_API_KEY = 'YOUR_CARTO_KEY';
+        // CARTO basemap key — never hardcoded here. Resolved, in order, from:
+        //   1. ?cartoKey=<key> in the URL (saved to this browser's
+        //      localStorage; ?cartoKey= with no value clears it)
+        //   2. a key previously saved that way
+        //   3. config.local.js (gitignored; deployed by deploy.sh)
+        // With no key at all, the map falls back to Esri's keyless Light
+        // Gray Canvas tiles, so a fresh download works out of the box.
+        const CARTO_API_KEY = (() => {
+            const LS = 'symmetryStroller.cartoKey';
+            try {
+                const params = new URLSearchParams(location.search);
+                if (params.has('cartoKey')) {
+                    const k = params.get('cartoKey').trim();
+                    if (k) localStorage.setItem(LS, k); else localStorage.removeItem(LS);
+                }
+                const saved = localStorage.getItem(LS);
+                if (saved) return saved;
+            } catch (e) { /* storage blocked: fall through */ }
+            const cfg = window.SYMMETRY_STROLLER_CONFIG || {};
+            return (cfg.cartoApiKey || '').trim();
+        })();
 
         // Configuration
         const CONFIG = {
@@ -2310,21 +2332,23 @@
                     state.map.createPane('route-handles');
                     state.map.getPane('route-handles').style.zIndex = 660;
 
-                    // CartoDB's free ANONYMOUS "light_all" tiles (used here
-                    // for years, no key) started requiring one as of
-                    // 2026-08-26 — every tile briefly rendered as a
-                    // literal "API KEY REQUIRED" watermark instead of a
-                    // map (Esri's Light Gray Canvas covered for it in the
-                    // meantime). This key is free (fair-use tier) and not
-                    // a secret in the way deploy credentials are — like
-                    // any browser-side map API key (Mapbox, Google Maps,
-                    // ...) it's necessarily visible in every tile request
-                    // this page makes, restricted by usage/referrer on
-                    // CARTO's end rather than by being hidden.
-                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=' + CARTO_API_KEY, {
-                        maxZoom: CONFIG.MAX_ZOOM,
-                        maxNativeZoom: 19
-                    }).addTo(state.map);
+                    // CartoDB's "light_all" tiles need an API key since
+                    // 2026-08-26 (see CARTO_API_KEY above for where it comes
+                    // from). Without one, Esri's free, keyless Light Gray
+                    // Canvas (base + labels overlay) stands in.
+                    if (CARTO_API_KEY) {
+                        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=' + encodeURIComponent(CARTO_API_KEY), {
+                            maxZoom: CONFIG.MAX_ZOOM,
+                            maxNativeZoom: 19
+                        }).addTo(state.map);
+                    } else {
+                        ['World_Light_Gray_Base', 'World_Light_Gray_Reference'].forEach(name => {
+                            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/' + name + '/MapServer/tile/{z}/{y}/{x}', {
+                                maxZoom: CONFIG.MAX_ZOOM,
+                                maxNativeZoom: 16
+                            }).addTo(state.map);
+                        });
+                    }
 
                     // CARTO's license requires crediting both CARTO and
                     // OpenStreetMap on every map (see carto.com/attributions)
@@ -2348,7 +2372,9 @@
                     recenterControl.addTo(state.map);
 
                     L.control.attribution({ position: 'bottomleft', prefix: false })
-                        .addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>')
+                        .addAttribution(CARTO_API_KEY
+                            ? '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
+                            : 'Tiles &copy; <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a> &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors')
                         .addTo(state.map);
 
                     // Recalculate marker sizing once the zoom level has

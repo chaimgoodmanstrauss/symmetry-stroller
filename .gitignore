@@ -15,3 +15,6 @@ original_symmetry_stroller/
 # lives only on disk here and on the live server, deployed by hand via
 # deploy.sh's own api-upload step, never through this repo.
 symmetrystroller/api/config.php
+
+# Your own CARTO basemap key (copy symmetrystroller/config.example.js).
+symmetrystroller/config.local.js
